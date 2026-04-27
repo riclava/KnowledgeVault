@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import { prisma } from "@/lib/db/prisma";
 import {
+  getAdminKnowledgeItem,
   listAdminKnowledgeItems,
   normalizeAdminKnowledgeItemSearchParams,
 } from "@/server/admin/admin-knowledge-item-service";
@@ -83,6 +84,53 @@ describe("admin knowledge item service", () => {
         },
       },
       orderBy: { updatedAt: "desc" },
+    });
+  });
+
+  it("loads only active review items for the admin edit form", async () => {
+    const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
+      findFirst: (args: unknown) => Promise<unknown>;
+    };
+    const originalFindFirst = knowledgeItemDelegate.findFirst;
+    let capturedArgs: unknown;
+
+    knowledgeItemDelegate.findFirst = async (args: unknown) => {
+      capturedArgs = args;
+
+      return null;
+    };
+
+    try {
+      await getAdminKnowledgeItem("item-id");
+    } finally {
+      knowledgeItemDelegate.findFirst = originalFindFirst;
+    }
+
+    assert.deepEqual(capturedArgs, {
+      where: {
+        OR: [{ id: "item-id" }, { slug: "item-id" }],
+      },
+      include: {
+        variables: {
+          orderBy: { sortOrder: "asc" },
+        },
+        reviewItems: {
+          where: { isActive: true },
+          orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
+        },
+        outgoingRelations: {
+          include: {
+            toKnowledgeItem: {
+              select: {
+                id: true,
+                slug: true,
+                title: true,
+              },
+            },
+          },
+          orderBy: [{ relationType: "asc" }, { createdAt: "asc" }],
+        },
+      },
     });
   });
 });

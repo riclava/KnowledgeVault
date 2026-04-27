@@ -70,6 +70,9 @@ export async function getAdminKnowledgeItem(idOrSlug: string) {
         orderBy: { sortOrder: "asc" },
       },
       reviewItems: {
+        where: {
+          isActive: true,
+        },
         orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
       },
       outgoingRelations: {
