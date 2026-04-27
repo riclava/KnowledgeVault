@@ -9,7 +9,11 @@ export async function getAdminDashboard() {
     recentImportRuns,
   ] = await Promise.all([
     prisma.knowledgeItem.count(),
-    prisma.reviewItem.count(),
+    prisma.reviewItem.count({
+      where: {
+        isActive: true,
+      },
+    }),
     prisma.knowledgeItemRelation.count(),
     prisma.knowledgeItemVariable.count(),
     prisma.adminImportRun.findMany({

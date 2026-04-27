@@ -37,7 +37,11 @@ function buildKnowledgeItemSummaryInclude(userId?: string) {
     },
     _count: {
       select: {
-        reviewItems: true,
+        reviewItems: {
+          where: {
+            isActive: true,
+          },
+        },
         memoryHooks: true,
       },
     },
@@ -66,7 +70,11 @@ const knowledgeItemDetailInclude = {
   },
   _count: {
     select: {
-      reviewItems: true,
+      reviewItems: {
+        where: {
+          isActive: true,
+        },
+      },
       memoryHooks: true,
     },
   },

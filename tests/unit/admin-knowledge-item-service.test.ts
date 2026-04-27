@@ -78,7 +78,11 @@ describe("admin knowledge item service", () => {
         _count: {
           select: {
             variables: true,
-            reviewItems: true,
+            reviewItems: {
+              where: {
+                isActive: true,
+              },
+            },
             outgoingRelations: true,
           },
         },

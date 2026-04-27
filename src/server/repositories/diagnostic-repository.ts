@@ -6,7 +6,11 @@ const diagnosticQuestionInclude = {
     include: {
       _count: {
         select: {
-          reviewItems: true,
+          reviewItems: {
+            where: {
+              isActive: true,
+            },
+          },
           memoryHooks: true,
         },
       },

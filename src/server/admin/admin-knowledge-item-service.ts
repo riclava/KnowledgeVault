@@ -51,7 +51,11 @@ export async function listAdminKnowledgeItems(
       _count: {
         select: {
           variables: true,
-          reviewItems: true,
+          reviewItems: {
+            where: {
+              isActive: true,
+            },
+          },
           outgoingRelations: true,
         },
       },
