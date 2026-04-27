@@ -15,6 +15,11 @@ export type AdminImportWritePlan = {
   relationSourceSlugs: string[];
 };
 
+export type ReviewItemReplacementPlan = {
+  deleteIds: string[];
+  preserveIds: string[];
+};
+
 export function buildAdminImportWritePlan(
   batch: AdminImportBatch,
   existingSlugToId: ExistingSlugToId,
@@ -28,6 +33,28 @@ export function buildAdminImportWritePlan(
       .map((item) => item.slug),
     relationSourceSlugs: unique(batch.relations.map((relation) => relation.fromSlug)),
   };
+}
+
+export function partitionReviewItemIdsForReplacement(
+  reviewItems: Array<{
+    id: string;
+    _count: {
+      reviewLogs: number;
+    };
+  }>,
+): ReviewItemReplacementPlan {
+  return reviewItems.reduce<ReviewItemReplacementPlan>(
+    (plan, reviewItem) => {
+      if (reviewItem._count.reviewLogs > 0) {
+        plan.preserveIds.push(reviewItem.id);
+      } else {
+        plan.deleteIds.push(reviewItem.id);
+      }
+
+      return plan;
+    },
+    { deleteIds: [], preserveIds: [] },
+  );
 }
 
 export async function listExistingKnowledgeItemIdsBySlug(slugs: string[]) {
@@ -128,9 +155,23 @@ export async function saveAdminImportBatch({
         });
       }
 
-      await tx.reviewItem.deleteMany({
+      const existingReviewItems = await tx.reviewItem.findMany({
         where: { knowledgeItemId: savedItem.id },
+        select: {
+          id: true,
+          _count: {
+            select: { reviewLogs: true },
+          },
+        },
       });
+      const reviewItemReplacementPlan =
+        partitionReviewItemIdsForReplacement(existingReviewItems);
+
+      if (reviewItemReplacementPlan.deleteIds.length > 0) {
+        await tx.reviewItem.deleteMany({
+          where: { id: { in: reviewItemReplacementPlan.deleteIds } },
+        });
+      }
 
       if (item.reviewItems.length > 0) {
         await tx.reviewItem.createMany({

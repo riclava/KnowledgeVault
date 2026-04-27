@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { buildAdminImportWritePlan } from "@/server/admin/admin-import-repository";
+import {
+  buildAdminImportWritePlan,
+  partitionReviewItemIdsForReplacement,
+} from "@/server/admin/admin-import-repository";
 import type { AdminImportBatch } from "@/server/admin/admin-import-types";
 
 const batch: AdminImportBatch = {
@@ -60,5 +63,16 @@ describe("admin import write plan", () => {
     assert.deepEqual(plan.createSlugs, ["new-item"]);
     assert.deepEqual(plan.updateSlugs, ["existing-item"]);
     assert.deepEqual(plan.relationSourceSlugs, ["existing-item"]);
+  });
+
+  it("preserves reviewed items and deletes only unreferenced review items", () => {
+    const plan = partitionReviewItemIdsForReplacement([
+      { id: "reviewed", _count: { reviewLogs: 2 } },
+      { id: "unreviewed", _count: { reviewLogs: 0 } },
+      { id: "also-reviewed", _count: { reviewLogs: 1 } },
+    ]);
+
+    assert.deepEqual(plan.deleteIds, ["unreviewed"]);
+    assert.deepEqual(plan.preserveIds, ["reviewed", "also-reviewed"]);
   });
 });
