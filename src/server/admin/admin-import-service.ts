@@ -28,8 +28,10 @@ export function normalizeAdminImportRequest(input: unknown): AdminImportRequest 
   const sourceTitle = optionalText(record.sourceTitle);
   const defaultSubdomain = optionalText(record.defaultSubdomain);
   const preferredContentTypes = Array.isArray(record.preferredContentTypes)
-    ? record.preferredContentTypes.filter((value): value is string => {
-        return typeof value === "string";
+    ? record.preferredContentTypes.flatMap((value) => {
+        const normalized = text(value);
+
+        return normalized ? [normalized] : [];
       })
     : undefined;
 
@@ -70,14 +72,7 @@ export async function runAdminImport({
   }
 
   const generatedItems = Array.isArray(generated.items) ? generated.items : [];
-  const generatedRelations = Array.isArray(generated.relations)
-    ? generated.relations
-    : [];
-  const referencedSlugs = [
-    ...generatedItems.map((item) => item.slug),
-    ...generatedRelations.map((relation) => relation.toSlug),
-    ...generatedRelations.map((relation) => relation.fromSlug),
-  ];
+  const referencedSlugs = collectGeneratedImportSlugs(generated);
   const existingSlugs = await listExistingKnowledgeItemIdsBySlug(referencedSlugs);
 
   let validation: ReturnType<typeof validateAdminImportBatch>;
@@ -139,6 +134,31 @@ export async function getRecentAdminImportRuns() {
   return listRecentAdminImportRuns(20);
 }
 
+export function collectGeneratedImportSlugs(input: unknown) {
+  const record = isRecord(input) ? input : {};
+  const items = Array.isArray(record.items) ? record.items : [];
+  const relations = Array.isArray(record.relations) ? record.relations : [];
+
+  return unique([
+    ...items.flatMap((item) => {
+      if (!isRecord(item)) {
+        return [];
+      }
+
+      const slug = text(item.slug);
+
+      return slug ? [slug] : [];
+    }),
+    ...relations.flatMap((relation) => {
+      if (!isRecord(relation)) {
+        return [];
+      }
+
+      return [text(relation.fromSlug), text(relation.toSlug)].filter(Boolean);
+    }),
+  ]);
+}
+
 function toPipelineError(
   error: unknown,
   fallbackMessage: string,
@@ -164,4 +184,8 @@ function text(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function unique<T>(values: T[]) {
+  return Array.from(new Set(values));
 }
