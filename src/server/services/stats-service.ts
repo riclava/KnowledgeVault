@@ -553,7 +553,7 @@ function buildLearningRecommendations({
     recommendations.push({
       id: "application-focus",
       label: "补场景应用",
-      description: "Application 题里出现困难，先回看典型题型和什么时候不能用。",
+      description: "Application 题里出现困难，先回看典型场景和什么时候不能用。",
       href: "/knowledge-items?tag=application",
       priority: "medium" as const,
     });
@@ -570,10 +570,10 @@ function buildLearningRecommendations({
   }
 
   recommendations.push({
-    id: "derivation",
-    label: "练一次推导",
-    description: "对会背但不会用的知识项，推导训练能把条件和结构重新连起来。",
-    href: "/derivation",
+    id: "deep-dive",
+    label: "练一次理解",
+    description: "对会背但不会用的知识项，用结构拆解把条件和用法重新连起来。",
+    href: "/deep-dive",
     priority: "low" as const,
   });
 
@@ -614,7 +614,7 @@ function getRecommendedAction(weakPoint: WeakKnowledgeItemStat["weakPoint"]) {
       return "优先看什么时候不能用和常见误用。";
     case "application":
     default:
-      return "回看典型题型，再做一题场景应用。";
+      return "回看典型场景，再做一题场景应用。";
   }
 }
 

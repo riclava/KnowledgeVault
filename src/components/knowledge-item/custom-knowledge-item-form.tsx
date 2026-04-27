@@ -22,7 +22,7 @@ type KnowledgeItemDraft = {
   subdomain: string;
   summary: string;
   body: string;
-  derivation: string;
+  deepDive: string;
   difficulty: number;
   tags: string[];
   useConditions: string[];
@@ -45,7 +45,7 @@ export function CustomKnowledgeItemForm() {
   const [isDraftPending, setIsDraftPending] = useState(false);
   const [importText, setImportText] = useState("");
   const [importMessage, setImportMessage] = useState<string | null>(null);
-  const [contentType, setContentType] = useState<KnowledgeItemContentType>("math_formula");
+  const [contentType, setContentType] = useState<KnowledgeItemContentType>("plain_text");
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -72,7 +72,7 @@ export function CustomKnowledgeItemForm() {
               subdomain: stringValue(formData, "subdomain"),
               summary: stringValue(formData, "summary"),
               body: stringValue(formData, "body"),
-              derivation: stringValue(formData, "derivation"),
+              deepDive: stringValue(formData, "deepDive"),
               difficulty: Number(stringValue(formData, "difficulty") || 2),
               tags: listValue(formData, "tags"),
               useConditions: listValue(formData, "useConditions"),
@@ -131,7 +131,7 @@ export function CustomKnowledgeItemForm() {
           id="knowledgeItem-draft-prompt"
           value={draftPrompt}
           onChange={(event) => setDraftPrompt(event.target.value)}
-          placeholder="例如：二项分布，n 次独立伯努利试验中成功 k 次的概率，想补充适用条件和常见误用。"
+          placeholder="例如：费曼学习法，用自己的话讲一遍，再定位讲不清楚的缺口。"
           className="min-h-20"
         />
         {draftMessage ? (
@@ -161,12 +161,12 @@ export function CustomKnowledgeItemForm() {
         <Field
           label="知识项标题"
           name="title"
-          placeholder="例如：泊松分布概率质量函数"
+          placeholder="例如：费曼学习法复盘"
           required
           containerClassName="md:col-span-1"
         />
-        <Field label="知识域" name="domain" placeholder="例如：概率统计" defaultValue="自定义知识项" />
-        <Field label="子领域" name="subdomain" placeholder="例如：随机变量" />
+        <Field label="知识域" name="domain" placeholder="例如：学习方法" defaultValue="自定义知识项" />
+        <Field label="子领域" name="subdomain" placeholder="例如：复盘方法" />
         <Field label="难度" name="difficulty" type="number" min="1" max="5" defaultValue="2" containerClassName="md:col-span-1" />
       </div>
 
@@ -240,9 +240,9 @@ export function CustomKnowledgeItemForm() {
           className="min-h-24"
         />
         <TextAreaField
-          label="推导过程"
-          name="derivation"
-          placeholder="可选：写下关键推导步骤。"
+          label="深入理解"
+          name="deepDive"
+          placeholder="可选：写下结构拆解、关键推导或更深一层的解释。"
           className="min-h-24"
         />
       </div>
@@ -251,14 +251,14 @@ export function CustomKnowledgeItemForm() {
         <TextAreaField label="什么时候用" name="useConditions" placeholder="每行一条" className="min-h-24" />
         <TextAreaField label="什么时候不能用" name="nonUseConditions" placeholder="每行一条" className="min-h-24" />
         <TextAreaField label="常见误用" name="antiPatterns" placeholder="每行一条" className="min-h-24" />
-        <TextAreaField label="典型题型" name="typicalProblems" placeholder="每行一条" className="min-h-24" />
+        <TextAreaField label="典型场景" name="typicalProblems" placeholder="每行一条" className="min-h-24" />
       </div>
 
       <div className="grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)]">
         <TextAreaField
-          label="例题"
+          label="例子"
           name="examples"
-          placeholder="每行一题，第一题会用于 Application 训练。"
+          placeholder="每行一个例子，第一条会用于应用训练。"
           className="min-h-24"
         />
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
@@ -305,12 +305,12 @@ export function CustomKnowledgeItemForm() {
             onChange={(event) => setImportText(event.target.value)}
             placeholder={`[
   {
-    "title": "泊松分布概率质量函数",
-    "contentType": "math_formula",
-    "renderPayload": { "latex": "P(X=k)=\\\\frac{\\\\lambda^k e^{-\\\\lambda}}{k!}" },
-    "domain": "概率统计",
-    "summary": "单位区间内稀有事件次数的概率。",
-    "memoryHook": "看到固定时间内发生几次，先想泊松。"
+    "title": "费曼学习法复盘",
+    "contentType": "plain_text",
+    "renderPayload": { "text": "用自己的话讲一遍，再定位讲不清楚的缺口。" },
+    "domain": "学习方法",
+    "summary": "用输出暴露理解缺口。",
+    "memoryHook": "讲不清楚的地方就是下一轮要补的地方。"
   }
 ]`}
             className="min-h-40 font-mono text-sm"
@@ -405,7 +405,7 @@ export function CustomKnowledgeItemForm() {
     setFormValue("subdomain", draft.subdomain);
     setFormValue("summary", draft.summary);
     setFormValue("body", draft.body);
-    setFormValue("derivation", draft.derivation);
+    setFormValue("deepDive", draft.deepDive);
     setFormValue("difficulty", String(draft.difficulty));
     setFormValue("tags", draft.tags.join("\n"));
     setFormValue("useConditions", draft.useConditions.join("\n"));
@@ -489,16 +489,16 @@ function normalizeImportedKnowledgeItem(value: unknown) {
   const record = value as Record<string, unknown>;
   return {
     title: importedString(record.title),
-    contentType: importedString(record.contentType) || "math_formula",
+    contentType: importedString(record.contentType) || "plain_text",
     renderPayload:
       record.renderPayload && typeof record.renderPayload === "object"
         ? record.renderPayload
-        : { latex: importedString(record.renderPayload) },
+        : { text: importedString(record.renderPayload) },
     domain: importedString(record.domain),
     subdomain: importedString(record.subdomain),
     summary: importedString(record.summary),
     body: importedString(record.body),
-    derivation: importedString(record.derivation),
+    deepDive: importedString(record.deepDive),
     difficulty: Number(importedString(record.difficulty) || 2),
     tags: importedList(record.tags),
     useConditions: importedList(record.useConditions),

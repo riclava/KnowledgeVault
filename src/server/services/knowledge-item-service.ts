@@ -121,7 +121,7 @@ export async function addCustomKnowledgeItem({
     subdomain?: string;
     summary: string;
     body?: string;
-    derivation?: string;
+    deepDive?: string;
     useConditions?: string[];
     nonUseConditions?: string[];
     antiPatterns?: string[];
@@ -134,7 +134,7 @@ export async function addCustomKnowledgeItem({
 }) {
   const title = input.title.trim();
   const summary = input.summary.trim();
-  const contentType = parseKnowledgeItemType(input.contentType) ?? "math_formula";
+  const contentType = parseKnowledgeItemType(input.contentType) ?? "plain_text";
   const renderPayload = normalizeKnowledgeItemRenderPayload(
     contentType,
     input.renderPayload,
@@ -149,13 +149,13 @@ export async function addCustomKnowledgeItem({
   const difficulty = clampInteger(input.difficulty ?? 2, 1, 5);
   const body = input.body?.trim() || summary;
   const useConditions = normalizeTextList(input.useConditions, [
-    "题目中的条件与公式变量可以一一对应。",
+    "能从题目、语境或笔记中判断这条知识项正好适用。",
   ]);
   const nonUseConditions = normalizeTextList(input.nonUseConditions, [
-    "变量含义或前提条件无法确认时不要直接套用。",
+    "适用语境或前提条件无法确认时，不要直接套用。",
   ]);
   const antiPatterns = normalizeTextList(input.antiPatterns, [
-    "只记表达式但没有确认适用条件。",
+    "只记结论但没有确认适用条件。",
   ]);
   const typicalProblems = normalizeTextList(input.typicalProblems, [
     `${title} 的基础识别和代入题。`,
@@ -199,7 +199,7 @@ export async function addCustomKnowledgeItem({
       subdomain: input.subdomain?.trim() || null,
       summary,
       body,
-      derivation: input.derivation?.trim() || null,
+      deepDive: input.deepDive?.trim() || null,
       useConditions,
       nonUseConditions,
       antiPatterns,
@@ -394,7 +394,7 @@ function toKnowledgeItemDetail(knowledgeItem: KnowledgeItemWithDetail, now: Date
     ...toKnowledgeItemSummary(knowledgeItem, now),
     body: knowledgeItem.body,
     intuition: knowledgeItem.intuition,
-    derivation: knowledgeItem.derivation,
+    deepDive: knowledgeItem.deepDive,
     useConditions: knowledgeItem.useConditions,
     nonUseConditions: knowledgeItem.nonUseConditions,
     antiPatterns: knowledgeItem.antiPatterns,

@@ -25,7 +25,7 @@ type FocusSection =
   | "hooks"
   | "relations"
   | "examples"
-  | "derivation";
+  | "deep-dive";
 
 export type { FocusSection };
 
@@ -50,7 +50,7 @@ export function KnowledgeItemDetailView({
     | "summary"
     | "paths"
     | "knowledgeItems"
-    | "derivation"
+    | "deepDive"
     | "memory-hooks"
     | "custom";
   returnLink?: {
@@ -213,23 +213,25 @@ export function KnowledgeItemDetailView({
             <BulletList items={knowledgeItem.nonUseConditions} tone="warning" />
           </DetailSection>
 
-          <DetailSection icon={BookOpen} title="变量说明">
-            <div className="grid gap-3">
-              {knowledgeItem.variables.map((variable) => (
-                <div key={variable.id} className="rounded-lg border p-3">
-                  <div className="mb-1 flex items-center gap-2">
-                    <code className="rounded bg-muted px-2 py-1 text-xs">{variable.symbol}</code>
-                    <span className="text-sm font-medium">{variable.name}</span>
+          {knowledgeItem.variables.length > 0 ? (
+            <DetailSection icon={BookOpen} title="变量说明">
+              <div className="grid gap-3">
+                {knowledgeItem.variables.map((variable) => (
+                  <div key={variable.id} className="rounded-lg border p-3">
+                    <div className="mb-1 flex items-center gap-2">
+                      <code className="rounded bg-muted px-2 py-1 text-xs">{variable.symbol}</code>
+                      <span className="text-sm font-medium">{variable.name}</span>
+                    </div>
+                    <p className="text-sm leading-6 text-muted-foreground">
+                      {variable.description}
+                    </p>
                   </div>
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {variable.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </DetailSection>
+                ))}
+              </div>
+            </DetailSection>
+          ) : null}
 
-          <DetailSection icon={BookOpen} title="典型题型">
+          <DetailSection icon={BookOpen} title="典型场景">
             <BulletList items={knowledgeItem.typicalProblems} tone="neutral" />
           </DetailSection>
 
@@ -265,21 +267,21 @@ export function KnowledgeItemDetailView({
             }}
             focused={focusSection === "examples"}
             icon={BookOpen}
-            title="例题"
+            title="例子"
           >
             <BulletList items={knowledgeItem.examples} tone="neutral" />
           </DetailSection>
 
           <DetailSection
             sectionRef={(node) => {
-              sectionRefs.current.derivation = node;
+              sectionRefs.current["deep-dive"] = node;
             }}
-            focused={focusSection === "derivation"}
+            focused={focusSection === "deep-dive"}
             icon={BookOpen}
-            title="推导过程"
+            title="深入理解"
           >
             <p className="text-sm leading-6 text-muted-foreground">
-              {knowledgeItem.derivation ?? "当前还没有补充推导过程。"}
+              {knowledgeItem.deepDive ?? "当前还没有补充深入理解。"}
             </p>
           </DetailSection>
         </div>
@@ -341,7 +343,7 @@ function QuickActions({
     | "summary"
     | "paths"
     | "knowledgeItems"
-    | "derivation"
+    | "deepDive"
     | "memory-hooks"
     | "custom";
   onJump: (section: FocusSection) => void;
@@ -385,12 +387,12 @@ const quickActionsByEntryPoint: Record<
   ],
   paths: [
     { section: "use", label: "先看什么时候用" },
-    { section: "derivation", label: "再看推导过程" },
+    { section: "deep-dive", label: "再看深入理解" },
     { section: "relations", label: "接着看关联知识项" },
     { section: "examples", label: "回到例题" },
   ],
-  derivation: [
-    { section: "derivation", label: "继续推导过程" },
+  deepDive: [
+    { section: "deep-dive", label: "继续理解拆解" },
     { section: "use", label: "确认适用条件" },
     { section: "relations", label: "看前后关联" },
     { section: "hooks", label: "补一句自己的提醒" },
@@ -405,7 +407,7 @@ const quickActionsByEntryPoint: Record<
     { section: "use", label: "确认适用条件" },
     { section: "examples", label: "看例题" },
     { section: "hooks", label: "先留一句提醒" },
-    { section: "derivation", label: "补推导" },
+    { section: "deep-dive", label: "补理解" },
   ],
   knowledgeItems: [
     { section: "use", label: "看适用条件" },
@@ -425,8 +427,8 @@ function entryPointLabel(
       return "你是从总结页的弱项入口进来的";
     case "paths":
       return "你正在按内容集推进";
-    case "derivation":
-      return "你正在做推导强化";
+    case "deepDive":
+      return "你正在做理解强化";
     case "memory-hooks":
       return "你正在集中整理本轮提示";
     case "custom":

@@ -70,10 +70,10 @@ const navItems: NavItem[] = [
     group: "tool",
   },
   {
-    href: "/derivation",
-    label: "推导训练",
+    href: "/deep-dive",
+    label: "理解训练",
     icon: Orbit,
-    description: "在推导维度上强化知识项理解。",
+    description: "用结构拆解和深层解释强化知识项理解。",
     group: "tool",
   },
 ];
@@ -114,7 +114,7 @@ export function PhaseShell({
               </span>
               <span>
                 <span className="block text-base font-semibold leading-none">
-                  FormulaLab
+                  KnowledgeVault
                 </span>
                 <span className="mt-1 block text-xs text-muted-foreground">
                   今日复习优先

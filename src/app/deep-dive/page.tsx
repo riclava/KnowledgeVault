@@ -1,4 +1,4 @@
-import { DerivationTrainer } from "@/components/derivation/derivation-trainer";
+import { DeepDiveTrainer } from "@/components/deep-dive/deep-dive-trainer";
 import { PhaseShell } from "@/components/app/phase-shell";
 import { requireCurrentLearner } from "@/server/auth/current-learner";
 import { resolveLearningDomain } from "@/server/learning-domain";
@@ -19,18 +19,18 @@ export default async function DerivationPage({
   });
   const details = (
     await Promise.all(summaries.map((knowledgeItem) => getKnowledgeItemDetail(knowledgeItem.slug)))
-  ).filter((knowledgeItem) => knowledgeItem?.derivation) as NonNullable<
+  ).filter((knowledgeItem) => knowledgeItem?.deepDive) as NonNullable<
     Awaited<ReturnType<typeof getKnowledgeItemDetail>>
   >[];
 
   return (
     <PhaseShell
-      activePath="/derivation"
-      eyebrow="推导训练"
-      title="推导练习"
+      activePath="/deep-dive"
+      eyebrow="理解训练"
+      title="深入理解练习"
       learningDomain={learningDomain}
     >
-      <DerivationTrainer domain={learningDomain.currentDomain} knowledgeItems={details} />
+      <DeepDiveTrainer domain={learningDomain.currentDomain} knowledgeItems={details} />
     </PhaseShell>
   );
 }

@@ -102,7 +102,7 @@ CREATE TABLE "knowledge_items" (
     "summary" TEXT NOT NULL,
     "body" TEXT NOT NULL,
     "intuition" TEXT,
-    "derivation" TEXT,
+    "deepDive" TEXT,
     "useConditions" TEXT[],
     "nonUseConditions" TEXT[],
     "antiPatterns" TEXT[],

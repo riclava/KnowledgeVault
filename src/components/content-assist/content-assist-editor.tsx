@@ -285,7 +285,7 @@ export function ContentAssistEditor({
               }
             />
             <TextAreaField
-              label="典型题型（每行一条）"
+              label="典型场景（每行一条）"
               value={draft.explanation.typicalProblems.join("\n")}
               onChange={(value) =>
                 setDraft((current) => ({

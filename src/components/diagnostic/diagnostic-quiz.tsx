@@ -190,7 +190,7 @@ export function DiagnosticQuiz({ domain }: { domain: string }) {
         </Badge>
         <h2 className="text-xl font-semibold">还没有可用于诊断的知识项内容。</h2>
         <p className="text-sm text-muted-foreground">
-          请先执行种子脚本，写入概率统计 Alpha 知识项集。
+          请先执行种子脚本，写入通用知识项种子数据。
         </p>
       </section>
     );

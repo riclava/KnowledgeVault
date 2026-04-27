@@ -52,14 +52,14 @@ type ApprovedContentAssistDraft = {
 type SeedKnowledgeItem = {
   slug: string;
   title: string;
-  contentType?: KnowledgeItemType;
+  contentType: KnowledgeItemType;
   renderPayload: string | Record<string, unknown>;
   domain: string;
   subdomain: string | null;
   summary: string;
   body: string;
   intuition: string | null;
-  derivation: string | null;
+  deepDive: string | null;
   useConditions: string[];
   nonUseConditions: string[];
   antiPatterns: string[];
@@ -86,6 +86,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
   {
     slug: "bayes-theorem",
     title: "贝叶斯定理",
+    contentType: KnowledgeItemType.math_formula,
     renderPayload: "P(A \\mid B)=\\frac{P(B \\mid A)P(A)}{P(B)}",
     domain: "概率统计",
     subdomain: "条件概率",
@@ -94,7 +95,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
       "贝叶斯定理把先验概率和观测到的证据结合起来，更新某个原因或假设成立的概率。",
     intuition:
       "它像一次证据更新：先有一个初始判断，再用新看到的结果重新调整判断。",
-    derivation:
+    deepDive:
       "由条件概率定义 P(A|B)=P(A∩B)/P(B) 与 P(B|A)=P(A∩B)/P(A) 联立得到。",
     useConditions: [
       "题目要求从结果 B 反推原因 A 的概率。",
@@ -168,6 +169,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
   {
     slug: "law-of-total-probability",
     title: "全概率公式",
+    contentType: KnowledgeItemType.math_formula,
     renderPayload: "P(B)=\\sum_i P(B \\mid A_i)P(A_i)",
     domain: "概率统计",
     subdomain: "条件概率",
@@ -175,7 +177,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     body:
       "当样本空间被一组互斥且完备的事件划分时，某个结果 B 的概率可以按每条路径加权求和。",
     intuition: "像树状图上每条通往 B 的路径概率相加。",
-    derivation: "由 B=(B∩A1)∪...∪(B∩An) 且各部分互斥可得。",
+    deepDive: "由 B=(B∩A1)∪...∪(B∩An) 且各部分互斥可得。",
     useConditions: [
       "原因集合 A_i 两两互斥且覆盖全部可能。",
       "题目要求某个结果 B 的总概率。",
@@ -241,6 +243,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
   {
     slug: "expectation-linearity",
     title: "期望的线性性质",
+    contentType: KnowledgeItemType.math_formula,
     renderPayload: "E(aX+bY)=aE(X)+bE(Y)",
     domain: "概率统计",
     subdomain: "随机变量",
@@ -248,7 +251,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     body:
       "无论随机变量是否独立，期望都满足线性加法和数乘规则。",
     intuition: "平均值可以先拆账再合账，不需要每个部分互不影响。",
-    derivation: "由期望定义和求和/积分的线性性质得到。",
+    deepDive: "由期望定义和求和/积分的线性性质得到。",
     useConditions: [
       "需要计算多个随机变量线性组合的期望。",
       "只涉及加法、减法和常数倍。",
@@ -308,6 +311,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
   {
     slug: "variance-shift-scale",
     title: "方差的平移与缩放",
+    contentType: KnowledgeItemType.math_formula,
     renderPayload: "\\operatorname{Var}(aX+b)=a^2\\operatorname{Var}(X)",
     domain: "概率统计",
     subdomain: "随机变量",
@@ -315,7 +319,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     body:
       "加常数只移动中心，不改变离散程度；乘常数会让方差按常数平方缩放。",
     intuition: "整体平移不改变散开程度，拉伸两倍会让平方距离变成四倍。",
-    derivation:
+    deepDive:
       "由 Var(X)=E[(X-E(X))^2] 代入 aX+b 后，b 与均值平移相互抵消，a 被平方提出。",
     useConditions: [
       "随机变量发生线性变换 aX+b。",
@@ -395,7 +399,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     summary: "表示异常、偏离常态的情况。",
     body: "aberration 常用于描述与正常模式不一致、不能代表长期趋势的异常点。",
     intuition: "把它记成数据图上突然偏出去的一个点。",
-    derivation: null,
+    deepDive: null,
     useConditions: ["描述异常现象、异常数据点或偏离常规的行为。"],
     nonUseConditions: ["描述普通变化或长期趋势时，不要用 aberration。"],
     antiPatterns: ["把 aberration 当成普通 mistake 使用，忽略它的“异常偏离”含义。"],
@@ -440,7 +444,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     summary: "每日复习按到期、补弱、提示三步推进。",
     body: "这条清单用于防止复习时只刷题不修复记忆线索。每天结束前至少为一个薄弱知识项写下自己的提示。",
     intuition: "先清队列，再修最弱点，最后留下下次能接住自己的线索。",
-    derivation: null,
+    deepDive: null,
     useConditions: ["开始每日复习或复盘一次训练结果时。"],
     nonUseConditions: ["只是在快速浏览资料、没有进入训练闭环时。"],
     antiPatterns: ["只完成题目数量，不处理 Again/Hard 暴露的问题。"],
@@ -611,14 +615,14 @@ async function main() {
       data: {
         slug: knowledgeItem.slug,
         title: knowledgeItem.title,
-        contentType: knowledgeItem.contentType ?? KnowledgeItemType.math_formula,
+        contentType: knowledgeItem.contentType,
         renderPayload: normalizeSeedRenderPayload(knowledgeItem) as Prisma.InputJsonValue,
         domain: knowledgeItem.domain,
         subdomain: knowledgeItem.subdomain,
         summary: knowledgeItem.summary,
         body: knowledgeItem.body,
         intuition: knowledgeItem.intuition,
-        derivation: knowledgeItem.derivation,
+        deepDive: knowledgeItem.deepDive,
         useConditions: knowledgeItem.useConditions,
         nonUseConditions: knowledgeItem.nonUseConditions,
         antiPatterns: knowledgeItem.antiPatterns,

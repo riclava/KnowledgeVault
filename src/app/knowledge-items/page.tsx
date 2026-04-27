@@ -261,7 +261,7 @@ export default async function KnowledgeItemsPage({
 
               <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm text-muted-foreground">
                 <div className="flex flex-wrap gap-4">
-                  <span>变量：{formatVariablePreview(knowledgeItem)}</span>
+                  <span>{formatVariablePreview(knowledgeItem)}</span>
                   <span>训练题：{knowledgeItem.reviewItemCount}</span>
                   <span>下次提示：{knowledgeItem.memoryHookCount}</span>
                 </div>
@@ -395,13 +395,13 @@ function formatNextReviewAt(nextReviewAt: string | null) {
 
 function formatVariablePreview(knowledgeItem: KnowledgeItemSummary) {
   if (knowledgeItem.variablePreview.length === 0) {
-    return "变量说明将在详情页展开";
+    return "没有单独的变量说明";
   }
 
-  return knowledgeItem.variablePreview
+  return `变量：${knowledgeItem.variablePreview
     .slice(0, 3)
     .map((variable) => `${variable.symbol}（${variable.name}）`)
-    .join("、");
+    .join("、")}`;
 }
 
 function createKnowledgeItemCatalogHrefBuilder(

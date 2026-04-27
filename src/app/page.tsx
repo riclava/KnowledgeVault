@@ -10,11 +10,15 @@ import {
 } from "lucide-react";
 
 import { MagicLinkSignInForm } from "@/components/account/magic-link-sign-in-form";
-import { LatexRenderer } from "@/components/knowledge-item/latex-renderer";
+import { KnowledgeItemRenderer } from "@/components/knowledge-item/renderers/knowledge-item-renderer";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { getCurrentLearner } from "@/server/auth/current-learner";
+import type {
+  KnowledgeItemRenderPayloadByType,
+  KnowledgeItemType,
+} from "@/types/knowledge-item";
 
 export const dynamic = "force-dynamic";
 
@@ -41,18 +45,39 @@ const loopSteps = [
   },
 ];
 
-const sampleKnowledgeItems = [
+type SampleKnowledgeItem = {
+  eyebrow: string;
+  title: string;
+  description: string;
+} & {
+  [TType in KnowledgeItemType]: {
+    contentType: TType;
+    renderPayload: KnowledgeItemRenderPayloadByType[TType];
+  };
+}[KnowledgeItemType];
+
+const sampleKnowledgeItems: SampleKnowledgeItem[] = [
   {
-    eyebrow: "概率统计",
-    title: "贝叶斯定理",
-    expression: "P(A\\mid B)=\\frac{P(B\\mid A)P(A)}{P(B)}",
-    description: "反推原因时常用。",
+    eyebrow: "学习方法",
+    title: "费曼学习法复盘",
+    contentType: "plain_text",
+    renderPayload: {
+      text: "用自己的话讲一遍，再定位讲不清楚的缺口。",
+    },
+    description: "用输出暴露理解缺口。",
   },
   {
-    eyebrow: "抽样分布",
-    title: "标准误",
-    expression: "\\mathrm{SE}(\\bar{x})=\\frac{\\sigma}{\\sqrt{n}}",
-    description: "样本均值波动常用。",
+    eyebrow: "英语词汇",
+    title: "aberration",
+    contentType: "vocabulary",
+    renderPayload: {
+      term: "aberration",
+      definition: "偏离常态的事物或异常情况。",
+      phonetic: "/ab-er-ay-shun/",
+      partOfSpeech: "noun",
+      examples: ["The sudden spike was an aberration, not a trend."],
+    },
+    description: "表示异常、偏离常态的情况。",
   },
 ];
 
@@ -76,7 +101,7 @@ export default async function Home() {
               <FlaskConical data-icon="inline-start" />
             </span>
             <span>
-              <span className="block text-base font-semibold tracking-tight">FormulaLab</span>
+              <span className="block text-base font-semibold tracking-tight">KnowledgeVault</span>
               <span className="block text-xs text-slate-600">
                 登录后进入训练页
               </span>
@@ -149,10 +174,10 @@ export default async function Home() {
                     {item.eyebrow}
                   </p>
                   <h2 className="mt-2 text-lg font-semibold tracking-tight">{item.title}</h2>
-                  <LatexRenderer
+                  <KnowledgeItemRenderer
                     block
-                    expression={item.expression}
-                    className="mt-3 border-slate-200/80 bg-[#fcfbf7] px-3 py-4 text-sm shadow-none"
+                    contentType={item.contentType}
+                    payload={item.renderPayload}
                   />
                   <p className="mt-3 text-sm leading-5 text-slate-600">{item.description}</p>
                 </article>

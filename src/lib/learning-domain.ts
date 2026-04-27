@@ -1,1 +1,1 @@
-export const LEARNING_DOMAIN_COOKIE = "formulalab-learning-domain";
+export const LEARNING_DOMAIN_COOKIE = "knowledgevault-learning-domain";

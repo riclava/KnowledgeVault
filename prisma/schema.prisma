@@ -143,7 +143,7 @@ model KnowledgeItem {
   summary          String
   body             String
   intuition        String?
-  derivation       String?
+  deepDive         String?
   useConditions    String[]
   nonUseConditions String[]
   antiPatterns     String[]

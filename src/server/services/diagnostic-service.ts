@@ -19,21 +19,21 @@ import type {
 import type { KnowledgeItemSummary } from "@/types/knowledge-item";
 import type { KnowledgeItemType } from "@/types/knowledge-item";
 
-const DEFAULT_DIAGNOSTIC_DOMAIN = "概率统计";
 const DIAGNOSTIC_QUESTION_COUNT = 5;
 
 export async function startDiagnostic({
-  domain = DEFAULT_DIAGNOSTIC_DOMAIN,
+  domain,
 }: {
   domain?: string;
 } = {}): Promise<DiagnosticStart> {
+  const currentDomain = domain ?? (await getKnowledgeItemSummaries())[0]?.domain ?? "自定义知识项";
   const reviewItems = await listDiagnosticReviewItems({
-    domain,
+    domain: currentDomain,
     take: DIAGNOSTIC_QUESTION_COUNT,
   });
 
   return {
-    domain,
+    domain: currentDomain,
     questions: reviewItems.map((item) => ({
       id: item.id,
       knowledgeItemId: item.knowledgeItemId,

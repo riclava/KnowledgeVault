@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import type { KnowledgeItemDetail } from "@/types/knowledge-item";
 
-export function DerivationTrainer({
+export function DeepDiveTrainer({
   domain,
   knowledgeItems,
 }: {
@@ -23,7 +23,7 @@ export function DerivationTrainer({
   if (!knowledgeItem) {
     return (
       <section className="rounded-lg border border-dashed bg-background p-6 text-sm text-muted-foreground">
-        当前没有可练的推导内容。
+        当前没有可练的深入理解内容。
       </section>
     );
   }
@@ -32,14 +32,14 @@ export function DerivationTrainer({
     <section className="grid gap-5 rounded-lg border bg-background p-6 shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge>推导训练</Badge>
+          <Badge>理解训练</Badge>
           <Badge variant="outline">
             {index + 1} / {knowledgeItems.length}
           </Badge>
           <Badge variant="secondary">{knowledgeItem.domain}</Badge>
         </div>
         <Link
-          href={`/knowledge-items/${knowledgeItem.slug}?from=derivation&focus=derivation`}
+          href={`/knowledge-items/${knowledgeItem.slug}?from=deepDive&focus=deep-dive`}
           className={buttonVariants({ size: "sm", variant: "outline" })}
         >
           完整详情
@@ -58,21 +58,21 @@ export function DerivationTrainer({
       <div className="rounded-lg border bg-muted/40 p-4">
         <div className="mb-2 flex items-center gap-2">
           <BookOpen data-icon="inline-start" />
-          <h3 className="font-medium">先自己回忆推导</h3>
+          <h3 className="font-medium">先自己回忆关键结构</h3>
         </div>
       </div>
 
       {revealed ? (
         <div className="rounded-lg border p-4">
-          <h3 className="font-medium">参考推导</h3>
-          <p className="mt-2 text-sm leading-6">{knowledgeItem.derivation}</p>
+          <h3 className="font-medium">参考理解</h3>
+          <p className="mt-2 text-sm leading-6">{knowledgeItem.deepDive}</p>
         </div>
       ) : null}
 
       <div className="flex flex-wrap gap-3">
         <Button type="button" onClick={() => setRevealed(true)} disabled={revealed}>
           <Eye data-icon="inline-start" />
-          显示推导
+          显示理解
         </Button>
         <Button
           type="button"
@@ -83,7 +83,7 @@ export function DerivationTrainer({
           }}
         >
           <RotateCcw data-icon="inline-start" />
-          下一条待补推导
+          下一条待补理解
         </Button>
         <Link
           href={`/review?mode=weak&domain=${encodeURIComponent(domain)}`}

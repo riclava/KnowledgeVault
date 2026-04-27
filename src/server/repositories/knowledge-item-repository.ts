@@ -196,7 +196,7 @@ export async function createCustomKnowledgeItem({
     subdomain?: string | null;
     summary: string;
     body: string;
-    derivation?: string | null;
+    deepDive?: string | null;
     useConditions: string[];
     nonUseConditions: string[];
     antiPatterns: string[];
@@ -228,7 +228,7 @@ export async function createCustomKnowledgeItem({
         summary: input.summary,
         body: input.body,
         intuition: null,
-        derivation: input.derivation,
+        deepDive: input.deepDive,
         useConditions: input.useConditions,
         nonUseConditions: input.nonUseConditions,
         antiPatterns: input.antiPatterns,

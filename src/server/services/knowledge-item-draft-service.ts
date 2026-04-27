@@ -16,7 +16,7 @@ export type GeneratedKnowledgeItemDraft = {
   subdomain: string;
   summary: string;
   body: string;
-  derivation: string;
+  deepDive: string;
   difficulty: number;
   tags: string[];
   useConditions: string[];
@@ -37,7 +37,7 @@ export async function generateKnowledgeItemDraft({
       {
         role: "system",
         content: [
-          "你是 FormulaLab 的公式内容整理助手。",
+          "你是 KnowledgeVault 的通用知识项整理助手。",
           "请把用户给出的公式、单词、纯文本、题目、笔记或学习目标整理成严格 JSON。",
           "面向中文学习者，内容要短、准、可直接进入间隔复习。",
           "数学公式使用 math_formula，LaTeX 只写表达式本体，不要包裹 $ 或 $$。",
@@ -78,13 +78,13 @@ function buildKnowledgeItemDraftPrompt(prompt: string) {
     '  "subdomain": "子领域",',
     '  "summary": "一句话用途",',
     '  "body": "知识项说明",',
-    '  "derivation": "关键推导或直觉，可为空字符串",',
+    '  "deepDive": "深入理解要点、结构拆解或关键推导，可为空字符串",',
     '  "difficulty": 1到5的整数,',
     '  "tags": ["标签"],',
     '  "useConditions": ["什么时候用"],',
     '  "nonUseConditions": ["什么时候不能用"],',
     '  "antiPatterns": ["常见误用"],',
-    '  "typicalProblems": ["典型题型"],',
+    '  "typicalProblems": ["典型场景"],',
     '  "examples": ["例题或应用场景"],',
     '  "memoryHook": "一句下次提示"',
     "}",
@@ -129,17 +129,17 @@ function normalizeGeneratedKnowledgeItemDraft(value: unknown): GeneratedKnowledg
     subdomain: toText(record.subdomain),
     summary,
     body: toText(record.body) || summary,
-    derivation: toText(record.derivation),
+    deepDive: toText(record.deepDive),
     difficulty: clampInteger(Number(record.difficulty ?? 2), 1, 5),
     tags: toTextList(record.tags, ["custom"]),
     useConditions: toTextList(record.useConditions, [
-      "题目中的条件与公式变量可以一一对应。",
+      "能从题目、语境或笔记中判断这条知识项正好适用。",
     ]),
     nonUseConditions: toTextList(record.nonUseConditions, [
-      "变量含义或前提条件无法确认时不要直接套用。",
+      "适用语境或前提条件无法确认时，不要直接套用。",
     ]),
     antiPatterns: toTextList(record.antiPatterns, [
-      "只记表达式但没有确认适用条件。",
+      "只记结论但没有确认适用条件。",
     ]),
     typicalProblems: toTextList(record.typicalProblems, [
       `${title} 的基础识别和代入题。`,

@@ -2,7 +2,7 @@
 
 ## Context
 
-FormulaLab is currently centered on math formulas. The `Formula` model, `/formulas`
+KnowledgeVault is currently centered on math formulas. The `Formula` model, `/formulas`
 routes, API payloads, review queues, diagnostics, stats, memory hooks, and UI copy
 all assume that the trained object is a formula with a LaTeX expression.
 
@@ -320,7 +320,7 @@ Replace product copy that implies all content is formula-only:
 - "推导过程" can remain for math formulas, but should be generalized or hidden
   when irrelevant.
 
-The app name may remain FormulaLab for now unless a later branding pass changes
+The app name may remain KnowledgeVault for now unless a later branding pass changes
 it. The feature surface should no longer assume formula-only content.
 
 ## Testing

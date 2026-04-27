@@ -33,7 +33,7 @@ export async function resolveLearningDomain(
   }
 
   return {
-    currentDomain: domains[0] ?? "概率统计",
+    currentDomain: domains[0] ?? "自定义知识项",
     domains,
   };
 }

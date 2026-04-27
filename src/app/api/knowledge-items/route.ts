@@ -43,7 +43,7 @@ export async function POST(request: Request) {
     subdomain?: string;
     summary?: string;
     body?: string;
-    derivation?: string;
+    deepDive?: string;
     useConditions?: string[];
     nonUseConditions?: string[];
     antiPatterns?: string[];
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
           subdomain: payload.subdomain,
           summary,
           body: payload.body,
-          derivation: payload.derivation,
+          deepDive: payload.deepDive,
           useConditions: payload.useConditions,
           nonUseConditions: payload.nonUseConditions,
           antiPatterns: payload.antiPatterns,

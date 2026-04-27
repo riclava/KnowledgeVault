@@ -77,7 +77,7 @@ export type KnowledgeItemCatalog = {
 export type KnowledgeItemDetail = KnowledgeItemSummary & {
   body: string;
   intuition: string | null;
-  derivation: string | null;
+  deepDive: string | null;
   useConditions: string[];
   nonUseConditions: string[];
   antiPatterns: string[];

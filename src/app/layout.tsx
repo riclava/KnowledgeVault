@@ -3,7 +3,7 @@ import "katex/dist/katex.min.css";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "FormulaLab",
+  title: "KnowledgeVault",
   description: "Review-first training for knowledgeItem-based learning.",
 };
 

@@ -1,11 +1,11 @@
 # 部署说明
 
-FormulaLab V1 Alpha 推荐部署到 Vercel，数据库使用任意兼容 PostgreSQL 的托管服务。
+KnowledgeVault V1 Alpha 推荐部署到 Vercel，数据库使用任意兼容 PostgreSQL 的托管服务。
 
 ## 必需环境变量
 
 - `DATABASE_URL`：PostgreSQL 连接串，Prisma 和应用 API 都依赖它。
-- `NEXT_PUBLIC_APP_URL`：生产站点 URL，例如 `https://formulalab.example.com`。
+- `NEXT_PUBLIC_APP_URL`：生产站点 URL，例如 `https://knowledgevault.example.com`。
 - `BETTER_AUTH_SECRET`：Better Auth 使用的签名密钥，生产环境必须使用高熵随机值。
 - `BETTER_AUTH_URL`：Better Auth 对外可访问的完整站点地址，通常与 `NEXT_PUBLIC_APP_URL` 一致。
 
@@ -13,7 +13,7 @@ FormulaLab V1 Alpha 推荐部署到 Vercel，数据库使用任意兼容 Postgre
 
 - `RESEND_API_KEY`：如果要发送 magic link 邮件，配置 Resend API Key。
 - `AUTH_FROM_EMAIL`：magic link 发件邮箱。
-- `AUTH_FROM_NAME`：magic link 发件人名称，默认 `FormulaLab`。
+- `AUTH_FROM_NAME`：magic link 发件人名称，默认 `KnowledgeVault`。
 
 ## Vercel 配置
 

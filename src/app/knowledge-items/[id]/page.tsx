@@ -21,7 +21,7 @@ function parseFocusSection(value?: string): FocusSection | undefined {
     value === "hooks" ||
     value === "relations" ||
     value === "examples" ||
-    value === "derivation"
+    value === "deep-dive"
   ) {
     return value;
   }
@@ -35,7 +35,7 @@ function parseEntryPoint(value?: string) {
     value === "summary" ||
     value === "paths" ||
     value === "knowledgeItems" ||
-    value === "derivation" ||
+    value === "deepDive" ||
     value === "memory-hooks" ||
     value === "custom"
   ) {
@@ -68,10 +68,10 @@ function buildReturnLink({
         href: "/paths",
         label: "回到学习路径",
       };
-    case "derivation":
+    case "deepDive":
       return {
-        href: "/derivation",
-        label: "回到推导训练",
+        href: "/deep-dive",
+        label: "回到理解训练",
       };
     case "memory-hooks":
       return {
