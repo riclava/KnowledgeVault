@@ -1,5 +1,14 @@
 import type { KnowledgeItemType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db/prisma";
+import {
+  listExistingKnowledgeItemIdsBySlug,
+  saveAdminImportBatch,
+} from "@/server/admin/admin-import-repository";
+import type { AdminImportBatch } from "@/server/admin/admin-import-types";
+import {
+  normalizeAdminImportBatch,
+  validateAdminImportBatch,
+} from "@/server/admin/admin-import-validation";
 
 const SUPPORTED_CONTENT_TYPES = new Set<string>([
   "math_formula",
@@ -85,6 +94,68 @@ export async function deleteAdminKnowledgeItem(id: string) {
   });
 }
 
+export function normalizeAdminKnowledgeItemFormInput(
+  input: unknown,
+): AdminImportBatch {
+  const record = isRecord(input) ? input : {};
+  const relations = Array.isArray(record.relations) ? record.relations : [];
+
+  return normalizeAdminImportBatch({
+    defaultDomain: text(record.domain),
+    items: [record as AdminImportBatch["items"][number]],
+    relations: relations as AdminImportBatch["relations"],
+  });
+}
+
+export async function saveAdminKnowledgeItemAggregate({
+  adminUserId,
+  input,
+}: {
+  adminUserId: string;
+  input: unknown;
+}) {
+  const batch = normalizeAdminKnowledgeItemFormInput(input);
+  const referencedSlugs = unique([
+    ...batch.items.map((item) => item.slug),
+    ...batch.relations.map((relation) => relation.fromSlug),
+    ...batch.relations.map((relation) => relation.toSlug),
+  ]);
+  const existingSlugs = await listExistingKnowledgeItemIdsBySlug(referencedSlugs);
+  const validation = validateAdminImportBatch(
+    batch,
+    new Set(existingSlugs.keys()),
+  );
+
+  if (!validation.ok) {
+    return { ok: false as const, errors: validation.errors };
+  }
+
+  const importRun = await saveAdminImportBatch({
+    adminUserId,
+    sourceExcerpt: "Manual admin form save",
+    batch: validation.batch,
+    aiOutput: validation.batch,
+  });
+  const relationSourceSlugs = new Set(
+    validation.batch.relations.map((relation) => relation.fromSlug),
+  );
+  const slugsWithoutRelations = validation.batch.items
+    .map((item) => item.slug)
+    .filter((slug) => !relationSourceSlugs.has(slug));
+
+  if (slugsWithoutRelations.length > 0) {
+    await prisma.knowledgeItemRelation.deleteMany({
+      where: {
+        fromKnowledgeItem: {
+          slug: { in: slugsWithoutRelations },
+        },
+      },
+    });
+  }
+
+  return { ok: true as const, importRun };
+}
+
 function buildKnowledgeItemWhere(
   params: AdminKnowledgeItemListParams,
 ): Prisma.KnowledgeItemWhereInput {
@@ -134,4 +205,18 @@ function normalizeDifficulty(value: string | null) {
 
 function trimmedParam(searchParams: URLSearchParams, key: string) {
   return searchParams.get(key)?.trim() ?? "";
+}
+
+function text(value: unknown) {
+  return typeof value === "string" || typeof value === "number"
+    ? String(value).trim()
+    : "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function unique<T>(values: T[]) {
+  return Array.from(new Set(values));
 }
