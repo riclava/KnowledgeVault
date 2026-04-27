@@ -60,6 +60,54 @@ describe("admin import validation", () => {
     assert.equal(result.ok ? result.batch.items.length : 0, 1);
   });
 
+  it("rejects variables with blank symbol or name", () => {
+    const invalid: AdminImportBatch = {
+      ...validBatch,
+      items: [
+        {
+          ...validBatch.items[0],
+          variables: [
+            {
+              symbol: " ",
+              name: "",
+              description: "coefficient",
+            },
+          ],
+        },
+      ],
+    };
+
+    const result = validateAdminImportBatch(invalid, new Set());
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.ok ? [] : result.errors.map((error) => error.code),
+      ["missing_item_field", "missing_item_field"],
+    );
+  });
+
+  it("rejects malformed array fields without throwing", () => {
+    const invalid = {
+      ...validBatch,
+      items: [
+        {
+          ...validBatch.items[0],
+          tags: ["ok", 123],
+        },
+      ],
+    } as unknown as AdminImportBatch;
+    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
+
+    assert.doesNotThrow(() => {
+      result = validateAdminImportBatch(invalid, new Set());
+    });
+    assert.equal(result?.ok, false);
+    assert.deepEqual(
+      result?.ok ? [] : result?.errors.map((error) => error.code),
+      ["invalid_array_field"],
+    );
+  });
+
   it("rejects duplicate slugs and missing relation endpoints", () => {
     const invalid: AdminImportBatch = {
       ...validBatch,

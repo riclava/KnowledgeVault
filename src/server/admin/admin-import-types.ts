@@ -64,6 +64,7 @@ export type AdminImportValidationErrorCode =
   | "invalid_content_type"
   | "invalid_render_payload"
   | "invalid_difficulty"
+  | "invalid_array_field"
   | "missing_review_item"
   | "invalid_review_item"
   | "duplicate_variable"

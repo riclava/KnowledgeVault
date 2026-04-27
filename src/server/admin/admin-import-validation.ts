@@ -19,6 +19,14 @@ const RELATION_TYPES = [
   "confusable",
   "application_of",
 ] as const;
+const STRING_ARRAY_FIELDS = [
+  "useConditions",
+  "nonUseConditions",
+  "antiPatterns",
+  "typicalProblems",
+  "examples",
+  "tags",
+] as const;
 
 export type AdminImportValidationResult =
   | { ok: true; batch: AdminImportBatch }
@@ -41,8 +49,11 @@ export function validateAdminImportBatch(
   batch: AdminImportBatch,
   existingSlugs: Set<string>,
 ): AdminImportValidationResult {
-  const normalized = normalizeAdminImportBatch(batch);
   const errors: AdminImportValidationError[] = [];
+
+  validateArrayFields(batch.items, errors);
+
+  const normalized = normalizeAdminImportBatch(batch);
   const generatedSlugs = new Set<string>();
   const seenSlugs = new Set<string>();
 
@@ -177,6 +188,39 @@ function validateRequiredItemFields(
   });
 }
 
+function validateArrayFields(
+  items: AdminImportedKnowledgeItem[],
+  errors: AdminImportValidationError[],
+) {
+  items.forEach((item, itemIndex) => {
+    const record = item as Record<string, unknown>;
+
+    STRING_ARRAY_FIELDS.forEach((field) => {
+      const value = record[field];
+      const path = `items.${itemIndex}.${field}`;
+
+      if (!Array.isArray(value)) {
+        errors.push({
+          code: "invalid_array_field",
+          path,
+          message: `Item ${field} must be an array of strings.`,
+        });
+        return;
+      }
+
+      value.forEach((entry, entryIndex) => {
+        if (typeof entry !== "string") {
+          errors.push({
+            code: "invalid_array_field",
+            path: `${path}.${entryIndex}`,
+            message: `Item ${field} must contain only strings.`,
+          });
+        }
+      });
+    });
+  });
+}
+
 function validateContentTypeAndPayload(
   item: AdminImportedKnowledgeItem,
   path: string,
@@ -274,7 +318,13 @@ function validateVariables(
   const symbols = new Set<string>();
 
   variables.forEach((variable, variableIndex) => {
-    if (symbols.has(variable.symbol)) {
+    if (!variable.symbol) {
+      errors.push({
+        code: "missing_item_field",
+        path: `${path}.${variableIndex}.symbol`,
+        message: "Variable symbol is required.",
+      });
+    } else if (symbols.has(variable.symbol)) {
       errors.push({
         code: "duplicate_variable",
         path: `${path}.${variableIndex}.symbol`,
@@ -282,6 +332,14 @@ function validateVariables(
       });
     } else {
       symbols.add(variable.symbol);
+    }
+
+    if (!variable.name) {
+      errors.push({
+        code: "missing_item_field",
+        path: `${path}.${variableIndex}.name`,
+        message: "Variable name is required.",
+      });
     }
   });
 }
@@ -357,12 +415,20 @@ function text(value: unknown) {
     : "";
 }
 
-function stringList(values: string[]) {
+function stringList(values: unknown) {
   const seen = new Set<string>();
   const normalized: string[] = [];
 
+  if (!Array.isArray(values)) {
+    return normalized;
+  }
+
   values.forEach((value) => {
-    const item = text(value);
+    if (typeof value !== "string") {
+      return;
+    }
+
+    const item = value.trim();
 
     if (item && !seen.has(item)) {
       seen.add(item);
