@@ -158,6 +158,7 @@ CREATE TABLE "review_items" (
     "answer" TEXT NOT NULL,
     "explanation" TEXT,
     "difficulty" INTEGER NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 

@@ -17,7 +17,7 @@ export type AdminImportWritePlan = {
 
 export type ReviewItemReplacementPlan = {
   deleteIds: string[];
-  preserveIds: string[];
+  archiveIds: string[];
 };
 
 export function buildAdminImportWritePlan(
@@ -46,14 +46,14 @@ export function partitionReviewItemIdsForReplacement(
   return reviewItems.reduce<ReviewItemReplacementPlan>(
     (plan, reviewItem) => {
       if (reviewItem._count.reviewLogs > 0) {
-        plan.preserveIds.push(reviewItem.id);
+        plan.archiveIds.push(reviewItem.id);
       } else {
         plan.deleteIds.push(reviewItem.id);
       }
 
       return plan;
     },
-    { deleteIds: [], preserveIds: [] },
+    { deleteIds: [], archiveIds: [] },
   );
 }
 
@@ -173,6 +173,13 @@ export async function saveAdminImportBatch({
         });
       }
 
+      if (reviewItemReplacementPlan.archiveIds.length > 0) {
+        await tx.reviewItem.updateMany({
+          where: { id: { in: reviewItemReplacementPlan.archiveIds } },
+          data: { isActive: false },
+        });
+      }
+
       if (item.reviewItems.length > 0) {
         await tx.reviewItem.createMany({
           data: item.reviewItems.map((reviewItem) => ({
@@ -182,6 +189,7 @@ export async function saveAdminImportBatch({
             answer: reviewItem.answer,
             explanation: reviewItem.explanation ?? null,
             difficulty: reviewItem.difficulty,
+            isActive: true,
           })),
         });
       }

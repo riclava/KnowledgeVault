@@ -24,4 +24,9 @@ describe("admin schema shape", () => {
     assert.match(baseline, /CREATE TABLE "admin_import_runs"/);
     assert.match(baseline, /admin_import_runs_adminUserId_createdAt_idx/);
   });
+
+  it("tracks active review items in schema and baseline", () => {
+    assert.match(schema, /model ReviewItem\s*{[^}]*isActive\s+Boolean\s+@default\(true\)/s);
+    assert.match(baseline, /"isActive" BOOLEAN NOT NULL DEFAULT true/);
+  });
 });

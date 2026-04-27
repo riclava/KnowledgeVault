@@ -23,6 +23,7 @@ export async function listDiagnosticReviewItems({
 }) {
   return prisma.reviewItem.findMany({
     where: {
+      isActive: true,
       knowledgeItem: {
         domain,
       },
@@ -52,6 +53,7 @@ export async function listReviewItemsByIds({
       id: {
         in: reviewItemIds,
       },
+      isActive: true,
       knowledgeItem: {
         domain,
       },

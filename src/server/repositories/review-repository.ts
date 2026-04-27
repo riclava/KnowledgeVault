@@ -36,6 +36,9 @@ export async function listDueKnowledgeItemStates({
       knowledgeItem: {
         include: {
           reviewItems: {
+            where: {
+              isActive: true,
+            },
             orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
           },
           memoryHooks: {
@@ -90,6 +93,9 @@ export async function listWeakKnowledgeItemStatesForReview({
       knowledgeItem: {
         include: {
           reviewItems: {
+            where: {
+              isActive: true,
+            },
             orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
           },
           memoryHooks: {

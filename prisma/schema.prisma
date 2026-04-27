@@ -217,6 +217,7 @@ model ReviewItem {
   answer          String
   explanation     String?
   difficulty      Int
+  isActive        Boolean        @default(true)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 

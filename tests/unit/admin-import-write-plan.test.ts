@@ -65,7 +65,7 @@ describe("admin import write plan", () => {
     assert.deepEqual(plan.relationSourceSlugs, ["existing-item"]);
   });
 
-  it("preserves reviewed items and deletes only unreferenced review items", () => {
+  it("archives reviewed items and deletes unreviewed review items", () => {
     const plan = partitionReviewItemIdsForReplacement([
       { id: "reviewed", _count: { reviewLogs: 2 } },
       { id: "unreviewed", _count: { reviewLogs: 0 } },
@@ -73,6 +73,6 @@ describe("admin import write plan", () => {
     ]);
 
     assert.deepEqual(plan.deleteIds, ["unreviewed"]);
-    assert.deepEqual(plan.preserveIds, ["reviewed", "also-reviewed"]);
+    assert.deepEqual(plan.archiveIds, ["reviewed", "also-reviewed"]);
   });
 });
