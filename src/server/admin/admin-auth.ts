@@ -47,8 +47,12 @@ export async function requireAdminPage() {
 
   try {
     return assertAdminCurrentLearner(current);
-  } catch {
-    redirect("/");
+  } catch (error) {
+    if (error instanceof AdminAccessError) {
+      redirect("/");
+    }
+
+    throw error;
   }
 }
 
@@ -62,7 +66,7 @@ export async function withAdminApi<T>(
   }
 
   try {
-    return handler(assertAdminCurrentLearner(current));
+    return await handler(assertAdminCurrentLearner(current));
   } catch (error) {
     if (error instanceof AdminAccessError) {
       return NextResponse.json(
