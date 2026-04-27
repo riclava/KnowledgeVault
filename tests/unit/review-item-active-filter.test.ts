@@ -22,4 +22,16 @@ describe("review item active filtering", () => {
     assert.match(repository, /id:\s*{\s*in:\s*reviewItemIds/s);
     assert.match(repository, /isActive:\s*true,[^}]*knowledgeItem:/s);
   });
+
+  it("filters public knowledge item details to active review items", () => {
+    const repository = readFileSync(
+      "src/server/repositories/knowledge-item-repository.ts",
+      "utf8",
+    );
+
+    assert.match(
+      repository,
+      /knowledgeItemDetailInclude[\s\S]*reviewItems:\s*{\s*where:\s*{\s*isActive:\s*true/s,
+    );
+  });
 });

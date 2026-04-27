@@ -51,6 +51,9 @@ const knowledgeItemDetailInclude = {
     },
   },
   reviewItems: {
+    where: {
+      isActive: true,
+    },
     orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
   },
   memoryHooks: {
