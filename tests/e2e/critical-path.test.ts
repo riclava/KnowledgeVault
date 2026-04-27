@@ -6,7 +6,7 @@ const authCookie = process.env.E2E_AUTH_COOKIE;
 const maybeIt = baseUrl && authCookie ? it : it.skip;
 
 describe("critical learning path", () => {
-  maybeIt("walks diagnostic to review summary through API smoke checks", async () => {
+  maybeIt("walks diagnostic to review and weak review through API smoke checks", async () => {
     assert.ok(baseUrl);
     assert.ok(authCookie);
 
@@ -104,21 +104,6 @@ describe("critical learning path", () => {
     });
     assert.equal(defer.status, 200);
 
-    const summary = await request("/api/stats/summary");
-    assert.equal(summary.status, 200);
-    const summaryBody = (await summary.json()) as {
-      data: {
-        advancedStats: {
-          totalReviews: number;
-        };
-        learningRecommendations: Array<{
-          href: string;
-        }>;
-      };
-    };
-    assert.ok(summaryBody.data.advancedStats.totalReviews >= 1);
-    assert.ok(summaryBody.data.learningRecommendations.length > 0);
-
     const weakReview = await request("/api/review/today?mode=weak");
     assert.equal(weakReview.status, 200);
     const weakReviewBody = (await weakReview.json()) as {
@@ -129,34 +114,5 @@ describe("critical learning path", () => {
     };
     assert.equal(weakReviewBody.data.mode, "weak");
     assert.ok(weakReviewBody.data.items.length > 0);
-
-    const customTitle = `测试自定义单词 ${Date.now()}`;
-    const createKnowledgeItem = await request("/api/knowledge-items", {
-      method: "POST",
-      body: JSON.stringify({
-        title: customTitle,
-        contentType: "vocabulary",
-        renderPayload: {
-          term: "resilient",
-          definition: "能够从困难中恢复的；有韧性的。",
-          partOfSpeech: "adjective",
-          examples: ["A resilient learner returns after mistakes."],
-        },
-        domain: "测试知识项",
-        summary: "描述能从错误或压力中恢复的状态。",
-        body: "resilient 强调经历冲击后仍能恢复和继续推进。",
-        tags: ["test-custom", "vocabulary"],
-        memoryHook: "re-silient，重新站起来。",
-      }),
-    });
-    assert.equal(createKnowledgeItem.status, 201);
-    const createKnowledgeItemBody = (await createKnowledgeItem.json()) as {
-      data: {
-        slug: string;
-        reviewItemCount: number;
-      };
-    };
-    assert.ok(createKnowledgeItemBody.data.slug);
-    assert.equal(createKnowledgeItemBody.data.reviewItemCount, 3);
   });
 });

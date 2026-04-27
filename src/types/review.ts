@@ -58,13 +58,3 @@ export type ReviewHint = {
   source: ReviewHintSource;
   memoryHookUsedId: string | null;
 };
-
-export type ReviewSessionSnapshot = {
-  id: string;
-  domain: string;
-  status: "active" | "completed" | "abandoned";
-  startedAt: string;
-  completedAt: string | null;
-  reviewCount: number;
-  grades: Record<ReviewGrade, number>;
-};

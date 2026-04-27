@@ -9,12 +9,6 @@ KnowledgeVault V1 Alpha 推荐部署到 Vercel，数据库使用任意兼容 Pos
 - `BETTER_AUTH_SECRET`：Better Auth 使用的签名密钥，生产环境必须使用高熵随机值。
 - `BETTER_AUTH_URL`：Better Auth 对外可访问的完整站点地址，通常与 `NEXT_PUBLIC_APP_URL` 一致。
 
-## 可选环境变量
-
-- `RESEND_API_KEY`：如果要发送 magic link 邮件，配置 Resend API Key。
-- `AUTH_FROM_EMAIL`：magic link 发件邮箱。
-- `AUTH_FROM_NAME`：magic link 发件人名称，默认 `KnowledgeVault`。
-
 ## Vercel 配置
 
 仓库根目录已包含 `vercel.json`，指定：
@@ -29,12 +23,6 @@ KnowledgeVault V1 Alpha 推荐部署到 Vercel，数据库使用任意兼容 Pos
 - `NEXT_PUBLIC_APP_URL`
 - `BETTER_AUTH_SECRET`
 - `BETTER_AUTH_URL`
-
-如果要在生产环境启用邮箱 magic link，还需要补充：
-
-- `RESEND_API_KEY`
-- `AUTH_FROM_EMAIL`
-- `AUTH_FROM_NAME`
 
 ## 数据库上线步骤
 
@@ -52,7 +40,7 @@ npm run prisma:migrate
 npm run db:seed
 ```
 
-`db:seed` 会读取 `content-assist/approved` 下的已审核内容辅助包，并合并到正式种子数据。
+`db:seed` 会重置并写入代码内维护的内置知识项种子数据。
 
 ## 发布前检查
 
@@ -71,8 +59,9 @@ E2E_BASE_URL=http://localhost:3000 npm run test:e2e
 
 ## 账号系统说明
 
-- 开发环境下如果没有配置邮件发送服务，magic link 会输出到服务端日志，便于本地联调。
-- 生产环境下未配置 `RESEND_API_KEY` 与 `AUTH_FROM_EMAIL` 时，magic link 发送会失败。
+- 账号系统使用邮箱 + 密码模式。
+- 未登录用户可以在首页或账号页直接登录，也可以在同一表单内注册新账号。
+- 密码认证由 Better Auth 处理，生产环境必须配置 `BETTER_AUTH_SECRET` 与 `BETTER_AUTH_URL`。
 
 ## 开发期数据库工作流
 

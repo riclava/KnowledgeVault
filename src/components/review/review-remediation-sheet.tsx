@@ -81,8 +81,8 @@ export function ReviewRemediationSheet({
           <div className="flex flex-wrap items-center gap-2">
             <Badge
               className={cn(
-                grade === "again" && "bg-red-600 hover:bg-red-600",
-                grade === "hard" && "bg-amber-500 text-amber-950 hover:bg-amber-500",
+                grade === "again" && "bg-destructive text-destructive-foreground hover:bg-destructive",
+                grade === "hard" && "bg-warning text-warning-foreground hover:bg-warning",
               )}
             >
               {meta.label}
@@ -97,10 +97,10 @@ export function ReviewRemediationSheet({
         </SheetHeader>
 
         <div className="px-6 py-6">
-          <div className="mb-6 rounded-lg border border-amber-200 bg-amber-50/70 p-4">
+          <div className="mb-6 rounded-lg border border-warning/25 bg-warning/10 p-4">
             <div className="flex items-start gap-3">
-              <TriangleAlert className="mt-0.5 size-4 text-amber-700" />
-              <div className="text-sm text-amber-950">
+              <TriangleAlert className="mt-0.5 size-4 text-warning" />
+              <div className="text-sm text-foreground">
                 <p className="font-medium">看完再继续。</p>
               </div>
             </div>

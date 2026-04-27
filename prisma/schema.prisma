@@ -39,11 +39,6 @@ enum StudySessionStatus {
   abandoned
 }
 
-enum ProductEventType {
-  weak_item_impression
-  weak_item_opened
-}
-
 model User {
   id                 String   @id @default(cuid())
   email              String?  @unique
@@ -57,7 +52,6 @@ model User {
   memoryHooks         KnowledgeItemMemoryHook[]
   diagnosticAttempts  DiagnosticAttempt[]
   studySessions       StudySession[]
-  productEvents       ProductEvent[]
   authIdentity        AuthUser?
 
   @@map("users")
@@ -162,7 +156,6 @@ model KnowledgeItem {
   userStates        UserKnowledgeItemState[]
   reviewLogs        ReviewLog[]
   memoryHooks       KnowledgeItemMemoryHook[]
-  productEvents     ProductEvent[]
 
   @@index([domain, subdomain])
   @@index([contentType])
@@ -313,25 +306,7 @@ model StudySession {
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   reviewLogs    ReviewLog[]
-  productEvents ProductEvent[]
 
   @@index([userId, startedAt])
   @@map("study_sessions")
-}
-
-model ProductEvent {
-  id              String           @id @default(cuid())
-  userId          String
-  knowledgeItemId String?
-  studySessionId  String?
-  type            ProductEventType
-  createdAt       DateTime         @default(now())
-
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  knowledgeItem KnowledgeItem? @relation(fields: [knowledgeItemId], references: [id], onDelete: SetNull)
-  studySession  StudySession?  @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
-
-  @@index([userId, type, createdAt])
-  @@index([knowledgeItemId, type])
-  @@map("product_events")
 }

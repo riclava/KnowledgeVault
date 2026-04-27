@@ -16,9 +16,6 @@ CREATE TYPE "ReviewResult" AS ENUM ('easy', 'good', 'hard', 'again');
 -- CreateEnum
 CREATE TYPE "StudySessionStatus" AS ENUM ('active', 'completed', 'abandoned');
 
--- CreateEnum
-CREATE TYPE "ProductEventType" AS ENUM ('weak_item_impression', 'weak_item_opened');
-
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -236,18 +233,6 @@ CREATE TABLE "study_sessions" (
     CONSTRAINT "study_sessions_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "product_events" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "knowledgeItemId" TEXT,
-    "studySessionId" TEXT,
-    "type" "ProductEventType" NOT NULL,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "product_events_pkey" PRIMARY KEY ("id")
-);
-
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -326,12 +311,6 @@ CREATE UNIQUE INDEX "knowledge_item_memory_hooks_userId_knowledgeItemId_key" ON 
 -- CreateIndex
 CREATE INDEX "study_sessions_userId_startedAt_idx" ON "study_sessions"("userId", "startedAt");
 
--- CreateIndex
-CREATE INDEX "product_events_userId_type_createdAt_idx" ON "product_events"("userId", "type", "createdAt");
-
--- CreateIndex
-CREATE INDEX "product_events_knowledgeItemId_type_idx" ON "product_events"("knowledgeItemId", "type");
-
 -- AddForeignKey
 ALTER TABLE "auth_users" ADD CONSTRAINT "auth_users_learnerId_fkey" FOREIGN KEY ("learnerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -385,12 +364,3 @@ ALTER TABLE "knowledge_item_memory_hooks" ADD CONSTRAINT "knowledge_item_memory_
 
 -- AddForeignKey
 ALTER TABLE "study_sessions" ADD CONSTRAINT "study_sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "product_events" ADD CONSTRAINT "product_events_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "product_events" ADD CONSTRAINT "product_events_knowledgeItemId_fkey" FOREIGN KEY ("knowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "product_events" ADD CONSTRAINT "product_events_studySessionId_fkey" FOREIGN KEY ("studySessionId") REFERENCES "study_sessions"("id") ON DELETE SET NULL ON UPDATE CASCADE;

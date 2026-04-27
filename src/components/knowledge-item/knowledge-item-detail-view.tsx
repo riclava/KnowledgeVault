@@ -35,7 +35,7 @@ export function KnowledgeItemDetailView({
   initialRelations,
   initialHooks,
   focusSection,
-  entryPoint = "knowledgeItems",
+  entryPoint = "direct",
   returnLink,
   footer,
   compact = false,
@@ -47,12 +47,7 @@ export function KnowledgeItemDetailView({
   focusSection?: FocusSection;
   entryPoint?:
     | "review"
-    | "summary"
-    | "paths"
-    | "knowledgeItems"
-    | "deepDive"
-    | "memory-hooks"
-    | "custom";
+    | "direct";
   returnLink?: {
     href: string;
     label: string;
@@ -340,15 +335,10 @@ function QuickActions({
 }: {
   entryPoint:
     | "review"
-    | "summary"
-    | "paths"
-    | "knowledgeItems"
-    | "deepDive"
-    | "memory-hooks"
-    | "custom";
+    | "direct";
   onJump: (section: FocusSection) => void;
 }) {
-  const actions = quickActionsByEntryPoint[entryPoint] ?? quickActionsByEntryPoint.knowledgeItems;
+  const actions = quickActionsByEntryPoint[entryPoint] ?? quickActionsByEntryPoint.direct;
 
   return (
     <section className="flex flex-wrap gap-2">
@@ -379,37 +369,7 @@ const quickActionsByEntryPoint: Record<
     { section: "hooks", label: "补一句自己的提醒" },
     { section: "relations", label: "看关联知识项" },
   ],
-  summary: [
-    { section: "anti-patterns", label: "先补最弱点" },
-    { section: "use", label: "确认适用条件" },
-    { section: "hooks", label: "恢复记忆线索" },
-    { section: "examples", label: "回看例题" },
-  ],
-  paths: [
-    { section: "use", label: "先看什么时候用" },
-    { section: "deep-dive", label: "再看深入理解" },
-    { section: "relations", label: "接着看关联知识项" },
-    { section: "examples", label: "回到例题" },
-  ],
-  deepDive: [
-    { section: "deep-dive", label: "继续理解拆解" },
-    { section: "use", label: "确认适用条件" },
-    { section: "relations", label: "看前后关联" },
-    { section: "hooks", label: "补一句自己的提醒" },
-  ],
-  "memory-hooks": [
-    { section: "hooks", label: "整理这条知识项的提示" },
-    { section: "anti-patterns", label: "把误用变提醒" },
-    { section: "examples", label: "绑定题面画面" },
-    { section: "use", label: "再看适用条件" },
-  ],
-  custom: [
-    { section: "use", label: "确认适用条件" },
-    { section: "examples", label: "看例题" },
-    { section: "hooks", label: "先留一句提醒" },
-    { section: "deep-dive", label: "补理解" },
-  ],
-  knowledgeItems: [
+  direct: [
     { section: "use", label: "看适用条件" },
     { section: "anti-patterns", label: "看常见误用" },
     { section: "hooks", label: "写一句自己的提醒" },
@@ -423,17 +383,6 @@ function entryPointLabel(
   switch (entryPoint) {
     case "review":
       return "你是从复习题里跳进来的";
-    case "summary":
-      return "你是从总结页的弱项入口进来的";
-    case "paths":
-      return "你正在按内容集推进";
-    case "deepDive":
-      return "你正在做理解强化";
-    case "memory-hooks":
-      return "你正在集中整理本轮提示";
-    case "custom":
-      return "这是你自己加入训练的知识项";
-    case "knowledgeItems":
     default:
       return "你正在查看知识项详情";
   }
@@ -481,8 +430,8 @@ function BulletList({
           key={item}
           className={cn(
             "rounded-lg border px-3 py-2 text-sm leading-6",
-            tone === "positive" && "border-emerald-200 bg-emerald-50/60",
-            tone === "warning" && "border-amber-200 bg-amber-50/70",
+            tone === "positive" && "border-success/25 bg-success/10",
+            tone === "warning" && "border-warning/25 bg-warning/10",
             tone === "neutral" && "border-border bg-muted/20",
           )}
         >

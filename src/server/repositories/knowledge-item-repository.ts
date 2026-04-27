@@ -1,6 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@/generated/prisma/client";
-import type { KnowledgeItemType, ReviewItemType } from "@/generated/prisma/client";
 
 function buildKnowledgeItemSummaryInclude(userId?: string) {
   return {
@@ -156,18 +155,6 @@ export async function listKnowledgeItems({
   });
 }
 
-export async function listKnowledgeItemCatalogFacets() {
-  return prisma.knowledgeItem.findMany({
-    select: {
-      domain: true,
-      contentType: true,
-      difficulty: true,
-      tags: true,
-    },
-    orderBy: [{ domain: "asc" }, { difficulty: "asc" }, { title: "asc" }],
-  });
-}
-
 export async function listKnowledgeItemDomains() {
   const rows = await prisma.knowledgeItem.findMany({
     distinct: ["domain"],
@@ -180,91 +167,6 @@ export async function listKnowledgeItemDomains() {
   });
 
   return rows.map((row) => row.domain);
-}
-
-export async function createCustomKnowledgeItem({
-  userId,
-  input,
-}: {
-  userId: string;
-  input: {
-    slug: string;
-    title: string;
-    contentType: KnowledgeItemType;
-    renderPayload: Prisma.InputJsonValue;
-    domain: string;
-    subdomain?: string | null;
-    summary: string;
-    body: string;
-    deepDive?: string | null;
-    useConditions: string[];
-    nonUseConditions: string[];
-    antiPatterns: string[];
-    typicalProblems: string[];
-    examples: string[];
-    difficulty: number;
-    tags: string[];
-    reviewItems: Array<{
-      type: ReviewItemType;
-      prompt: string;
-      answer: string;
-      explanation?: string | null;
-      difficulty: number;
-    }>;
-    memoryHooks: Array<{
-      content: string;
-    }>;
-  };
-}) {
-  return prisma.$transaction(async (tx) => {
-    const knowledgeItem = await tx.knowledgeItem.create({
-      data: {
-        slug: input.slug,
-        title: input.title,
-        contentType: input.contentType,
-        renderPayload: input.renderPayload,
-        domain: input.domain,
-        subdomain: input.subdomain,
-        summary: input.summary,
-        body: input.body,
-        intuition: null,
-        deepDive: input.deepDive,
-        useConditions: input.useConditions,
-        nonUseConditions: input.nonUseConditions,
-        antiPatterns: input.antiPatterns,
-        typicalProblems: input.typicalProblems,
-        examples: input.examples,
-        difficulty: input.difficulty,
-        tags: Array.from(new Set(["user-created", ...input.tags])),
-        reviewItems: {
-          create: input.reviewItems,
-        },
-      },
-    });
-
-    if (input.memoryHooks.length) {
-      await tx.knowledgeItemMemoryHook.create({
-        data: {
-          knowledgeItemId: knowledgeItem.id,
-          userId,
-          content: input.memoryHooks[0].content,
-        },
-      });
-    }
-
-    await tx.userKnowledgeItemState.create({
-      data: {
-        userId,
-        knowledgeItemId: knowledgeItem.id,
-        memoryStrength: 0.1,
-        stability: 0,
-        difficultyEstimate: input.difficulty,
-        nextReviewAt: new Date(),
-      },
-    });
-
-    return knowledgeItem;
-  });
 }
 
 export async function getKnowledgeItemByIdOrSlug(idOrSlug: string) {

@@ -1,23 +1,15 @@
 import {
-  createCustomKnowledgeItem,
   deleteUserKnowledgeItemMemoryHook,
   getKnowledgeItemByIdOrSlug,
   listKnowledgeItemRelations,
-  listKnowledgeItemCatalogFacets,
   listKnowledgeItemDomains,
   listKnowledgeItemMemoryHooks,
   listKnowledgeItems,
   saveUserKnowledgeItemMemoryHook,
 } from "@/server/repositories/knowledge-item-repository";
-import {
-  knowledgeItemRenderPayloadToText,
-  normalizeKnowledgeItemRenderPayload,
-  parseKnowledgeItemType,
-} from "@/lib/knowledge-item-render-payload";
+import { normalizeKnowledgeItemRenderPayload } from "@/lib/knowledge-item-render-payload";
 import type {
-  KnowledgeItemCatalog,
   KnowledgeItemDetail,
-  KnowledgeItemRenderPayloadByType,
   KnowledgeItemRelationDetail,
   KnowledgeItemSummary,
   KnowledgeItemType,
@@ -61,164 +53,8 @@ export async function getKnowledgeItemSummaries(params?: {
     });
 }
 
-export async function getKnowledgeItemCatalog(params?: {
-  domain?: string;
-  tag?: string;
-  difficulty?: number;
-  query?: string;
-  userId?: string;
-}): Promise<KnowledgeItemCatalog> {
-  const [knowledgeItems, facetSource] = await Promise.all([
-    getKnowledgeItemSummaries(params),
-    listKnowledgeItemCatalogFacets(),
-  ]);
-
-  const tagFrequency = new Map<string, number>();
-
-  for (const knowledgeItem of facetSource) {
-    for (const tag of knowledgeItem.tags) {
-      tagFrequency.set(tag, (tagFrequency.get(tag) ?? 0) + 1);
-    }
-  }
-
-  return {
-    knowledgeItems,
-    filters: {
-      domains: Array.from(new Set(facetSource.map((knowledgeItem) => knowledgeItem.domain))),
-      contentTypes: Array.from(
-        new Set(facetSource.map((knowledgeItem) => knowledgeItem.contentType)),
-      ),
-      difficulties: Array.from(
-        new Set(facetSource.map((knowledgeItem) => knowledgeItem.difficulty)),
-      ).sort((left, right) => left - right),
-      tags: Array.from(tagFrequency.entries())
-        .sort((left, right) => {
-          if (right[1] !== left[1]) {
-            return right[1] - left[1];
-          }
-
-          return left[0].localeCompare(right[0], "zh-CN");
-        })
-        .map(([tag]) => tag),
-    },
-  };
-}
-
 export async function getKnowledgeItemDomains() {
   return listKnowledgeItemDomains();
-}
-
-export async function addCustomKnowledgeItem({
-  userId,
-  input,
-}: {
-  userId: string;
-  input: {
-    title: string;
-    contentType?: string;
-    renderPayload: unknown;
-    domain?: string;
-    subdomain?: string;
-    summary: string;
-    body?: string;
-    deepDive?: string;
-    useConditions?: string[];
-    nonUseConditions?: string[];
-    antiPatterns?: string[];
-    typicalProblems?: string[];
-    examples?: string[];
-    difficulty?: number;
-    tags?: string[];
-    memoryHook?: string;
-  };
-}) {
-  const title = input.title.trim();
-  const summary = input.summary.trim();
-  const contentType = parseKnowledgeItemType(input.contentType) ?? "plain_text";
-  const renderPayload = normalizeKnowledgeItemRenderPayload(
-    contentType,
-    input.renderPayload,
-  );
-
-  if (!title || !summary) {
-    throw new Error("title and summary are required");
-  }
-
-  const domain = input.domain?.trim() || "自定义知识项";
-  const slug = await createUniqueKnowledgeItemSlug(title);
-  const difficulty = clampInteger(input.difficulty ?? 2, 1, 5);
-  const body = input.body?.trim() || summary;
-  const useConditions = normalizeTextList(input.useConditions, [
-    "能从题目、语境或笔记中判断这条知识项正好适用。",
-  ]);
-  const nonUseConditions = normalizeTextList(input.nonUseConditions, [
-    "适用语境或前提条件无法确认时，不要直接套用。",
-  ]);
-  const antiPatterns = normalizeTextList(input.antiPatterns, [
-    "只记结论但没有确认适用条件。",
-  ]);
-  const typicalProblems = normalizeTextList(input.typicalProblems, [
-    `${title} 的基础识别和代入题。`,
-  ]);
-  const examples = normalizeTextList(input.examples, [
-    `看到题目要求“${summary}”时，先判断是否可以使用 ${title}。`,
-  ]);
-  const tags = normalizeTextList(input.tags, ["custom"]);
-  const reviewItems = [
-    {
-      type: "recall" as const,
-      prompt: recallPromptForKnowledgeItem(contentType, title),
-      answer: answerForRenderPayload(contentType, renderPayload),
-      explanation: summary,
-      difficulty,
-    },
-    {
-      type: "recognition" as const,
-      prompt: `题目要求“${summary}”时，应优先想到哪个知识项？`,
-      answer: title,
-      explanation: `这是 ${title} 的典型使用场景。`,
-      difficulty,
-    },
-    {
-      type: "application" as const,
-      prompt: examples[0],
-      answer: `先确认适用条件，再使用 ${title}。`,
-      explanation: body,
-      difficulty: Math.min(5, difficulty + 1),
-    },
-  ];
-
-  const knowledgeItem = await createCustomKnowledgeItem({
-    userId,
-    input: {
-      slug,
-      title,
-      contentType,
-      renderPayload,
-      domain,
-      subdomain: input.subdomain?.trim() || null,
-      summary,
-      body,
-      deepDive: input.deepDive?.trim() || null,
-      useConditions,
-      nonUseConditions,
-      antiPatterns,
-      typicalProblems,
-      examples,
-      difficulty,
-      tags,
-      reviewItems,
-      memoryHooks: input.memoryHook?.trim()
-        ? [
-            {
-              content: input.memoryHook.trim(),
-            },
-          ]
-        : [],
-    },
-  });
-
-  return getKnowledgeItemDetail(knowledgeItem.slug);
 }
 
 export async function getKnowledgeItemDetail(
@@ -480,62 +316,4 @@ function getTrainingStatusLabel(status: KnowledgeItemSummary["trainingStatus"]) 
     default:
       return "尚未进入训练";
   }
-}
-
-async function createUniqueKnowledgeItemSlug(title: string) {
-  const baseSlug =
-    title
-      .toLowerCase()
-      .trim()
-      .replace(/[^a-z0-9\u4e00-\u9fa5]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 48) || "custom-knowledge-item";
-  let candidate = baseSlug;
-  let index = 1;
-
-  while (await getKnowledgeItemByIdOrSlug(candidate)) {
-    index += 1;
-    candidate = `${baseSlug}-${index}`;
-  }
-
-  return candidate;
-}
-
-function recallPromptForKnowledgeItem(
-  contentType: KnowledgeItemType,
-  title: string,
-) {
-  if (contentType === "vocabulary") {
-    return `回忆「${title}」的释义。`;
-  }
-
-  if (contentType === "plain_text") {
-    return `回忆「${title}」的核心内容。`;
-  }
-
-  return `写出「${title}」的公式表达式。`;
-}
-
-function answerForRenderPayload(
-  contentType: KnowledgeItemType,
-  payload: KnowledgeItemRenderPayloadByType[KnowledgeItemType],
-) {
-  return knowledgeItemRenderPayloadToText(contentType, payload);
-}
-
-function normalizeTextList(value: string[] | undefined, fallback: string[]) {
-  const items = value
-    ?.flatMap((item) => item.split("\n"))
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-  return items && items.length > 0 ? items : fallback;
-}
-
-function clampInteger(value: number, min: number, max: number) {
-  if (!Number.isFinite(value)) {
-    return min;
-  }
-
-  return Math.max(min, Math.min(max, Math.round(value)));
 }

@@ -64,16 +64,6 @@ export type KnowledgeItemSummary = {
   correctReviews: number;
 };
 
-export type KnowledgeItemCatalog = {
-  knowledgeItems: KnowledgeItemSummary[];
-  filters: {
-    domains: string[];
-    tags: string[];
-    difficulties: number[];
-    contentTypes: KnowledgeItemType[];
-  };
-};
-
 export type KnowledgeItemDetail = KnowledgeItemSummary & {
   body: string;
   intuition: string | null;

@@ -83,24 +83,6 @@ export async function createDiagnosticAttempt({
   });
 }
 
-export async function getLatestDiagnosticAttempt({
-  userId,
-  domain,
-}: {
-  userId: string;
-  domain: string;
-}) {
-  return prisma.diagnosticAttempt.findFirst({
-    where: {
-      userId,
-      domain,
-    },
-    orderBy: {
-      completedAt: "desc",
-    },
-  });
-}
-
 export async function upsertDiagnosticKnowledgeItemStates({
   userId,
   knowledgeItemIds,

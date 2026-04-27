@@ -149,7 +149,7 @@ export function KnowledgeItemMemoryHookPanel({
         </div>
       ) : null}
       {message ? (
-        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/70 px-3 py-2 text-sm text-emerald-900">
+        <div className="mt-4 rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-sm text-success">
           {message}
         </div>
       ) : null}

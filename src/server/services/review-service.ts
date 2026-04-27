@@ -18,12 +18,10 @@ import {
 } from "@/server/services/review-rules";
 import { normalizeKnowledgeItemRenderPayload } from "@/lib/knowledge-item-render-payload";
 import type {
-  ReviewGrade,
   ReviewHint,
   ReviewMode,
   ReviewQueueItem,
   ReviewSessionPayload,
-  ReviewSessionSnapshot,
   ReviewSubmitInput,
   ReviewSubmitResult,
 } from "@/types/review";
@@ -214,44 +212,6 @@ export async function getReviewHint({
     content: state.knowledgeItem.summary,
     source: "one_line_use",
     memoryHookUsedId: null,
-  };
-}
-
-export async function getReviewSessionSnapshot({
-  userId,
-  sessionId,
-}: {
-  userId: string;
-  sessionId: string;
-}): Promise<ReviewSessionSnapshot | null> {
-  const session = await getStudySessionById({
-    sessionId,
-    userId,
-  });
-
-  if (!session) {
-    return null;
-  }
-
-  const grades: Record<ReviewGrade, number> = {
-    again: 0,
-    hard: 0,
-    good: 0,
-    easy: 0,
-  };
-
-  for (const log of session.reviewLogs) {
-    grades[log.result] += 1;
-  }
-
-  return {
-    id: session.id,
-    domain: session.domain,
-    status: session.status,
-    startedAt: session.startedAt.toISOString(),
-    completedAt: session.completedAt?.toISOString() ?? null,
-    reviewCount: session.reviewLogs.length,
-    grades,
   };
 }
 

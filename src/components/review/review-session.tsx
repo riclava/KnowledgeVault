@@ -205,7 +205,7 @@ export function ReviewSession({
           ) : null}
 
           {statusMessage ? (
-            <div className="rounded-lg border border-emerald-200 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950">
+            <div className="rounded-lg border border-success/25 bg-success/10 px-4 py-3 text-sm text-success">
               {statusMessage}
             </div>
           ) : null}
@@ -307,14 +307,14 @@ export function ReviewSession({
             </div>
           ) : activeRemediation ? (
             <div className="flex flex-col gap-4">
-              <div className="flex flex-col gap-4 rounded-lg border border-amber-200 bg-amber-50/70 p-4">
+              <div className="flex flex-col gap-4 rounded-lg border border-warning/25 bg-warning/10 p-4">
                 <div className="space-y-1">
-                  <p className="text-sm font-medium text-amber-950">
+                  <p className="text-sm font-medium text-warning">
                     已记录为
                     {" "}
                     {activeRemediation.grade === "again" ? "想不起来" : "有点吃力"}。
                   </p>
-                  <p className="text-sm text-amber-900/90">
+                  <p className="text-sm text-muted-foreground">
                     先把这次卡住的点写成一句下次能用的提醒，再看详情或继续。
                   </p>
                 </div>
@@ -631,8 +631,8 @@ function ReviewMemoryHookCapture({
       className={cn(
         "rounded-lg border p-4",
         context === "hint"
-          ? "border-emerald-200 bg-emerald-50/60"
-          : "border-amber-200 bg-amber-50/60",
+          ? "border-success/25 bg-success/10"
+          : "border-warning/25 bg-warning/10",
       )}
     >
       <div className="flex flex-col gap-2">
@@ -724,37 +724,21 @@ function EmptyReviewState({
       </h2>
       <div className="flex flex-wrap gap-3">
         {emptyReason === "needs_diagnostic" ? (
-          <>
-            <Link href={`/diagnostic?${domainQuery}`} className={buttonVariants()}>
-              开始 1 分钟诊断
-              <ArrowRight data-icon="inline-end" />
-            </Link>
-            <Link
-              href="/knowledge-items"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              先浏览知识项
-            </Link>
-          </>
+          <Link href={`/diagnostic?${domainQuery}`} className={buttonVariants()}>
+            开始 1 分钟诊断
+            <ArrowRight data-icon="inline-end" />
+          </Link>
         ) : (
-          <>
-            <Link
-              href={
-                mode === "weak"
-                  ? `/review?${domainQuery}`
-                  : `/review?mode=weak&${domainQuery}`
-              }
-              className={buttonVariants()}
-            >
-              {mode === "weak" ? "回到今日复习" : "去弱项重练"}
-            </Link>
-            <Link
-              href="/knowledge-items"
-              className={buttonVariants({ variant: "outline" })}
-            >
-              浏览知识项
-            </Link>
-          </>
+          <Link
+            href={
+              mode === "weak"
+                ? `/review?${domainQuery}`
+                : `/review?mode=weak&${domainQuery}`
+            }
+            className={buttonVariants()}
+          >
+            {mode === "weak" ? "回到今日复习" : "去弱项重练"}
+          </Link>
         )}
       </div>
     </section>
@@ -784,13 +768,16 @@ function CompletedReviewState({
       </div>
       <div className="flex flex-wrap gap-3">
         <Link
-          href={`/summary?domain=${encodeURIComponent(domain)}`}
+          href={`/review?mode=weak&domain=${encodeURIComponent(domain)}`}
           className={buttonVariants()}
         >
-          查看总结
+          去弱项重练
         </Link>
-        <Link href="/knowledge-items" className={buttonVariants({ variant: "outline" })}>
-          继续浏览知识项
+        <Link
+          href={`/review?domain=${encodeURIComponent(domain)}`}
+          className={buttonVariants({ variant: "outline" })}
+        >
+          回到今日复习
         </Link>
       </div>
     </section>
@@ -799,18 +786,18 @@ function CompletedReviewState({
 
 function gradeToneClassName(grade: ReviewGrade) {
   if (grade === "again") {
-    return "border-red-200 bg-red-50/50";
+    return "border-destructive/25 bg-destructive/10";
   }
 
   if (grade === "hard") {
-    return "border-amber-200 bg-amber-50/50";
+    return "border-warning/25 bg-warning/10";
   }
 
   if (grade === "good") {
-    return "border-blue-200 bg-blue-50/50";
+    return "border-info/25 bg-info/10";
   }
 
-  return "border-emerald-200 bg-emerald-50/50";
+  return "border-success/25 bg-success/10";
 }
 
 function estimateRemainingMinutes(

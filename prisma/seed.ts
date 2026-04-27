@@ -1,6 +1,4 @@
 import "dotenv/config";
-import { readdir, readFile } from "node:fs/promises";
-import path from "node:path";
 
 import { PrismaPg } from "@prisma/adapter-pg";
 
@@ -17,37 +15,6 @@ const prisma = new PrismaClient({
     connectionString: process.env.DATABASE_URL ?? "",
   }),
 });
-
-type ApprovedContentAssistDraft = {
-  knowledgeItemSlug: string;
-  status: "draft" | "approved";
-  explanation: {
-    summary: string;
-    body: string;
-    useConditions: string[];
-    nonUseConditions: string[];
-    antiPatterns: string[];
-    typicalProblems: string[];
-    variableExplanations: Array<{
-      symbol: string;
-      name: string;
-      description: string;
-      unit?: string | null;
-    }>;
-  };
-  reviewItems: Array<{
-    type: ReviewItemType;
-    prompt: string;
-    answer: string;
-    explanation: string;
-    difficulty: number;
-  }>;
-  relationCandidates: Array<{
-    toSlug: string;
-    relationType: KnowledgeItemRelationType;
-    note: string;
-  }>;
-};
 
 type SeedKnowledgeItem = {
   slug: string;
@@ -511,93 +478,7 @@ const relations: Array<{
   },
 ];
 
-async function loadApprovedDrafts() {
-  const approvedDir = path.join(process.cwd(), "content-assist", "approved");
-
-  try {
-    const entries = await readdir(approvedDir, { withFileTypes: true });
-    const drafts = await Promise.all(
-      entries
-        .filter((entry) => entry.isFile() && entry.name.endsWith(".json"))
-        .map(async (entry) => {
-          const content = await readFile(path.join(approvedDir, entry.name), "utf8");
-          return JSON.parse(content) as ApprovedContentAssistDraft;
-        }),
-    );
-
-    return drafts.filter((draft) => draft.status === "approved");
-  } catch {
-    return [] as ApprovedContentAssistDraft[];
-  }
-}
-
-function applyApprovedDrafts(
-  baseKnowledgeItems: typeof knowledgeItems,
-  baseRelations: typeof relations,
-  approvedDrafts: ApprovedContentAssistDraft[],
-) {
-  const draftsBySlug = new Map(
-    approvedDrafts.map((draft) => [draft.knowledgeItemSlug, draft]),
-  );
-  const nextKnowledgeItems = baseKnowledgeItems.map((knowledgeItem) => {
-    const approvedDraft = draftsBySlug.get(knowledgeItem.slug);
-
-    if (!approvedDraft) {
-      return knowledgeItem;
-    }
-
-    return {
-      ...knowledgeItem,
-      summary: approvedDraft.explanation.summary,
-      body: approvedDraft.explanation.body,
-      useConditions: approvedDraft.explanation.useConditions,
-      nonUseConditions: approvedDraft.explanation.nonUseConditions,
-      antiPatterns: approvedDraft.explanation.antiPatterns,
-      typicalProblems: approvedDraft.explanation.typicalProblems,
-      variables: approvedDraft.explanation.variableExplanations.map((variable) => ({
-        symbol: variable.symbol,
-        name: variable.name,
-        description: variable.description,
-        unit: variable.unit ?? undefined,
-      })),
-      reviewItems: approvedDraft.reviewItems,
-    };
-  });
-  const baseRelationKeys = new Set(
-    baseRelations.map(
-      (relation) => `${relation.from}:${relation.to}:${relation.relationType}`,
-    ),
-  );
-  const nextRelations = [...baseRelations];
-
-  for (const draft of approvedDrafts) {
-    for (const relation of draft.relationCandidates) {
-      const relationKey = `${draft.knowledgeItemSlug}:${relation.toSlug}:${relation.relationType}`;
-
-      if (baseRelationKeys.has(relationKey)) {
-        continue;
-      }
-
-      baseRelationKeys.add(relationKey);
-      nextRelations.push({
-        from: draft.knowledgeItemSlug,
-        to: relation.toSlug,
-        relationType: relation.relationType,
-        note: relation.note,
-      });
-    }
-  }
-
-  return {
-    knowledgeItems: nextKnowledgeItems,
-    relations: nextRelations,
-  };
-}
-
 async function main() {
-  const approvedDrafts = await loadApprovedDrafts();
-  const seeded = applyApprovedDrafts(knowledgeItems, relations, approvedDrafts);
-
   await prisma.reviewLog.deleteMany();
   await prisma.studySession.deleteMany();
   await prisma.diagnosticAttempt.deleteMany();
@@ -610,7 +491,7 @@ async function main() {
 
   const created = new Map<string, string>();
 
-  for (const knowledgeItem of seeded.knowledgeItems) {
+  for (const knowledgeItem of knowledgeItems) {
     const item = await prisma.knowledgeItem.create({
       data: {
         slug: knowledgeItem.slug,
@@ -645,7 +526,7 @@ async function main() {
     created.set(knowledgeItem.slug, item.id);
   }
 
-  for (const relation of seeded.relations) {
+  for (const relation of relations) {
     const fromKnowledgeItemId = created.get(relation.from);
     const toKnowledgeItemId = created.get(relation.to);
 

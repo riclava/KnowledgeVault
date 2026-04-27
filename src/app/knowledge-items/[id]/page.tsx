@@ -30,19 +30,11 @@ function parseFocusSection(value?: string): FocusSection | undefined {
 }
 
 function parseEntryPoint(value?: string) {
-  if (
-    value === "review" ||
-    value === "summary" ||
-    value === "paths" ||
-    value === "knowledgeItems" ||
-    value === "deepDive" ||
-    value === "memory-hooks" ||
-    value === "custom"
-  ) {
+  if (value === "review") {
     return value;
   }
 
-  return "knowledgeItems" as const;
+  return "direct" as const;
 }
 
 function buildReturnLink({
@@ -58,36 +50,10 @@ function buildReturnLink({
         href: mode === "weak" ? "/review?mode=weak" : "/review",
         label: mode === "weak" ? "回到弱项重练" : "回到今日复习",
       };
-    case "summary":
-      return {
-        href: "/summary",
-        label: "回到复习总结",
-      };
-    case "paths":
-      return {
-        href: "/paths",
-        label: "回到学习路径",
-      };
-    case "deepDive":
-      return {
-        href: "/deep-dive",
-        label: "回到理解训练",
-      };
-    case "memory-hooks":
-      return {
-        href: "/memory-hooks",
-        label: "回到提示整理",
-      };
-    case "custom":
-      return {
-        href: "/knowledge-items/new",
-        label: "回到自定义知识项",
-      };
-    case "knowledgeItems":
     default:
       return {
-        href: "/knowledge-items",
-        label: "回到知识项列表",
+        href: "/review",
+        label: "回到今日复习",
       };
   }
 }
@@ -118,7 +84,7 @@ export default async function KnowledgeItemDetailPage({
 
   return (
     <PhaseShell
-      activePath="/knowledge-items"
+      activePath="/review"
       eyebrow="知识项详情"
       title="查看知识项详情"
     >

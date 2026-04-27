@@ -1,6 +1,5 @@
 import {
   createDiagnosticAttempt,
-  getLatestDiagnosticAttempt,
   listDiagnosticReviewItems,
   listReviewItemsByIds,
   upsertDiagnosticKnowledgeItemStates,
@@ -26,7 +25,7 @@ export async function startDiagnostic({
 }: {
   domain?: string;
 } = {}): Promise<DiagnosticStart> {
-  const currentDomain = domain ?? (await getKnowledgeItemSummaries())[0]?.domain ?? "自定义知识项";
+  const currentDomain = domain ?? (await getKnowledgeItemSummaries())[0]?.domain ?? "默认知识域";
   const reviewItems = await listDiagnosticReviewItems({
     domain: currentDomain,
     take: DIAGNOSTIC_QUESTION_COUNT,
@@ -95,35 +94,6 @@ export async function submitDiagnostic({
     completedAt: attempt.completedAt.toISOString(),
     weakKnowledgeItems,
     reviewQueueKnowledgeItemIds: weakKnowledgeItemIds.length > 0 ? weakKnowledgeItemIds : knowledgeItemIds,
-  };
-}
-
-export async function getLatestDiagnosticResult({
-  userId,
-  domain,
-}: {
-  userId: string;
-  domain: string;
-}): Promise<DiagnosticResult | null> {
-  const attempt = await getLatestDiagnosticAttempt({
-    userId,
-    domain,
-  });
-
-  if (!attempt) {
-    return null;
-  }
-
-  const weakKnowledgeItems = await getWeakKnowledgeItemSummaries(attempt.weakKnowledgeItemIds);
-
-  return {
-    id: attempt.id,
-    domain: attempt.domain,
-    reviewItemIds: attempt.reviewItemIds,
-    weakKnowledgeItemIds: attempt.weakKnowledgeItemIds,
-    completedAt: attempt.completedAt.toISOString(),
-    weakKnowledgeItems,
-    reviewQueueKnowledgeItemIds: attempt.weakKnowledgeItemIds,
   };
 }
 
