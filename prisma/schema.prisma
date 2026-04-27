@@ -1,0 +1,337 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum KnowledgeItemRelationType {
+  prerequisite
+  related
+  confusable
+  application_of
+}
+
+enum KnowledgeItemType {
+  math_formula
+  vocabulary
+  plain_text
+}
+
+enum ReviewItemType {
+  recall
+  recognition
+  application
+}
+
+enum ReviewResult {
+  easy
+  good
+  hard
+  again
+}
+
+enum StudySessionStatus {
+  active
+  completed
+  abandoned
+}
+
+enum ProductEventType {
+  weak_item_impression
+  weak_item_opened
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String?  @unique
+  displayName        String?
+  anonymousSessionId String?  @unique
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  knowledgeItemStates UserKnowledgeItemState[]
+  reviewLogs          ReviewLog[]
+  memoryHooks         KnowledgeItemMemoryHook[]
+  diagnosticAttempts  DiagnosticAttempt[]
+  studySessions       StudySession[]
+  productEvents       ProductEvent[]
+  authIdentity        AuthUser?
+
+  @@map("users")
+}
+
+model AuthUser {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  name          String
+  image         String?
+  learnerId     String?  @unique
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  learner  User?         @relation(fields: [learnerId], references: [id], onDelete: SetNull)
+  sessions AuthSession[]
+  accounts AuthAccount[]
+
+  @@map("auth_users")
+}
+
+model AuthSession {
+  id        String   @id @default(cuid())
+  userId    String
+  expiresAt DateTime
+  token     String   @unique
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+
+model AuthAccount {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user AuthUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([providerId, accountId])
+  @@index([userId])
+  @@map("auth_accounts")
+}
+
+model AuthVerification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+  @@index([expiresAt])
+  @@map("auth_verifications")
+}
+
+model KnowledgeItem {
+  id               String            @id @default(cuid())
+  slug             String            @unique
+  title            String
+  contentType      KnowledgeItemType
+  renderPayload    Json
+  domain           String
+  subdomain        String?
+  summary          String
+  body             String
+  intuition        String?
+  derivation       String?
+  useConditions    String[]
+  nonUseConditions String[]
+  antiPatterns     String[]
+  typicalProblems  String[]
+  examples         String[]
+  difficulty       Int
+  tags             String[]
+  extension        Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  variables         KnowledgeItemVariable[]
+  reviewItems       ReviewItem[]
+  outgoingRelations KnowledgeItemRelation[]   @relation("KnowledgeItemRelationFrom")
+  incomingRelations KnowledgeItemRelation[]   @relation("KnowledgeItemRelationTo")
+  userStates        UserKnowledgeItemState[]
+  reviewLogs        ReviewLog[]
+  memoryHooks       KnowledgeItemMemoryHook[]
+  productEvents     ProductEvent[]
+
+  @@index([domain, subdomain])
+  @@index([contentType])
+  @@map("knowledge_items")
+}
+
+model KnowledgeItemVariable {
+  id              String   @id @default(cuid())
+  knowledgeItemId String
+  symbol          String
+  name            String
+  description     String
+  unit            String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+
+  @@index([knowledgeItemId])
+  @@map("knowledge_item_variables")
+}
+
+model KnowledgeItemRelation {
+  id                  String                    @id @default(cuid())
+  fromKnowledgeItemId String
+  toKnowledgeItemId   String
+  relationType        KnowledgeItemRelationType
+  note                String?
+  createdAt           DateTime                  @default(now())
+  updatedAt           DateTime                  @updatedAt
+
+  fromKnowledgeItem KnowledgeItem @relation("KnowledgeItemRelationFrom", fields: [fromKnowledgeItemId], references: [id], onDelete: Cascade)
+  toKnowledgeItem   KnowledgeItem @relation("KnowledgeItemRelationTo", fields: [toKnowledgeItemId], references: [id], onDelete: Cascade)
+
+  @@unique([fromKnowledgeItemId, toKnowledgeItemId, relationType])
+  @@index([toKnowledgeItemId])
+  @@map("knowledge_item_relations")
+}
+
+model ReviewItem {
+  id              String         @id @default(cuid())
+  knowledgeItemId String
+  type            ReviewItemType
+  prompt          String
+  answer          String
+  explanation     String?
+  difficulty      Int
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+  reviewLogs    ReviewLog[]
+
+  @@index([knowledgeItemId, type])
+  @@map("review_items")
+}
+
+model UserKnowledgeItemState {
+  id                 String    @id @default(cuid())
+  userId             String
+  knowledgeItemId    String
+  memoryStrength     Float     @default(0)
+  stability          Float     @default(0)
+  difficultyEstimate Float     @default(0)
+  lastReviewedAt     DateTime?
+  nextReviewAt       DateTime?
+  totalReviews       Int       @default(0)
+  correctReviews     Int       @default(0)
+  lapseCount         Int       @default(0)
+  consecutiveCorrect Int       @default(0)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, knowledgeItemId])
+  @@index([knowledgeItemId])
+  @@map("user_knowledge_item_states")
+}
+
+model ReviewLog {
+  id               String       @id @default(cuid())
+  userId           String
+  knowledgeItemId  String
+  reviewItemId     String
+  studySessionId   String?
+  result           ReviewResult
+  responseTimeMs   Int?
+  confidence       Int?
+  memoryHookUsedId String?
+  reviewedAt       DateTime     @default(now())
+
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeItem  KnowledgeItem            @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+  reviewItem     ReviewItem               @relation(fields: [reviewItemId], references: [id], onDelete: Cascade)
+  studySession   StudySession?            @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
+  memoryHookUsed KnowledgeItemMemoryHook? @relation(fields: [memoryHookUsedId], references: [id], onDelete: SetNull)
+
+  @@index([userId, reviewedAt])
+  @@index([knowledgeItemId])
+  @@map("review_logs")
+}
+
+model DiagnosticAttempt {
+  id                   String   @id @default(cuid())
+  userId               String
+  domain               String
+  reviewItemIds        String[]
+  weakKnowledgeItemIds String[]
+  completedAt          DateTime @default(now())
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, completedAt])
+  @@map("diagnostic_attempts")
+}
+
+model KnowledgeItemMemoryHook {
+  id              String   @id @default(cuid())
+  userId          String
+  knowledgeItemId String
+  content         String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+  reviewLogs    ReviewLog[]
+
+  @@unique([userId, knowledgeItemId])
+  @@index([knowledgeItemId])
+  @@map("knowledge_item_memory_hooks")
+}
+
+model StudySession {
+  id          String             @id @default(cuid())
+  userId      String
+  domain      String
+  status      StudySessionStatus @default(active)
+  startedAt   DateTime           @default(now())
+  completedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewLogs    ReviewLog[]
+  productEvents ProductEvent[]
+
+  @@index([userId, startedAt])
+  @@map("study_sessions")
+}
+
+model ProductEvent {
+  id              String           @id @default(cuid())
+  userId          String
+  knowledgeItemId String?
+  studySessionId  String?
+  type            ProductEventType
+  createdAt       DateTime         @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  knowledgeItem KnowledgeItem? @relation(fields: [knowledgeItemId], references: [id], onDelete: SetNull)
+  studySession  StudySession?  @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, type, createdAt])
+  @@index([knowledgeItemId, type])
+  @@map("product_events")
+}
