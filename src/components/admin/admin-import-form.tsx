@@ -62,7 +62,6 @@ export function AdminImportForm() {
           <Input
             id="sourceTitle"
             name="sourceTitle"
-            required
             placeholder="例如：间隔重复笔记"
           />
         </div>

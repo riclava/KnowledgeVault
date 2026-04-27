@@ -14,5 +14,11 @@ describe("admin UI files", () => {
     assert.match(layout, /知识项/);
     assert.match(importForm, /生成并保存/);
     assert.match(importForm, /sourceMaterial/);
+    const sourceTitleField = importForm.match(
+      /<Input\s+id="sourceTitle"[\s\S]*?\/>/,
+    )?.[0];
+
+    assert.ok(sourceTitleField);
+    assert.doesNotMatch(sourceTitleField, /required/);
   });
 });
