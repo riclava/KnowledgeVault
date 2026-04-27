@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { normalizeAdminKnowledgeItemSearchParams } from "@/server/admin/admin-knowledge-item-service";
+import { prisma } from "@/lib/db/prisma";
+import {
+  listAdminKnowledgeItems,
+  normalizeAdminKnowledgeItemSearchParams,
+} from "@/server/admin/admin-knowledge-item-service";
 
 describe("admin knowledge item service", () => {
   it("normalizes list query params", () => {
@@ -46,5 +50,39 @@ describe("admin knowledge item service", () => {
       normalizeAdminKnowledgeItemSearchParams(new URLSearchParams("difficulty=0")),
       { difficulty: 0 },
     );
+  });
+
+  it("passes zero difficulty filters into the Prisma where input", async () => {
+    const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
+      findMany: (args: unknown) => Promise<unknown>;
+    };
+    const originalFindMany = knowledgeItemDelegate.findMany;
+    let capturedArgs: unknown;
+
+    knowledgeItemDelegate.findMany = async (args: unknown) => {
+      capturedArgs = args;
+
+      return [];
+    };
+
+    try {
+      await listAdminKnowledgeItems({ difficulty: 0 });
+    } finally {
+      knowledgeItemDelegate.findMany = originalFindMany;
+    }
+
+    assert.deepEqual(capturedArgs, {
+      where: { difficulty: 0 },
+      include: {
+        _count: {
+          select: {
+            variables: true,
+            reviewItems: true,
+            outgoingRelations: true,
+          },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
   });
 });

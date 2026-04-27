@@ -91,7 +91,9 @@ function buildKnowledgeItemWhere(
   const where: Prisma.KnowledgeItemWhereInput = {
     ...(params.domain ? { domain: params.domain } : {}),
     ...(params.contentType ? { contentType: params.contentType } : {}),
-    ...(params.difficulty ? { difficulty: params.difficulty } : {}),
+    ...(typeof params.difficulty === "number"
+      ? { difficulty: params.difficulty }
+      : {}),
     ...(params.tag ? { tags: { has: params.tag } } : {}),
   };
 
