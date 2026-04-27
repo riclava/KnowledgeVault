@@ -121,14 +121,18 @@ function normalizeImportedVariable(
   variable: AdminImportedVariable,
   index: number,
 ): AdminImportedVariable {
+  const sortOrder = variable.sortOrder;
+
   return {
     symbol: text(variable.symbol),
     name: text(variable.name),
     description: text(variable.description),
     unit: optionalString(variable.unit),
     sortOrder:
-      Number.isInteger(variable.sortOrder) && variable.sortOrder >= 0
-        ? variable.sortOrder
+      typeof sortOrder === "number" &&
+      Number.isInteger(sortOrder) &&
+      sortOrder >= 0
+        ? sortOrder
         : index,
   };
 }
