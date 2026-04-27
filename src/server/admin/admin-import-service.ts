@@ -74,26 +74,10 @@ export async function runAdminImport({
   const generatedItems = Array.isArray(generated.items) ? generated.items : [];
   const referencedSlugs = collectGeneratedImportSlugs(generated);
   const existingSlugs = await listExistingKnowledgeItemIdsBySlug(referencedSlugs);
-
-  let validation: ReturnType<typeof validateAdminImportBatch>;
-
-  try {
-    validation = validateAdminImportBatch(generated, new Set(existingSlugs.keys()));
-  } catch (error) {
-    const importRun = await createAdminImportRun({
-      adminUserId,
-      sourceTitle: input.sourceTitle,
-      sourceExcerpt,
-      defaultDomain: input.defaultDomain,
-      status: "ai_failed",
-      generatedCount: generatedItems.length,
-      savedCount: 0,
-      validationErrors: [toPipelineError(error, "AI 输出校验失败，请重新生成。")],
-      aiOutput: generated,
-    });
-
-    return { status: "ai_failed" as const, importRun };
-  }
+  const validation = validateAdminImportBatch(
+    generated,
+    new Set(existingSlugs.keys()),
+  );
 
   if (!validation.ok) {
     const importRun = await createAdminImportRun({
