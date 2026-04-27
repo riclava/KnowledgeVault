@@ -27,5 +27,24 @@ describe("admin knowledge item service", () => {
       ),
       {},
     );
+
+    assert.deepEqual(
+      normalizeAdminKnowledgeItemSearchParams(
+        new URLSearchParams("difficulty=2.5"),
+      ),
+      {},
+    );
+  });
+
+  it("keeps integer difficulty filters outside the review scale", () => {
+    assert.deepEqual(
+      normalizeAdminKnowledgeItemSearchParams(new URLSearchParams("difficulty=6")),
+      { difficulty: 6 },
+    );
+
+    assert.deepEqual(
+      normalizeAdminKnowledgeItemSearchParams(new URLSearchParams("difficulty=0")),
+      { difficulty: 0 },
+    );
   });
 });

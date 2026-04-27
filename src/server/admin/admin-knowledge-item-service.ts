@@ -28,7 +28,7 @@ export function normalizeAdminKnowledgeItemSearchParams(
     ...(query ? { query } : {}),
     ...(domain ? { domain } : {}),
     ...(contentType ? { contentType } : {}),
-    ...(difficulty ? { difficulty } : {}),
+    ...(difficulty !== undefined ? { difficulty } : {}),
     ...(tag ? { tag } : {}),
   };
 }
@@ -127,9 +127,7 @@ function normalizeDifficulty(value: string | null) {
 
   const difficulty = Number(normalized);
 
-  return Number.isInteger(difficulty) && difficulty >= 1 && difficulty <= 5
-    ? difficulty
-    : undefined;
+  return Number.isInteger(difficulty) ? difficulty : undefined;
 }
 
 function trimmedParam(searchParams: URLSearchParams, key: string) {
