@@ -175,6 +175,92 @@ describe("admin import validation", () => {
     );
   });
 
+  it("rejects null item elements without throwing", () => {
+    const invalid = {
+      ...validBatch,
+      items: [null],
+    } as unknown as AdminImportBatch;
+    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
+
+    assert.doesNotThrow(() => {
+      result = validateAdminImportBatch(invalid, new Set());
+    });
+    assert.equal(result?.ok, false);
+    assert.equal(
+      result?.ok
+        ? false
+        : result?.errors.some((error) => error.code === "invalid_array_field"),
+      true,
+    );
+  });
+
+  it("rejects null relation elements without throwing", () => {
+    const invalid = {
+      ...validBatch,
+      relations: [null],
+    } as unknown as AdminImportBatch;
+    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
+
+    assert.doesNotThrow(() => {
+      result = validateAdminImportBatch(invalid, new Set());
+    });
+    assert.equal(result?.ok, false);
+    assert.equal(
+      result?.ok
+        ? false
+        : result?.errors.some((error) => error.code === "invalid_array_field"),
+      true,
+    );
+  });
+
+  it("rejects null variable elements without throwing", () => {
+    const invalid = {
+      ...validBatch,
+      items: [
+        {
+          ...validBatch.items[0],
+          variables: [null],
+        },
+      ],
+    } as unknown as AdminImportBatch;
+    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
+
+    assert.doesNotThrow(() => {
+      result = validateAdminImportBatch(invalid, new Set());
+    });
+    assert.equal(result?.ok, false);
+    assert.equal(
+      result?.ok
+        ? false
+        : result?.errors.some((error) => error.code === "invalid_array_field"),
+      true,
+    );
+  });
+
+  it("rejects null review item elements without throwing", () => {
+    const invalid = {
+      ...validBatch,
+      items: [
+        {
+          ...validBatch.items[0],
+          reviewItems: [null],
+        },
+      ],
+    } as unknown as AdminImportBatch;
+    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
+
+    assert.doesNotThrow(() => {
+      result = validateAdminImportBatch(invalid, new Set());
+    });
+    assert.equal(result?.ok, false);
+    assert.equal(
+      result?.ok
+        ? false
+        : result?.errors.some((error) => error.code === "invalid_array_field"),
+      true,
+    );
+  });
+
   it("rejects duplicate slugs and missing relation endpoints", () => {
     const invalid: AdminImportBatch = {
       ...validBatch,

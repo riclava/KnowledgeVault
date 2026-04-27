@@ -37,8 +37,12 @@ export function normalizeAdminImportBatch(
 ): AdminImportBatch {
   const record = batch as unknown as Record<string, unknown>;
   const defaultDomain = optionalString(batch.defaultDomain);
-  const items = Array.isArray(record.items) ? batch.items : [];
-  const relations = Array.isArray(record.relations) ? batch.relations : [];
+  const items = Array.isArray(record.items)
+    ? batch.items.filter(isRecord)
+    : [];
+  const relations = Array.isArray(record.relations)
+    ? batch.relations.filter(isRecord)
+    : [];
 
   return {
     sourceTitle: optionalString(batch.sourceTitle),
@@ -60,6 +64,7 @@ export function validateAdminImportBatch(
   validateTopLevelArray(rawItems, "items", errors);
   validateTopLevelArray(rawRelations, "relations", errors);
   validateItemArrayFields(rawItems, errors);
+  validateRelationArrayFields(rawRelations, errors);
 
   const normalized = normalizeAdminImportBatch(batch);
   const generatedSlugs = new Set<string>();
@@ -116,8 +121,12 @@ function normalizeImportedItem(
   defaultDomain: string | undefined,
 ): AdminImportedKnowledgeItem {
   const record = item as unknown as Record<string, unknown>;
-  const variables = Array.isArray(record.variables) ? item.variables : [];
-  const reviewItems = Array.isArray(record.reviewItems) ? item.reviewItems : [];
+  const variables = Array.isArray(record.variables)
+    ? item.variables.filter(isRecord)
+    : [];
+  const reviewItems = Array.isArray(record.reviewItems)
+    ? item.reviewItems.filter(isRecord)
+    : [];
 
   return {
     ...item,
@@ -223,6 +232,15 @@ function validateItemArrayFields(
   }
 
   items.forEach((item, itemIndex) => {
+    if (!isRecord(item)) {
+      errors.push({
+        code: "invalid_array_field",
+        path: `items.${itemIndex}`,
+        message: "Item entries must be objects.",
+      });
+      return;
+    }
+
     const record = item as Record<string, unknown>;
 
     STRING_ARRAY_FIELDS.forEach((field) => {
@@ -262,6 +280,25 @@ function validateItemArrayFields(
   });
 }
 
+function validateRelationArrayFields(
+  relations: unknown,
+  errors: AdminImportValidationError[],
+) {
+  if (!Array.isArray(relations)) {
+    return;
+  }
+
+  relations.forEach((relation, relationIndex) => {
+    if (!isRecord(relation)) {
+      errors.push({
+        code: "invalid_array_field",
+        path: `relations.${relationIndex}`,
+        message: "Relation entries must be objects.",
+      });
+    }
+  });
+}
+
 function validateItemCollectionField(
   value: unknown,
   path: string,
@@ -273,7 +310,18 @@ function validateItemCollectionField(
       path,
       message: `${path} must be an array.`,
     });
+    return;
   }
+
+  value.forEach((entry, entryIndex) => {
+    if (!isRecord(entry)) {
+      errors.push({
+        code: "invalid_array_field",
+        path: `${path}.${entryIndex}`,
+        message: `${path} entries must be objects.`,
+      });
+    }
+  });
 }
 
 function validateContentTypeAndPayload(
@@ -492,4 +540,8 @@ function stringList(values: unknown) {
   });
 
   return normalized;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
