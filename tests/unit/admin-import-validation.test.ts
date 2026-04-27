@@ -108,6 +108,73 @@ describe("admin import validation", () => {
     );
   });
 
+  it("rejects malformed top-level items without throwing", () => {
+    const invalid = {
+      ...validBatch,
+      items: "not array",
+    } as unknown as AdminImportBatch;
+    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
+
+    assert.doesNotThrow(() => {
+      result = validateAdminImportBatch(invalid, new Set());
+    });
+    assert.equal(result?.ok, false);
+    assert.equal(
+      result?.ok
+        ? false
+        : result?.errors.some((error) => error.code === "invalid_array_field"),
+      true,
+    );
+  });
+
+  it("rejects malformed item variables without throwing", () => {
+    const invalid = {
+      ...validBatch,
+      items: [
+        {
+          ...validBatch.items[0],
+          variables: null,
+        },
+      ],
+    } as unknown as AdminImportBatch;
+    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
+
+    assert.doesNotThrow(() => {
+      result = validateAdminImportBatch(invalid, new Set());
+    });
+    assert.equal(result?.ok, false);
+    assert.equal(
+      result?.ok
+        ? false
+        : result?.errors.some((error) => error.code === "invalid_array_field"),
+      true,
+    );
+  });
+
+  it("rejects malformed item review items without throwing", () => {
+    const invalid = {
+      ...validBatch,
+      items: [
+        {
+          ...validBatch.items[0],
+          reviewItems: "not array",
+        },
+      ],
+    } as unknown as AdminImportBatch;
+    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
+
+    assert.doesNotThrow(() => {
+      result = validateAdminImportBatch(invalid, new Set());
+    });
+    assert.equal(result?.ok, false);
+    assert.equal(
+      result?.ok
+        ? false
+        : result?.errors.some((error) => error.code === "invalid_array_field"),
+      true,
+    );
+  });
+
   it("rejects duplicate slugs and missing relation endpoints", () => {
     const invalid: AdminImportBatch = {
       ...validBatch,

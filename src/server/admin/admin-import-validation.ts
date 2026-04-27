@@ -35,13 +35,16 @@ export type AdminImportValidationResult =
 export function normalizeAdminImportBatch(
   batch: AdminImportBatch,
 ): AdminImportBatch {
+  const record = batch as unknown as Record<string, unknown>;
   const defaultDomain = optionalString(batch.defaultDomain);
+  const items = Array.isArray(record.items) ? batch.items : [];
+  const relations = Array.isArray(record.relations) ? batch.relations : [];
 
   return {
     sourceTitle: optionalString(batch.sourceTitle),
     defaultDomain,
-    items: batch.items.map((item) => normalizeImportedItem(item, defaultDomain)),
-    relations: batch.relations.map(normalizeImportedRelation),
+    items: items.map((item) => normalizeImportedItem(item, defaultDomain)),
+    relations: relations.map(normalizeImportedRelation),
   };
 }
 
@@ -50,8 +53,13 @@ export function validateAdminImportBatch(
   existingSlugs: Set<string>,
 ): AdminImportValidationResult {
   const errors: AdminImportValidationError[] = [];
+  const record = batch as unknown as Record<string, unknown>;
+  const rawItems = record.items;
+  const rawRelations = record.relations;
 
-  validateArrayFields(batch.items, errors);
+  validateTopLevelArray(rawItems, "items", errors);
+  validateTopLevelArray(rawRelations, "relations", errors);
+  validateItemArrayFields(rawItems, errors);
 
   const normalized = normalizeAdminImportBatch(batch);
   const generatedSlugs = new Set<string>();
@@ -107,6 +115,10 @@ function normalizeImportedItem(
   item: AdminImportedKnowledgeItem,
   defaultDomain: string | undefined,
 ): AdminImportedKnowledgeItem {
+  const record = item as unknown as Record<string, unknown>;
+  const variables = Array.isArray(record.variables) ? item.variables : [];
+  const reviewItems = Array.isArray(record.reviewItems) ? item.reviewItems : [];
+
   return {
     ...item,
     slug: text(item.slug),
@@ -123,8 +135,8 @@ function normalizeImportedItem(
     typicalProblems: stringList(item.typicalProblems),
     examples: stringList(item.examples),
     tags: stringList(item.tags),
-    variables: item.variables.map(normalizeImportedVariable),
-    reviewItems: item.reviewItems.map(normalizeImportedReviewItem),
+    variables: variables.map(normalizeImportedVariable),
+    reviewItems: reviewItems.map(normalizeImportedReviewItem),
   };
 }
 
@@ -188,10 +200,28 @@ function validateRequiredItemFields(
   });
 }
 
-function validateArrayFields(
-  items: AdminImportedKnowledgeItem[],
+function validateTopLevelArray(
+  value: unknown,
+  path: string,
   errors: AdminImportValidationError[],
 ) {
+  if (!Array.isArray(value)) {
+    errors.push({
+      code: "invalid_array_field",
+      path,
+      message: `${path} must be an array.`,
+    });
+  }
+}
+
+function validateItemArrayFields(
+  items: unknown,
+  errors: AdminImportValidationError[],
+) {
+  if (!Array.isArray(items)) {
+    return;
+  }
+
   items.forEach((item, itemIndex) => {
     const record = item as Record<string, unknown>;
 
@@ -218,7 +248,32 @@ function validateArrayFields(
         }
       });
     });
+
+    validateItemCollectionField(
+      record.variables,
+      `items.${itemIndex}.variables`,
+      errors,
+    );
+    validateItemCollectionField(
+      record.reviewItems,
+      `items.${itemIndex}.reviewItems`,
+      errors,
+    );
   });
+}
+
+function validateItemCollectionField(
+  value: unknown,
+  path: string,
+  errors: AdminImportValidationError[],
+) {
+  if (!Array.isArray(value)) {
+    errors.push({
+      code: "invalid_array_field",
+      path,
+      message: `${path} must be an array.`,
+    });
+  }
 }
 
 function validateContentTypeAndPayload(
