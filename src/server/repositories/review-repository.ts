@@ -168,6 +168,25 @@ export async function getStudySessionById({
   });
 }
 
+export async function getActiveReviewItemForKnowledgeItem({
+  reviewItemId,
+  knowledgeItemId,
+}: {
+  reviewItemId: string;
+  knowledgeItemId: string;
+}) {
+  return prisma.reviewItem.findFirst({
+    where: {
+      id: reviewItemId,
+      knowledgeItemId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+    },
+  });
+}
+
 export async function createReviewLog({
   userId,
   knowledgeItemId,

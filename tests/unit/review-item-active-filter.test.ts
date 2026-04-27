@@ -85,6 +85,30 @@ describe("review item active filtering", () => {
       /_count:\s*{\s*select:\s*{[\s\S]*reviewItems:\s*{\s*where:\s*{\s*isActive:\s*true/s,
     );
   });
+
+  it("guards review submissions against archived or mismatched review items", () => {
+    const service = readFileSync("src/server/services/review-service.ts", "utf8");
+    const repository = readFileSync(
+      "src/server/repositories/review-repository.ts",
+      "utf8",
+    );
+    const submitReview = between(
+      service,
+      "export async function submitReview",
+      "export async function deferReview",
+    );
+
+    assert.match(repository, /getActiveReviewItemForKnowledgeItem/);
+    assert.match(repository, /id:\s*reviewItemId/);
+    assert.match(repository, /knowledgeItemId/);
+    assert.match(repository, /isActive:\s*true/);
+    assert.match(submitReview, /getActiveReviewItemForKnowledgeItem/);
+    assert.match(submitReview, /Review item is not active for this knowledge item/);
+    assert.match(
+      submitReview,
+      /getActiveReviewItemForKnowledgeItem[\s\S]*createReviewLog/,
+    );
+  });
 });
 
 function between(source: string, start: string, end: string) {

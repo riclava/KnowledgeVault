@@ -4,6 +4,7 @@ import {
   createReviewLog,
   createStudySession,
   deferKnowledgeItemReview,
+  getActiveReviewItemForKnowledgeItem,
   getReviewHintSource,
   getStudySessionById,
   getUserKnowledgeItemState,
@@ -110,16 +111,24 @@ export async function submitReview({
   userId: string;
   input: ReviewSubmitInput;
 }): Promise<ReviewSubmitResult> {
-  const [state, session] = await Promise.all([
+  const [state, session, reviewItem] = await Promise.all([
     getUserKnowledgeItemState(userId, input.knowledgeItemId),
     getStudySessionById({
       sessionId: input.sessionId,
       userId,
     }),
+    getActiveReviewItemForKnowledgeItem({
+      reviewItemId: input.reviewItemId,
+      knowledgeItemId: input.knowledgeItemId,
+    }),
   ]);
 
   if (!state || !session) {
     throw new Error("Review state or session not found");
+  }
+
+  if (!reviewItem) {
+    throw new Error("Review item is not active for this knowledge item");
   }
 
   const now = new Date();
