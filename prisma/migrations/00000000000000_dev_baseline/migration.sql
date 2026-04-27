@@ -16,12 +16,19 @@ CREATE TYPE "ReviewResult" AS ENUM ('easy', 'good', 'hard', 'again');
 -- CreateEnum
 CREATE TYPE "StudySessionStatus" AS ENUM ('active', 'completed', 'abandoned');
 
+-- CreateEnum
+CREATE TYPE "UserRole" AS ENUM ('learner', 'admin');
+
+-- CreateEnum
+CREATE TYPE "AdminImportStatus" AS ENUM ('validation_failed', 'saved', 'ai_failed');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
     "email" TEXT,
     "displayName" TEXT,
     "anonymousSessionId" TEXT,
+    "role" "UserRole" NOT NULL DEFAULT 'learner',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -233,6 +240,24 @@ CREATE TABLE "study_sessions" (
     CONSTRAINT "study_sessions_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "admin_import_runs" (
+    "id" TEXT NOT NULL,
+    "adminUserId" TEXT NOT NULL,
+    "sourceTitle" TEXT,
+    "sourceExcerpt" TEXT NOT NULL,
+    "defaultDomain" TEXT NOT NULL,
+    "status" "AdminImportStatus" NOT NULL,
+    "generatedCount" INTEGER NOT NULL DEFAULT 0,
+    "savedCount" INTEGER NOT NULL DEFAULT 0,
+    "validationErrors" JSONB,
+    "aiOutput" JSONB,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "admin_import_runs_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -311,6 +336,12 @@ CREATE UNIQUE INDEX "knowledge_item_memory_hooks_userId_knowledgeItemId_key" ON 
 -- CreateIndex
 CREATE INDEX "study_sessions_userId_startedAt_idx" ON "study_sessions"("userId", "startedAt");
 
+-- CreateIndex
+CREATE INDEX "admin_import_runs_adminUserId_createdAt_idx" ON "admin_import_runs"("adminUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "admin_import_runs_status_createdAt_idx" ON "admin_import_runs"("status", "createdAt");
+
 -- AddForeignKey
 ALTER TABLE "auth_users" ADD CONSTRAINT "auth_users_learnerId_fkey" FOREIGN KEY ("learnerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -364,3 +395,6 @@ ALTER TABLE "knowledge_item_memory_hooks" ADD CONSTRAINT "knowledge_item_memory_
 
 -- AddForeignKey
 ALTER TABLE "study_sessions" ADD CONSTRAINT "study_sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "admin_import_runs" ADD CONSTRAINT "admin_import_runs_adminUserId_fkey" FOREIGN KEY ("adminUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

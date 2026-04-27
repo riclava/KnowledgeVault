@@ -39,11 +39,23 @@ enum StudySessionStatus {
   abandoned
 }
 
+enum UserRole {
+  learner
+  admin
+}
+
+enum AdminImportStatus {
+  validation_failed
+  saved
+  ai_failed
+}
+
 model User {
   id                 String   @id @default(cuid())
   email              String?  @unique
   displayName        String?
   anonymousSessionId String?  @unique
+  role               UserRole @default(learner)
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
@@ -52,6 +64,7 @@ model User {
   memoryHooks         KnowledgeItemMemoryHook[]
   diagnosticAttempts  DiagnosticAttempt[]
   studySessions       StudySession[]
+  adminImportRuns     AdminImportRun[]
   authIdentity        AuthUser?
 
   @@map("users")
@@ -309,4 +322,25 @@ model StudySession {
 
   @@index([userId, startedAt])
   @@map("study_sessions")
+}
+
+model AdminImportRun {
+  id               String            @id @default(cuid())
+  adminUserId      String
+  sourceTitle      String?
+  sourceExcerpt    String
+  defaultDomain    String
+  status           AdminImportStatus
+  generatedCount   Int               @default(0)
+  savedCount       Int               @default(0)
+  validationErrors Json?
+  aiOutput         Json?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  adminUser User @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+
+  @@index([adminUserId, createdAt])
+  @@index([status, createdAt])
+  @@map("admin_import_runs")
 }
