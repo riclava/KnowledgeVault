@@ -53,11 +53,11 @@ export function createAdminImportJsonSchema(): AdminImportJsonSchemaFormat {
         defaultDomain: stringSchema,
         items: {
           type: "array",
-          items: { $ref: "#/$defs/item", type: "object" },
+          items: { $ref: "#/$defs/item" },
         },
         relations: {
           type: "array",
-          items: { $ref: "#/$defs/relation", type: "object" },
+          items: { $ref: "#/$defs/relation" },
         },
       },
       $defs: {
@@ -97,9 +97,9 @@ export function createAdminImportJsonSchema(): AdminImportJsonSchemaFormat {
             },
             renderPayload: {
               anyOf: [
-                { $ref: "#/$defs/mathFormulaPayload", type: "object" },
-                { $ref: "#/$defs/vocabularyPayload", type: "object" },
-                { $ref: "#/$defs/plainTextPayload", type: "object" },
+                { $ref: "#/$defs/mathFormulaPayload" },
+                { $ref: "#/$defs/vocabularyPayload" },
+                { $ref: "#/$defs/plainTextPayload" },
               ],
             },
             domain: stringSchema,
@@ -117,11 +117,11 @@ export function createAdminImportJsonSchema(): AdminImportJsonSchemaFormat {
             difficulty: { type: "integer", minimum: 1, maximum: 5 },
             variables: {
               type: "array",
-              items: { $ref: "#/$defs/variable", type: "object" },
+              items: { $ref: "#/$defs/variable" },
             },
             reviewItems: {
               type: "array",
-              items: { $ref: "#/$defs/reviewItem", type: "object" },
+              items: { $ref: "#/$defs/reviewItem" },
             },
           },
         },
@@ -208,7 +208,11 @@ export async function generateAdminImportBatch(
     return generateMockAdminImportBatch(input);
   }
 
-  return generateOpenAiAdminImportBatch(input);
+  if (provider === "openai") {
+    return generateOpenAiAdminImportBatch(input);
+  }
+
+  throw new Error(`Unsupported ADMIN_IMPORT_PROVIDER: ${provider}`);
 }
 
 export async function generateMockAdminImportBatch(
