@@ -12,6 +12,7 @@ export type CurrentLearner = {
     id: string;
     email: string | null;
     displayName: string | null;
+    role: "learner" | "admin";
   };
   anonymous: boolean;
   authSession: AuthSession;
@@ -47,6 +48,7 @@ export async function getCurrentLearner(): Promise<CurrentLearner | null> {
       id: authUser.learner!.id,
       email: authUser.learner!.email,
       displayName: authUser.learner!.displayName,
+      role: authUser.learner!.role,
     },
     anonymous: false,
     authSession,
