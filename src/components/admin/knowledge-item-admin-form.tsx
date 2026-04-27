@@ -181,6 +181,7 @@ export function KnowledgeItemAdminForm({
 
       <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
         <h2 className="text-lg font-semibold">变量</h2>
+        <Label htmlFor="variables">变量明细</Label>
         <Textarea
           id="variables"
           name="variables"
@@ -192,6 +193,7 @@ export function KnowledgeItemAdminForm({
 
       <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
         <h2 className="text-lg font-semibold">复习题</h2>
+        <Label htmlFor="reviewItems">复习题明细</Label>
         <Textarea
           id="reviewItems"
           name="reviewItems"
@@ -203,6 +205,7 @@ export function KnowledgeItemAdminForm({
 
       <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
         <h2 className="text-lg font-semibold">知识关系</h2>
+        <Label htmlFor="relations">知识关系明细</Label>
         <Textarea
           id="relations"
           name="relations"

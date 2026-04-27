@@ -24,4 +24,27 @@ describe("admin knowledge item form", () => {
     assert.match(collectionRoute, /export async function POST/);
     assert.match(itemRoute, /export async function PUT/);
   });
+
+  it("binds PUT saves to the routed item slug", () => {
+    const itemRoute = readFileSync(
+      "src/app/api/admin/knowledge-items/[id]/route.ts",
+      "utf8",
+    );
+
+    assert.match(itemRoute, /const id = normalizeRouteParam\(rawId\)/);
+    assert.match(itemRoute, /await getAdminKnowledgeItem\(id\)/);
+    assert.match(itemRoute, /body\.slug !== knowledgeItem\.slug/);
+    assert.match(itemRoute, /Slug 与当前知识项不匹配/);
+  });
+
+  it("labels structured collection textareas", () => {
+    const form = readFileSync(
+      "src/components/admin/knowledge-item-admin-form.tsx",
+      "utf8",
+    );
+
+    assert.match(form, /htmlFor="variables"/);
+    assert.match(form, /htmlFor="reviewItems"/);
+    assert.match(form, /htmlFor="relations"/);
+  });
 });
