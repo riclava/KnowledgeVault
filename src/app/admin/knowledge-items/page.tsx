@@ -37,8 +37,8 @@ export default async function AdminKnowledgeItemsPage({
         </Link>
       </header>
 
-      <div className="overflow-hidden rounded-lg border bg-background">
-        <table className="w-full text-left text-sm">
+      <div className="overflow-x-auto rounded-lg border bg-background">
+        <table className="min-w-[52rem] w-full text-left text-sm">
           <thead className="border-b bg-muted/50 text-xs text-muted-foreground">
             <tr>
               <th className="px-3 py-2 font-medium">标题</th>
