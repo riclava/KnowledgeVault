@@ -45,6 +45,25 @@ describe("admin UI files", () => {
     assert.doesNotMatch(defaultDomainField, /required/);
   });
 
+  it("marks public and private knowledge items in the admin list", () => {
+    const page = readFileSync(
+      "src/app/admin/knowledge-items/page.tsx",
+      "utf8",
+    );
+    const service = readFileSync(
+      "src/server/admin/admin-knowledge-item-service.ts",
+      "utf8",
+    );
+
+    assert.match(service, /createdByUser/);
+    assert.match(service, /displayName/);
+    assert.match(page, /可见性/);
+    assert.match(page, /item\.visibility === "private"/);
+    assert.match(page, /私有/);
+    assert.match(page, /公共/);
+    assert.match(page, /createdByUser/);
+  });
+
   it("exposes learner private AI import without admin permissions", () => {
     const route = readFileSync("src/app/api/import/route.ts", "utf8");
     const page = readFileSync("src/app/import/page.tsx", "utf8");

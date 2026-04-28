@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { KnowledgeItemDeleteButton } from "@/components/admin/knowledge-item-delete-button";
 import { AdminKnowledgeItemFilterForm } from "@/components/admin/knowledge-item-filter-form";
+import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
   listAdminKnowledgeItemDomains,
@@ -57,6 +58,7 @@ export default async function AdminKnowledgeItemsPage({
               <th className="px-3 py-2 font-medium">标题</th>
               <th className="px-3 py-2 font-medium">类型</th>
               <th className="px-3 py-2 font-medium">领域</th>
+              <th className="px-3 py-2 font-medium">可见性</th>
               <th className="px-3 py-2 font-medium">难度</th>
               <th className="px-3 py-2 font-medium">内容</th>
               <th className="px-3 py-2 text-right font-medium">操作</th>
@@ -82,6 +84,24 @@ export default async function AdminKnowledgeItemsPage({
                         {item.subdomain}
                       </p>
                     ) : null}
+                  </td>
+                  <td className="px-3 py-2">
+                    <div className="grid gap-1">
+                      <Badge
+                        variant={item.visibility === "private" ? "secondary" : "outline"}
+                        className="w-fit"
+                      >
+                        {item.visibility === "private" ? "私有" : "公共"}
+                      </Badge>
+                      {item.visibility === "private" ? (
+                        <p className="max-w-36 truncate text-xs text-muted-foreground">
+                          {item.createdByUser?.displayName ||
+                            item.createdByUser?.email ||
+                            item.createdByUserId ||
+                            "未知创建者"}
+                        </p>
+                      ) : null}
+                    </div>
                   </td>
                   <td className="px-3 py-2 tabular-nums">
                     {item.difficulty}
@@ -112,7 +132,7 @@ export default async function AdminKnowledgeItemsPage({
             ) : (
               <tr>
                 <td
-                  colSpan={6}
+                  colSpan={7}
                   className="px-3 py-8 text-center text-sm text-muted-foreground"
                 >
                   {hasFilters ? "没有匹配的知识项，可清除筛选后再试。" : "还没有知识项。"}

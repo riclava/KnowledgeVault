@@ -51,6 +51,12 @@ export async function listAdminKnowledgeItems(
   return prisma.knowledgeItem.findMany({
     where: buildKnowledgeItemWhere(params),
     include: {
+      createdByUser: {
+        select: {
+          displayName: true,
+          email: true,
+        },
+      },
       _count: {
         select: {
           variables: true,
