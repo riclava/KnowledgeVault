@@ -42,9 +42,9 @@ const navItems: NavItem[] = [
   },
   {
     href: "/import",
-    label: "AI 导入",
+    label: "添加知识",
     icon: Sparkles,
-    description: "把材料导入到我的知识库。",
+    description: "用 AI 把材料整理进我的知识库。",
   },
 ];
 

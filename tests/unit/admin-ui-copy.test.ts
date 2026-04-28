@@ -79,7 +79,8 @@ describe("admin UI files", () => {
     assert.match(route, /savePreviewedLearnerImport/);
     assert.match(page, /endpoint="\/api\/import"/);
     assert.match(page, /导入到我的知识库/);
-    assert.match(shell, /AI 导入/);
+    assert.match(shell, /添加知识/);
+    assert.match(shell, /用 AI 把材料整理进我的知识库。/);
     assert.match(shell, /href: "\/import"/);
     assert.match(importForm, /endpoint = "\/api\/admin\/import"/);
     assert.match(importForm, /fetch\(endpoint/);
