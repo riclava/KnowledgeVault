@@ -115,7 +115,7 @@ export function knowledgeItemRenderPayloadToText(
     return payload.text;
   }
 
-  if (contentType === "concept_card" && "definition" in payload) {
+  if (contentType === "concept_card" && "intuition" in payload) {
     return [
       payload.definition,
       payload.intuition,
@@ -137,10 +137,12 @@ export function knowledgeItemRenderPayloadToText(
         .join("\n");
     }
 
-    return [payload.columns, ...payload.rows]
-      .flat()
-      .filter(Boolean)
-      .join("\n");
+    if ("columns" in payload) {
+      return [payload.columns, ...payload.rows]
+        .flat()
+        .filter(Boolean)
+        .join("\n");
+    }
   }
 
   if (contentType === "procedure" && "steps" in payload) {
