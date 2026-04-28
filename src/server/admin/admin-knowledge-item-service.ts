@@ -23,7 +23,7 @@ export type AdminKnowledgeItemListParams = {
   query?: string;
   domain?: string;
   contentType?: KnowledgeItemType;
-  difficulty?: number;
+  difficulties?: number[];
   tag?: string;
 };
 
@@ -33,14 +33,14 @@ export function normalizeAdminKnowledgeItemSearchParams(
   const query = trimmedParam(searchParams, "query");
   const domain = trimmedParam(searchParams, "domain");
   const contentType = normalizeContentType(searchParams.get("contentType"));
-  const difficulty = normalizeDifficulty(searchParams.get("difficulty"));
+  const difficulties = normalizeDifficulties(searchParams.getAll("difficulty"));
   const tag = trimmedParam(searchParams, "tag");
 
   return {
     ...(query ? { query } : {}),
     ...(domain ? { domain } : {}),
     ...(contentType ? { contentType } : {}),
-    ...(difficulty !== undefined ? { difficulty } : {}),
+    ...(difficulties.length > 0 ? { difficulties } : {}),
     ...(tag ? { tag } : {}),
   };
 }
@@ -65,6 +65,20 @@ export async function listAdminKnowledgeItems(
     },
     orderBy: { updatedAt: "desc" },
   });
+}
+
+export async function listAdminKnowledgeItemDomains() {
+  const rows = await prisma.knowledgeItem.findMany({
+    distinct: ["domain"],
+    select: {
+      domain: true,
+    },
+    orderBy: {
+      domain: "asc",
+    },
+  });
+
+  return rows.map((row) => row.domain);
 }
 
 export async function getAdminKnowledgeItem(idOrSlug: string) {
@@ -172,8 +186,8 @@ function buildKnowledgeItemWhere(
   const where: Prisma.KnowledgeItemWhereInput = {
     ...(params.domain ? { domain: params.domain } : {}),
     ...(params.contentType ? { contentType: params.contentType } : {}),
-    ...(typeof params.difficulty === "number"
-      ? { difficulty: params.difficulty }
+    ...(params.difficulties && params.difficulties.length > 0
+      ? { difficulty: { in: params.difficulties } }
       : {}),
     ...(params.tag ? { tags: { has: params.tag } } : {}),
   };
@@ -201,16 +215,20 @@ function normalizeContentType(value: string | null) {
   return normalized as KnowledgeItemType;
 }
 
-function normalizeDifficulty(value: string | null) {
-  const normalized = value?.trim();
+function normalizeDifficulties(values: string[]) {
+  const difficulties = values.flatMap((value) => {
+    const normalized = value.trim();
 
-  if (!normalized) {
-    return undefined;
-  }
+    if (!normalized) {
+      return [];
+    }
 
-  const difficulty = Number(normalized);
+    const difficulty = Number(normalized);
 
-  return Number.isInteger(difficulty) ? difficulty : undefined;
+    return Number.isInteger(difficulty) ? [difficulty] : [];
+  });
+
+  return unique(difficulties);
 }
 
 function trimmedParam(searchParams: URLSearchParams, key: string) {

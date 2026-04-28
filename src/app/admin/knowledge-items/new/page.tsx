@@ -5,11 +5,11 @@ import { buttonVariants } from "@/components/ui/button";
 
 export default function NewAdminKnowledgeItemPage() {
   return (
-    <div className="grid max-w-6xl gap-5">
-      <header className="flex flex-col gap-3 border-b pb-4 sm:flex-row sm:items-start sm:justify-between">
+    <div className="grid max-w-7xl gap-4">
+      <header className="flex flex-col gap-3 border-b pb-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="grid gap-1">
-          <h1 className="text-2xl font-semibold tracking-tight">新建知识项</h1>
-          <p className="max-w-2xl text-sm leading-6 text-muted-foreground">
+          <h1 className="text-xl font-semibold tracking-tight">新建知识项</h1>
+          <p className="max-w-2xl text-sm leading-5 text-muted-foreground">
             创建一个可训练的知识项：先填可识别的基础信息，再补内容、复习题和必要的变量关系。
           </p>
         </div>

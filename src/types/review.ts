@@ -2,7 +2,7 @@ import type { KnowledgeItemSummary } from "@/types/knowledge-item";
 
 export type ReviewGrade = "again" | "hard" | "good" | "easy";
 export type ReviewItemKind = "recall" | "recognition" | "application";
-export type ReviewHintSource = "memory_hook" | "one_line_use";
+export type ReviewHintSource = "memory_hook" | "one_line_use" | "ai";
 export type ReviewMode = "today" | "weak";
 
 export type ReviewQueueItem = {

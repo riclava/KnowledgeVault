@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { buildKnowledgeItemVisibilityWhere } from "@/server/repositories/knowledge-item-visibility";
 import type { DiagnosticAssessment } from "@/types/diagnostic";
 
 const diagnosticQuestionInclude = {
@@ -20,15 +21,18 @@ const diagnosticQuestionInclude = {
 
 export async function listDiagnosticReviewItems({
   domain,
+  userId,
   take,
 }: {
   domain: string;
+  userId?: string;
   take: number;
 }) {
   return prisma.reviewItem.findMany({
     where: {
       isActive: true,
       knowledgeItem: {
+        ...buildKnowledgeItemVisibilityWhere(userId),
         domain,
       },
     },
@@ -48,9 +52,11 @@ export async function listDiagnosticReviewItems({
 export async function listReviewItemsByIds({
   domain,
   reviewItemIds,
+  userId,
 }: {
   domain: string;
   reviewItemIds: string[];
+  userId?: string;
 }) {
   return prisma.reviewItem.findMany({
     where: {
@@ -59,6 +65,7 @@ export async function listReviewItemsByIds({
       },
       isActive: true,
       knowledgeItem: {
+        ...buildKnowledgeItemVisibilityWhere(userId),
         domain,
       },
     },

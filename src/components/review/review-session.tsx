@@ -10,6 +10,7 @@ import {
   Loader2,
   RotateCcw,
 } from "lucide-react";
+import { toast } from "sonner";
 
 import { KnowledgeItemRenderer } from "@/components/knowledge-item/renderers/knowledge-item-renderer";
 import { ReviewRemediationSheet } from "@/components/review/review-remediation-sheet";
@@ -76,7 +77,6 @@ export function ReviewSession({
   } | null>(null);
   const [isRemediationOpen, setIsRemediationOpen] = useState(false);
   const [completedSessionId, setCompletedSessionId] = useState<string | null>(null);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -205,12 +205,6 @@ export function ReviewSession({
           {error ? (
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
               {error}
-            </div>
-          ) : null}
-
-          {statusMessage ? (
-            <div className="rounded-lg border border-success/25 bg-success/10 px-4 py-3 text-sm text-success">
-              {statusMessage}
             </div>
           ) : null}
 
@@ -459,12 +453,12 @@ export function ReviewSession({
           throw new Error(payload.error ?? "稍后再练失败");
         }
 
-        setStatusMessage("已放到今天队尾，约 10 分钟后再见。");
+        toast.success("已放到今天队尾，约 10 分钟后再见。");
         moveToNextItem();
       } catch (deferError) {
-        setError(
-          deferError instanceof Error ? deferError.message : "稍后再练失败",
-        );
+        const message = deferError instanceof Error ? deferError.message : "稍后再练失败";
+        setError(message);
+        toast.error(message);
       }
     });
   }
@@ -481,6 +475,7 @@ export function ReviewSession({
 
     if (!content) {
       setError("先写一句你下次能看懂的提醒。");
+      toast.error("先写一句你下次能看懂的提醒。");
       return;
     }
 
@@ -508,11 +503,13 @@ export function ReviewSession({
         setSavedHookKnowledgeItemIds((previous) =>
           previous.includes(item.knowledgeItemId) ? previous : [...previous, item.knowledgeItemId],
         );
-        setStatusMessage("已保存为这条知识项的下次提示。");
         setError(null);
+        toast.success("已保存为这条知识项的下次提示。");
         afterSave?.();
       } catch (saveError) {
-        setError(saveError instanceof Error ? saveError.message : "提醒保存失败");
+        const message = saveError instanceof Error ? saveError.message : "提醒保存失败";
+        setError(message);
+        toast.error(message);
       }
     });
   }
@@ -523,6 +520,7 @@ export function ReviewSession({
   ) {
     if (!session?.sessionId) {
       setError("当前复习 session 不可用");
+      toast.error("当前复习 session 不可用");
       return;
     }
 
@@ -574,9 +572,9 @@ export function ReviewSession({
 
         moveToNextItem();
       } catch (submitError) {
-        setError(
-          submitError instanceof Error ? submitError.message : "复习提交失败",
-        );
+        const message = submitError instanceof Error ? submitError.message : "复习提交失败";
+        setError(message);
+        toast.error(message);
       }
     });
   }

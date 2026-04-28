@@ -30,6 +30,21 @@ describe("learner interaction UX regressions", () => {
     assert.match(input, /"h-10 w-full/);
   });
 
+  it("uses the shadcn select for switching learning domains", () => {
+    const domainSelector = readFileSync(
+      "src/components/app/learning-domain-selector.tsx",
+      "utf8",
+    );
+
+    assert.match(domainSelector, /@\/components\/ui\/select/);
+    assert.match(domainSelector, /SelectTrigger/);
+    assert.match(domainSelector, /SelectContent/);
+    assert.match(domainSelector, /SelectItem/);
+    assert.match(domainSelector, /onValueChange=\{handleChange\}/);
+    assert.match(domainSelector, /value=\{currentDomain\}/);
+    assert.doesNotMatch(domainSelector, /<select/);
+  });
+
   it("makes Again and Hard remediation an explicit save-or-skip step", () => {
     const reviewSession = readFileSync(
       "src/components/review/review-session.tsx",
@@ -59,8 +74,8 @@ describe("learner interaction UX regressions", () => {
   });
 
   it("exposes admin filtering and human-readable import results", () => {
-    const adminList = readFileSync(
-      "src/app/admin/knowledge-items/page.tsx",
+    const adminFilterForm = readFileSync(
+      "src/components/admin/knowledge-item-filter-form.tsx",
       "utf8",
     );
     const importForm = readFileSync(
@@ -68,11 +83,11 @@ describe("learner interaction UX regressions", () => {
       "utf8",
     );
 
-    assert.match(adminList, /name="query"/);
-    assert.match(adminList, /name="contentType"/);
-    assert.match(adminList, /清除筛选/);
+    assert.match(adminFilterForm, /name="query"/);
+    assert.match(adminFilterForm, /name="contentType"/);
+    assert.match(adminFilterForm, /清除筛选/);
     assert.match(importForm, /导入完成/);
-    assert.match(importForm, /调试详情/);
+    assert.match(importForm, /结构化预览/);
   });
 
   it("supports password visibility and field-level auth errors", () => {

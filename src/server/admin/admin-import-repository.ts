@@ -5,9 +5,13 @@ import type {
   AdminImportBatch,
   AdminImportValidationError,
 } from "@/server/admin/admin-import-types";
+import { buildOwnedKnowledgeItemData } from "@/server/repositories/knowledge-item-visibility";
 
 type ExistingSlugToId = Map<string, string>;
 type TransactionClient = Parameters<Parameters<typeof prisma.$transaction>[0]>[0];
+type ImportSaveScope =
+  | { scope: "admin" }
+  | { scope: "learner"; userId: string };
 
 export type AdminImportWritePlan = {
   createSlugs: string[];
@@ -57,6 +61,46 @@ export function partitionReviewItemIdsForReplacement(
   );
 }
 
+export function buildPrivateImportSlugMap({
+  requestedSlugs,
+  occupiedSlugs,
+  namespace,
+}: {
+  requestedSlugs: string[];
+  occupiedSlugs: Set<string>;
+  namespace: string;
+}) {
+  const suffix = namespace.replace(/[^a-zA-Z0-9]/g, "").slice(0, 8) || "private";
+
+  return new Map(
+    requestedSlugs.map((slug) => [
+      slug,
+      occupiedSlugs.has(slug) ? `${slug}-${suffix}` : slug,
+    ]),
+  );
+}
+
+export function buildInitialImportedKnowledgeItemState({
+  userId,
+  knowledgeItemId,
+  difficulty,
+  now,
+}: {
+  userId: string;
+  knowledgeItemId: string;
+  difficulty: number;
+  now: Date;
+}) {
+  return {
+    userId,
+    knowledgeItemId,
+    memoryStrength: 0.05,
+    stability: 0,
+    difficultyEstimate: difficulty,
+    nextReviewAt: now,
+  };
+}
+
 export async function listExistingKnowledgeItemIdsBySlug(slugs: string[]) {
   return listExistingKnowledgeItemIdsBySlugWithClient(prisma, slugs);
 }
@@ -97,20 +141,57 @@ export async function createAdminImportRun({
   });
 }
 
+export async function getAdminImportRunForAdmin({
+  id,
+  adminUserId,
+}: {
+  id: string;
+  adminUserId: string;
+}) {
+  return prisma.adminImportRun.findFirst({
+    where: {
+      id,
+      adminUserId,
+    },
+  });
+}
+
+export async function markAdminImportRunValidationFailed({
+  id,
+  validationErrors,
+}: {
+  id: string;
+  validationErrors: AdminImportValidationError[];
+}) {
+  return prisma.adminImportRun.update({
+    where: { id },
+    data: {
+      status: "validation_failed",
+      savedCount: 0,
+      validationErrors: toNullableJsonInput(validationErrors),
+    },
+  });
+}
+
 export async function saveAdminImportBatch({
   adminUserId,
   sourceTitle,
   sourceExcerpt,
   batch,
   aiOutput,
+  importRunId,
+  saveScope = { scope: "admin" },
 }: {
   adminUserId: string;
   sourceTitle?: string;
   sourceExcerpt: string;
   batch: AdminImportBatch;
   aiOutput?: unknown;
+  importRunId?: string;
+  saveScope?: ImportSaveScope;
 }) {
   return prisma.$transaction(async (tx) => {
+    const now = new Date();
     const referencedSlugs = unique([
       ...batch.items.map((item) => item.slug),
       ...batch.relations.map((relation) => relation.fromSlug),
@@ -120,23 +201,37 @@ export async function saveAdminImportBatch({
       tx,
       referencedSlugs,
     );
+    const generatedSlugToSavedSlug =
+      saveScope.scope === "learner"
+        ? buildPrivateImportSlugMap({
+            requestedSlugs: batch.items.map((item) => item.slug),
+            occupiedSlugs: new Set(slugToId.keys()),
+            namespace: importRunId ?? saveScope.userId,
+          })
+        : new Map(batch.items.map((item) => [item.slug, item.slug]));
 
     for (const item of batch.items) {
-      const savedItem = slugToId.has(item.slug)
+      const savedSlug = generatedSlugToSavedSlug.get(item.slug) ?? item.slug;
+      const savedItem = saveScope.scope === "admin" && slugToId.has(savedSlug)
         ? await tx.knowledgeItem.update({
-            where: { slug: item.slug },
-            data: toKnowledgeItemData(item),
+            where: { slug: savedSlug },
+            data: {
+              ...toKnowledgeItemData(item),
+              ...buildOwnedKnowledgeItemData({ scope: "admin" }),
+            },
             select: { id: true, slug: true },
           })
         : await tx.knowledgeItem.create({
             data: {
               ...toKnowledgeItemData(item),
-              slug: item.slug,
+              ...buildOwnedKnowledgeItemData(saveScope),
+              slug: savedSlug,
             },
             select: { id: true, slug: true },
           });
 
       slugToId.set(savedItem.slug, savedItem.id);
+      slugToId.set(item.slug, savedItem.id);
 
       await tx.knowledgeItemVariable.deleteMany({
         where: { knowledgeItemId: savedItem.id },
@@ -193,6 +288,29 @@ export async function saveAdminImportBatch({
           })),
         });
       }
+
+      if (saveScope.scope === "learner") {
+        await tx.userKnowledgeItemState.upsert({
+          where: {
+            userId_knowledgeItemId: {
+              userId: saveScope.userId,
+              knowledgeItemId: savedItem.id,
+            },
+          },
+          create: buildInitialImportedKnowledgeItemState({
+            userId: saveScope.userId,
+            knowledgeItemId: savedItem.id,
+            difficulty: item.difficulty,
+            now,
+          }),
+          update: buildInitialImportedKnowledgeItemState({
+            userId: saveScope.userId,
+            knowledgeItemId: savedItem.id,
+            difficulty: item.difficulty,
+            now,
+          }),
+        });
+      }
     }
 
     const relationSourceIds = unique(
@@ -218,18 +336,27 @@ export async function saveAdminImportBatch({
       });
     }
 
+    const importRunData = {
+      adminUserId,
+      sourceTitle: sourceTitle ?? batch.sourceTitle ?? null,
+      sourceExcerpt,
+      defaultDomain: batch.defaultDomain ?? "",
+      status: "saved" as const,
+      generatedCount: batch.items.length,
+      savedCount: batch.items.length,
+      validationErrors: Prisma.JsonNull,
+      aiOutput: toNullableJsonInput(aiOutput),
+    };
+
+    if (importRunId) {
+      return tx.adminImportRun.update({
+        where: { id: importRunId },
+        data: importRunData,
+      });
+    }
+
     return tx.adminImportRun.create({
-      data: {
-        adminUserId,
-        sourceTitle: sourceTitle ?? batch.sourceTitle ?? null,
-        sourceExcerpt,
-        defaultDomain: batch.defaultDomain ?? "",
-        status: "saved",
-        generatedCount: batch.items.length,
-        savedCount: batch.items.length,
-        validationErrors: Prisma.JsonNull,
-        aiOutput: toNullableJsonInput(aiOutput),
-      },
+      data: importRunData,
     });
   });
 }

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db/prisma";
 import type { Prisma } from "@/generated/prisma/client";
+import { buildKnowledgeItemVisibilityWhere } from "@/server/repositories/knowledge-item-visibility";
 
 function buildKnowledgeItemSummaryInclude(userId?: string) {
   return {
@@ -97,77 +98,92 @@ export async function listKnowledgeItems({
   const queryTokens = normalizedQuery
     ? normalizedQuery.split(/\s+/).filter(Boolean)
     : [];
+  const filters: Prisma.KnowledgeItemWhereInput[] = [
+    buildKnowledgeItemVisibilityWhere(userId),
+  ];
+
+  if (domain) {
+    filters.push({ domain });
+  }
+
+  if (tag) {
+    filters.push({ tags: { has: tag } });
+  }
+
+  if (typeof difficulty === "number") {
+    filters.push({ difficulty });
+  }
+
+  if (normalizedQuery) {
+    filters.push({
+      OR: [
+        {
+          title: {
+            contains: normalizedQuery,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          summary: {
+            contains: normalizedQuery,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          body: {
+            contains: normalizedQuery,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          subdomain: {
+            contains: normalizedQuery,
+            mode: "insensitive" as const,
+          },
+        },
+        {
+          variables: {
+            some: {
+              OR: [
+                {
+                  symbol: {
+                    contains: normalizedQuery,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  name: {
+                    contains: normalizedQuery,
+                    mode: "insensitive" as const,
+                  },
+                },
+                {
+                  description: {
+                    contains: normalizedQuery,
+                    mode: "insensitive" as const,
+                  },
+                },
+              ],
+            },
+          },
+        },
+        ...(queryTokens.length > 0 ? [{ tags: { hasSome: queryTokens } }] : []),
+      ],
+    });
+  }
 
   return prisma.knowledgeItem.findMany({
     where: {
-      ...(domain ? { domain } : {}),
-      ...(tag ? { tags: { has: tag } } : {}),
-      ...(typeof difficulty === "number" ? { difficulty } : {}),
-      ...(normalizedQuery
-        ? {
-            OR: [
-              {
-                title: {
-                  contains: normalizedQuery,
-                  mode: "insensitive" as const,
-                },
-              },
-              {
-                summary: {
-                  contains: normalizedQuery,
-                  mode: "insensitive" as const,
-                },
-              },
-              {
-                body: {
-                  contains: normalizedQuery,
-                  mode: "insensitive" as const,
-                },
-              },
-              {
-                subdomain: {
-                  contains: normalizedQuery,
-                  mode: "insensitive" as const,
-                },
-              },
-              {
-                variables: {
-                  some: {
-                    OR: [
-                      {
-                        symbol: {
-                          contains: normalizedQuery,
-                          mode: "insensitive" as const,
-                        },
-                      },
-                      {
-                        name: {
-                          contains: normalizedQuery,
-                          mode: "insensitive" as const,
-                        },
-                      },
-                      {
-                        description: {
-                          contains: normalizedQuery,
-                          mode: "insensitive" as const,
-                        },
-                      },
-                    ],
-                  },
-                },
-              },
-              ...(queryTokens.length > 0 ? [{ tags: { hasSome: queryTokens } }] : []),
-            ],
-          }
-        : {}),
+      AND: filters,
     },
     include: buildKnowledgeItemSummaryInclude(userId),
     orderBy: [{ domain: "asc" }, { difficulty: "asc" }, { title: "asc" }],
   });
 }
 
-export async function listKnowledgeItemDomains() {
+export async function listKnowledgeItemDomains(userId?: string) {
   const rows = await prisma.knowledgeItem.findMany({
+    where: buildKnowledgeItemVisibilityWhere(userId),
     distinct: ["domain"],
     select: {
       domain: true,
@@ -180,19 +196,54 @@ export async function listKnowledgeItemDomains() {
   return rows.map((row) => row.domain);
 }
 
-export async function getKnowledgeItemByIdOrSlug(idOrSlug: string) {
+export async function getKnowledgeItemByIdOrSlug(
+  idOrSlug: string,
+  userId?: string,
+) {
   return prisma.knowledgeItem.findFirst({
     where: {
-      OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      AND: [
+        buildKnowledgeItemVisibilityWhere(userId),
+        { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      ],
     },
     include: knowledgeItemDetailInclude,
   });
 }
 
-export async function listKnowledgeItemRelations(idOrSlug: string) {
+export async function getKnowledgeItemMemoryHookDraftSource(
+  idOrSlug: string,
+  userId?: string,
+) {
+  return prisma.knowledgeItem.findFirst({
+    where: {
+      AND: [
+        buildKnowledgeItemVisibilityWhere(userId),
+        { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      ],
+    },
+    select: {
+      id: true,
+      title: true,
+      summary: true,
+      body: true,
+      intuition: true,
+      useConditions: true,
+      antiPatterns: true,
+    },
+  });
+}
+
+export async function listKnowledgeItemRelations(
+  idOrSlug: string,
+  userId?: string,
+) {
   const knowledgeItem = await prisma.knowledgeItem.findFirst({
     where: {
-      OR: [{ id: idOrSlug }, { slug: idOrSlug }],
+      AND: [
+        buildKnowledgeItemVisibilityWhere(userId),
+        { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      ],
     },
     select: {
       id: true,
@@ -206,10 +257,11 @@ export async function listKnowledgeItemRelations(idOrSlug: string) {
   return prisma.knowledgeItemRelation.findMany({
     where: {
       fromKnowledgeItemId: knowledgeItem.id,
+      toKnowledgeItem: buildKnowledgeItemVisibilityWhere(userId),
     },
     include: {
       toKnowledgeItem: {
-        include: buildKnowledgeItemSummaryInclude(),
+        include: buildKnowledgeItemSummaryInclude(userId),
       },
     },
     orderBy: [{ relationType: "asc" }, { createdAt: "asc" }],
@@ -229,7 +281,10 @@ export async function listKnowledgeItemMemoryHooks({
 
   const knowledgeItem = await prisma.knowledgeItem.findFirst({
     where: {
-      OR: [{ id: knowledgeItemIdOrSlug }, { slug: knowledgeItemIdOrSlug }],
+      AND: [
+        buildKnowledgeItemVisibilityWhere(userId),
+        { OR: [{ id: knowledgeItemIdOrSlug }, { slug: knowledgeItemIdOrSlug }] },
+      ],
     },
     select: {
       id: true,
@@ -260,7 +315,10 @@ export async function saveUserKnowledgeItemMemoryHook({
 }) {
   const knowledgeItem = await prisma.knowledgeItem.findFirst({
     where: {
-      OR: [{ id: knowledgeItemIdOrSlug }, { slug: knowledgeItemIdOrSlug }],
+      AND: [
+        buildKnowledgeItemVisibilityWhere(userId),
+        { OR: [{ id: knowledgeItemIdOrSlug }, { slug: knowledgeItemIdOrSlug }] },
+      ],
     },
     select: {
       id: true,
@@ -300,6 +358,9 @@ export async function getKnowledgeItemMemoryHookById({
     where: {
       id: hookId,
       ...(userId ? { userId } : {}),
+      ...(userId
+        ? { knowledgeItem: buildKnowledgeItemVisibilityWhere(userId) }
+        : {}),
     },
     include: {
       knowledgeItem: {

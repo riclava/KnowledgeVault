@@ -10,8 +10,9 @@ export type LearningDomainContext = {
 
 export async function resolveLearningDomain(
   requestedDomain?: string | null,
+  userId?: string,
 ): Promise<LearningDomainContext> {
-  const domains = await getKnowledgeItemDomains();
+  const domains = await getKnowledgeItemDomains(userId);
   const cookieStore = await cookies();
   const cookieDomain = decodeCookieValue(
     cookieStore.get(LEARNING_DOMAIN_COOKIE)?.value,

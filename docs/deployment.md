@@ -9,6 +9,14 @@ KnowledgeVault V1 Alpha 推荐部署到 Vercel，数据库使用任意兼容 Pos
 - `BETTER_AUTH_SECRET`：Better Auth 使用的签名密钥，生产环境必须使用高熵随机值。
 - `BETTER_AUTH_URL`：Better Auth 对外可访问的完整站点地址，通常与 `NEXT_PUBLIC_APP_URL` 一致。
 
+## 可选 AI 环境变量
+
+- `AI_PROVIDER`：`mock`、`deepseek`、`kimi` 或 `custom`。生产接入 DeepSeek/Kimi 时不要使用 `mock`。
+- `AI_API_KEY`：AI 服务商 API key，必须只配置在部署平台环境变量中。
+- `AI_BASE_URL`：自定义 OpenAI-compatible 服务地址；DeepSeek/Kimi 可省略使用默认值。
+- `AI_MODEL`：模型名，例如 DeepSeek 可用 `deepseek-chat`。
+- `ADMIN_IMPORT_PROVIDER`：可选覆盖项。通常不用配置，后台 AI 导入会跟随 `AI_PROVIDER`；只在需要强制 `mock`、`ai`、`deepseek`、`kimi` 或 `custom` 时设置。
+
 ## Vercel 配置
 
 仓库根目录已包含 `vercel.json`，指定：

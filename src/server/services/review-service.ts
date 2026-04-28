@@ -18,6 +18,7 @@ import {
   REVIEW_TYPE_CYCLE,
 } from "@/server/services/review-rules";
 import { normalizeKnowledgeItemRenderPayload } from "@/lib/knowledge-item-render-payload";
+import { chatText, type AiEnv } from "@/server/ai/openai-compatible";
 import type {
   ReviewHint,
   ReviewMode,
@@ -120,6 +121,7 @@ export async function submitReview({
     getActiveReviewItemForKnowledgeItem({
       reviewItemId: input.reviewItemId,
       knowledgeItemId: input.knowledgeItemId,
+      userId,
     }),
   ]);
 
@@ -216,12 +218,82 @@ export async function getReviewHint({
     };
   }
 
+  const aiHint = await generateAiReviewHint({
+    knowledgeItem: state.knowledgeItem,
+    reviewItem: state.knowledgeItem.reviewItems[0] ?? null,
+  });
+
+  if (aiHint) {
+    return {
+      knowledgeItemId,
+      content: aiHint,
+      source: "ai",
+      memoryHookUsedId: null,
+    };
+  }
+
   return {
     knowledgeItemId,
     content: state.knowledgeItem.summary,
     source: "one_line_use",
     memoryHookUsedId: null,
   };
+}
+
+export async function generateAiReviewHint({
+  knowledgeItem,
+  reviewItem,
+  env,
+  fetcher,
+}: {
+  knowledgeItem: {
+    title: string;
+    summary: string;
+    body: string;
+  };
+  reviewItem: {
+    prompt: string;
+    answer: string;
+    explanation: string | null;
+  } | null;
+  env?: AiEnv;
+  fetcher?: typeof fetch;
+}) {
+  if (!reviewItem) {
+    return null;
+  }
+
+  try {
+    const hint = await chatText({
+      env,
+      fetcher,
+      maxTokens: 120,
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content:
+            "你是 KnowledgeVault 的复习提示助手。主要使用中文，生成一句中文提示，帮助学习者回忆思路，但不要直接泄露答案、公式最终结果或完整解法。只输出提示本身。",
+        },
+        {
+          role: "user",
+          content: [
+            `知识项：${knowledgeItem.title}`,
+            `摘要：${knowledgeItem.summary}`,
+            `正文：${knowledgeItem.body}`,
+            `题目：${reviewItem.prompt}`,
+            `答案（仅供你避开直给答案）：${reviewItem.answer}`,
+            `解释：${reviewItem.explanation ?? ""}`,
+            "请给一句不超过 40 个中文字符的提示。",
+          ].join("\n"),
+        },
+      ],
+    });
+
+    return hint || null;
+  } catch {
+    return null;
+  }
 }
 
 function selectReviewQueueItem({

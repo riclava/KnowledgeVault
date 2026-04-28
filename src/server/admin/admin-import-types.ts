@@ -63,6 +63,7 @@ export type AdminImportValidationErrorCode =
   | "missing_item_field"
   | "invalid_content_type"
   | "invalid_render_payload"
+  | "non_chinese_domain"
   | "invalid_difficulty"
   | "invalid_array_field"
   | "missing_review_item"

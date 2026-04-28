@@ -3,6 +3,7 @@ import {
   Brain,
   ClipboardCheck,
   FlaskConical,
+  Sparkles,
   Target,
 } from "lucide-react";
 
@@ -38,6 +39,12 @@ const navItems: NavItem[] = [
     label: "诊断",
     icon: Brain,
     description: "校准薄弱点并生成起始队列。",
+  },
+  {
+    href: "/import",
+    label: "AI 导入",
+    icon: Sparkles,
+    description: "把材料导入到我的知识库。",
   },
 ];
 

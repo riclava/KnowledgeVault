@@ -37,6 +37,42 @@ describe("admin knowledge item form", () => {
     assert.match(itemRoute, /Slug 与当前知识项不匹配/);
   });
 
+  it("exposes delete actions from the admin list and edit form", () => {
+    const listPage = readFileSync(
+      "src/app/admin/knowledge-items/page.tsx",
+      "utf8",
+    );
+    const editPage = readFileSync(
+      "src/app/admin/knowledge-items/[id]/edit/page.tsx",
+      "utf8",
+    );
+    const form = readFileSync(
+      "src/components/admin/knowledge-item-admin-form.tsx",
+      "utf8",
+    );
+    const deleteButton = readFileSync(
+      "src/components/admin/knowledge-item-delete-button.tsx",
+      "utf8",
+    );
+    const itemRoute = readFileSync(
+      "src/app/api/admin/knowledge-items/[id]/route.ts",
+      "utf8",
+    );
+
+    assert.match(listPage, /KnowledgeItemDeleteButton/);
+    assert.match(listPage, /endpoint=\{`\/api\/admin\/knowledge-items\/\$\{item\.id\}`\}/);
+    assert.match(editPage, /deleteEndpoint=\{`\/api\/admin\/knowledge-items\/\$\{item\.id\}`\}/);
+    assert.match(form, /deleteEndpoint/);
+    assert.match(form, /删除知识项/);
+    assert.match(deleteButton, /"use client"/);
+    assert.match(deleteButton, /toast\("确认删除知识项"/);
+    assert.match(deleteButton, /method: "DELETE"/);
+    assert.match(deleteButton, /router\.refresh\(\)/);
+    assert.match(deleteButton, /\{isPending \? "删除中\.\.\." : "删除"\}/);
+    assert.match(itemRoute, /export async function DELETE/);
+    assert.match(itemRoute, /await deleteAdminKnowledgeItem\(knowledgeItem\.id\)/);
+  });
+
   it("labels structured collection textareas", () => {
     const form = readFileSync(
       "src/components/admin/knowledge-item-admin-form.tsx",
@@ -88,6 +124,5 @@ describe("admin knowledge item form", () => {
     assert.match(form, /FormSection/);
     assert.match(form, /advanced/);
     assert.match(form, /创建知识项/);
-    assert.match(form, /回到知识项列表/);
   });
 });

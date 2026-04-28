@@ -1,6 +1,7 @@
 import {
   deleteUserKnowledgeItemMemoryHook,
   getKnowledgeItemByIdOrSlug,
+  getKnowledgeItemMemoryHookDraftSource,
   listKnowledgeItemRelations,
   listKnowledgeItemDomains,
   listKnowledgeItemMemoryHooks,
@@ -8,6 +9,7 @@ import {
   saveUserKnowledgeItemMemoryHook,
 } from "@/server/repositories/knowledge-item-repository";
 import { normalizeKnowledgeItemRenderPayload } from "@/lib/knowledge-item-render-payload";
+import { chatText, type AiEnv } from "@/server/ai/openai-compatible";
 import type {
   KnowledgeItemDetail,
   KnowledgeItemRelationDetail,
@@ -53,14 +55,15 @@ export async function getKnowledgeItemSummaries(params?: {
     });
 }
 
-export async function getKnowledgeItemDomains() {
-  return listKnowledgeItemDomains();
+export async function getKnowledgeItemDomains(userId?: string) {
+  return listKnowledgeItemDomains(userId);
 }
 
 export async function getKnowledgeItemDetail(
   idOrSlug: string,
+  userId?: string,
 ): Promise<KnowledgeItemDetail | null> {
-  const knowledgeItem = await getKnowledgeItemByIdOrSlug(idOrSlug);
+  const knowledgeItem = await getKnowledgeItemByIdOrSlug(idOrSlug, userId);
 
   if (!knowledgeItem) {
     return null;
@@ -71,8 +74,9 @@ export async function getKnowledgeItemDetail(
 
 export async function getKnowledgeItemRelationDetails(
   idOrSlug: string,
+  userId?: string,
 ): Promise<KnowledgeItemRelationDetail[] | null> {
-  const relations = await listKnowledgeItemRelations(idOrSlug);
+  const relations = await listKnowledgeItemRelations(idOrSlug, userId);
 
   if (!relations) {
     return null;
@@ -133,6 +137,84 @@ export async function removeMemoryHook({
     hookId,
     userId,
   });
+}
+
+export async function draftKnowledgeItemMemoryHook({
+  knowledgeItemIdOrSlug,
+  userId,
+}: {
+  knowledgeItemIdOrSlug: string;
+  userId?: string;
+}) {
+  const knowledgeItem = await getKnowledgeItemMemoryHookDraftSource(
+    knowledgeItemIdOrSlug,
+    userId,
+  );
+
+  if (!knowledgeItem) {
+    return null;
+  }
+
+  const content = await generateAiMemoryHookDraft({
+    knowledgeItem,
+  });
+
+  if (!content) {
+    throw new Error("AI 暂时无法生成提示，请稍后重试。");
+  }
+
+  return {
+    content,
+  };
+}
+
+export async function generateAiMemoryHookDraft({
+  knowledgeItem,
+  env,
+  fetcher,
+}: {
+  knowledgeItem: {
+    title: string;
+    summary: string;
+    body: string;
+    intuition: string | null;
+    useConditions: string[];
+    antiPatterns: string[];
+  };
+  env?: AiEnv;
+  fetcher?: typeof fetch;
+}) {
+  try {
+    const draft = await chatText({
+      env,
+      fetcher,
+      maxTokens: 120,
+      temperature: 0.2,
+      messages: [
+        {
+          role: "system",
+          content:
+            "你是 KnowledgeVault 的记忆提示助手。主要使用中文，用第一人称提醒自己如何回忆这个知识点。只输出一句中文提示，不要解释。",
+        },
+        {
+          role: "user",
+          content: [
+            `知识项：${knowledgeItem.title}`,
+            `摘要：${knowledgeItem.summary}`,
+            `正文：${knowledgeItem.body}`,
+            `直觉：${knowledgeItem.intuition ?? ""}`,
+            `适用条件：${knowledgeItem.useConditions.join("；")}`,
+            `常见误区：${knowledgeItem.antiPatterns.join("；")}`,
+            "请生成一句不超过 40 个中文字符、下次复习时能直接使用的个人提示。",
+          ].join("\n"),
+        },
+      ],
+    });
+
+    return draft || null;
+  } catch {
+    return null;
+  }
 }
 
 function toKnowledgeItemSummary(

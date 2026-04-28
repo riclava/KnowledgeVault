@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
 
-import { withAdminApi } from "@/server/admin/admin-auth";
+import { withAuthenticatedApi } from "@/server/auth/current-learner";
 import {
   normalizeAdminImportActionRequest,
-  previewAdminImport,
-  savePreviewedAdminImport,
+  previewLearnerImport,
+  savePreviewedLearnerImport,
 } from "@/server/admin/admin-import-service";
 
 export async function POST(request: Request) {
-  return withAdminApi(async (admin) => {
+  return withAuthenticatedApi(async (current) => {
     let action;
 
     try {
@@ -26,12 +26,12 @@ export async function POST(request: Request) {
 
     try {
       result = action.mode === "preview"
-        ? await previewAdminImport({
-            adminUserId: admin.id,
+        ? await previewLearnerImport({
+            userId: current.learner.id,
             input: action.input,
           })
-        : await savePreviewedAdminImport({
-            adminUserId: admin.id,
+        : await savePreviewedLearnerImport({
+            userId: current.learner.id,
             importRunId: action.importRunId,
           });
     } catch (error) {

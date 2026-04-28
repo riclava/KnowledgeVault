@@ -3,7 +3,6 @@ import { describe, it } from "node:test";
 
 import {
   createAdminImportJsonSchema,
-  extractResponseOutputText,
   generateAdminImportBatch,
   generateMockAdminImportBatch,
 } from "@/server/admin/admin-import-ai";
@@ -106,24 +105,300 @@ describe("admin import AI provider", () => {
     }
   });
 
-  it("extracts text from raw Responses API output", () => {
-    assert.equal(
-      extractResponseOutputText({
-        output: [
-          {
-            content: [
-              {
-                type: "output_text",
-                text: "{\"items\":[]}",
+  it("generates a batch through an OpenAI-compatible chat completion provider", async () => {
+    const originalAdminProvider = process.env.ADMIN_IMPORT_PROVIDER;
+    const originalAiProvider = process.env.AI_PROVIDER;
+    const originalAiApiKey = process.env.AI_API_KEY;
+    const originalAiModel = process.env.AI_MODEL;
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ url: string; body: Record<string, unknown> }> = [];
+
+    process.env.ADMIN_IMPORT_PROVIDER = "ai";
+    process.env.AI_PROVIDER = "deepseek";
+    process.env.AI_API_KEY = "deepseek-key";
+    process.env.AI_MODEL = "deepseek-chat";
+    globalThis.fetch = (async (url, init) => {
+      requests.push({
+        url: String(url),
+        body: JSON.parse(String(init?.body)),
+      });
+
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  sourceTitle: "AI 笔记",
+                  defaultDomain: "数学",
+                  items: [],
+                  relations: [],
+                }),
               },
-            ],
-          },
-        ],
-      }),
-      "{\"items\":[]}",
-    );
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    try {
+      const batch = await generateAdminImportBatch({
+        sourceMaterial: "AI 生成知识项",
+        sourceTitle: "AI 笔记",
+        defaultDomain: "数学",
+      });
+
+      assert.equal(batch.sourceTitle, "AI 笔记");
+      assert.equal(batch.defaultDomain, "数学");
+      assert.deepEqual(batch.items, []);
+      assert.deepEqual(batch.relations, []);
+      assert.equal(requests.length, 1);
+      assert.equal(requests[0].url, "https://api.deepseek.com/chat/completions");
+      assert.equal(requests[0].body.model, "deepseek-chat");
+      assert.match(JSON.stringify(requests[0].body.messages), /AI 生成知识项/);
+    } finally {
+      restoreEnv("ADMIN_IMPORT_PROVIDER", originalAdminProvider);
+      restoreEnv("AI_PROVIDER", originalAiProvider);
+      restoreEnv("AI_API_KEY", originalAiApiKey);
+      restoreEnv("AI_MODEL", originalAiModel);
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("asks the AI to infer missing metadata instead of requiring admin fields", async () => {
+    const originalAdminProvider = process.env.ADMIN_IMPORT_PROVIDER;
+    const originalAiProvider = process.env.AI_PROVIDER;
+    const originalAiApiKey = process.env.AI_API_KEY;
+    const originalAiModel = process.env.AI_MODEL;
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ body: Record<string, unknown> }> = [];
+
+    process.env.ADMIN_IMPORT_PROVIDER = "ai";
+    process.env.AI_PROVIDER = "deepseek";
+    process.env.AI_API_KEY = "deepseek-key";
+    process.env.AI_MODEL = "deepseek-chat";
+    globalThis.fetch = (async (_url, init) => {
+      requests.push({
+        body: JSON.parse(String(init?.body)),
+      });
+
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  sourceTitle: "AI 推断标题",
+                  defaultDomain: "数学",
+                  items: [],
+                  relations: [],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    try {
+      const batch = await generateAdminImportBatch({
+        sourceMaterial: "讲解一次函数图像与斜率。",
+      });
+
+      assert.equal(batch.sourceTitle, "AI 推断标题");
+      assert.equal(batch.defaultDomain, "数学");
+      assert.equal(requests.length, 1);
+      assert.match(
+        JSON.stringify(requests[0].body.messages),
+        /当管理员留空来源标题、默认领域或子领域时，请根据来源材料自行推断/,
+      );
+    } finally {
+      restoreEnv("ADMIN_IMPORT_PROVIDER", originalAdminProvider);
+      restoreEnv("AI_PROVIDER", originalAiProvider);
+      restoreEnv("AI_API_KEY", originalAiApiKey);
+      restoreEnv("AI_MODEL", originalAiModel);
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("guides the AI to choose content types and domains from the source material", async () => {
+    const originalAdminProvider = process.env.ADMIN_IMPORT_PROVIDER;
+    const originalAiProvider = process.env.AI_PROVIDER;
+    const originalAiApiKey = process.env.AI_API_KEY;
+    const originalAiModel = process.env.AI_MODEL;
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ body: Record<string, unknown> }> = [];
+
+    process.env.ADMIN_IMPORT_PROVIDER = "ai";
+    process.env.AI_PROVIDER = "deepseek";
+    process.env.AI_API_KEY = "deepseek-key";
+    process.env.AI_MODEL = "deepseek-chat";
+    globalThis.fetch = (async (_url, init) => {
+      requests.push({
+        body: JSON.parse(String(init?.body)),
+      });
+
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  sourceTitle: "条件概率",
+                  defaultDomain: "数学",
+                  items: [],
+                  relations: [],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    try {
+      await generateAdminImportBatch({
+        sourceMaterial: "条件概率、贝叶斯公式、全概率公式的适用场景对比。",
+        defaultDomain: "learning",
+        preferredContentTypes: ["plain_text"],
+      });
+
+      const messages = JSON.stringify(requests[0].body.messages);
+
+      assert.match(messages, /所有提示词必须使用中文/);
+      assert.match(messages, /主要内容必须使用中文/);
+      assert.match(messages, /defaultDomain、domain 和 subdomain 必须使用中文/);
+      assert.match(messages, /从来源材料中选择最具体的领域和子领域/);
+      assert.match(messages, /数学\/概率/);
+      assert.match(messages, /默认领域、默认子领域和偏好内容类型只是参考/);
+      assert.match(messages, /根据知识形态为每个知识项选择唯一且最合适的 contentType/);
+      assert.match(messages, /math_formula.*公式|公式.*math_formula/);
+      assert.match(messages, /comparison_table.*对比|对比.*comparison_table/);
+    } finally {
+      restoreEnv("ADMIN_IMPORT_PROVIDER", originalAdminProvider);
+      restoreEnv("AI_PROVIDER", originalAiProvider);
+      restoreEnv("AI_API_KEY", originalAiApiKey);
+      restoreEnv("AI_MODEL", originalAiModel);
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("lets admin import follow the global AI provider when no admin provider is set", async () => {
+    const originalAdminProvider = process.env.ADMIN_IMPORT_PROVIDER;
+    const originalAiProvider = process.env.AI_PROVIDER;
+    const originalAiApiKey = process.env.AI_API_KEY;
+    const originalAiModel = process.env.AI_MODEL;
+    const originalFetch = globalThis.fetch;
+    const requests: string[] = [];
+
+    delete process.env.ADMIN_IMPORT_PROVIDER;
+    process.env.AI_PROVIDER = "deepseek";
+    process.env.AI_API_KEY = "deepseek-key";
+    process.env.AI_MODEL = "deepseek-chat";
+    globalThis.fetch = (async (url) => {
+      requests.push(String(url));
+
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  sourceTitle: "AI 笔记",
+                  defaultDomain: "数学",
+                  items: [],
+                  relations: [],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    try {
+      const batch = await generateAdminImportBatch({
+        sourceMaterial: "AI 生成知识项",
+        sourceTitle: "AI 笔记",
+        defaultDomain: "数学",
+      });
+
+      assert.equal(batch.sourceTitle, "AI 笔记");
+      assert.deepEqual(requests, ["https://api.deepseek.com/chat/completions"]);
+    } finally {
+      restoreEnv("ADMIN_IMPORT_PROVIDER", originalAdminProvider);
+      restoreEnv("AI_PROVIDER", originalAiProvider);
+      restoreEnv("AI_API_KEY", originalAiApiKey);
+      restoreEnv("AI_MODEL", originalAiModel);
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("accepts DeepSeek and Kimi as direct admin import provider names", async () => {
+    const originalAdminProvider = process.env.ADMIN_IMPORT_PROVIDER;
+    const originalAiProvider = process.env.AI_PROVIDER;
+    const originalAiApiKey = process.env.AI_API_KEY;
+    const originalAiModel = process.env.AI_MODEL;
+    const originalFetch = globalThis.fetch;
+    const requests: string[] = [];
+
+    delete process.env.AI_PROVIDER;
+    process.env.ADMIN_IMPORT_PROVIDER = "kimi";
+    process.env.AI_API_KEY = "kimi-key";
+    process.env.AI_MODEL = "kimi-k2-0905";
+    globalThis.fetch = (async (url) => {
+      requests.push(String(url));
+
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  sourceTitle: "Kimi 笔记",
+                  defaultDomain: "数学",
+                  items: [],
+                  relations: [],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    try {
+      const batch = await generateAdminImportBatch({
+        sourceMaterial: "Kimi 生成知识项",
+        sourceTitle: "Kimi 笔记",
+        defaultDomain: "数学",
+      });
+
+      assert.equal(batch.sourceTitle, "Kimi 笔记");
+      assert.deepEqual(requests, ["https://api.moonshot.ai/v1/chat/completions"]);
+    } finally {
+      restoreEnv("ADMIN_IMPORT_PROVIDER", originalAdminProvider);
+      restoreEnv("AI_PROVIDER", originalAiProvider);
+      restoreEnv("AI_API_KEY", originalAiApiKey);
+      restoreEnv("AI_MODEL", originalAiModel);
+      globalThis.fetch = originalFetch;
+    }
   });
 });
+
+function restoreEnv(key: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+}
 
 function assertStrictObjectSchemas(schema: unknown, path = "schema") {
   if (!schema || typeof schema !== "object") {

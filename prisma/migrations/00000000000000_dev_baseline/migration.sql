@@ -22,6 +22,9 @@ CREATE TYPE "UserRole" AS ENUM ('learner', 'admin');
 -- CreateEnum
 CREATE TYPE "AdminImportStatus" AS ENUM ('validation_failed', 'saved', 'ai_failed');
 
+-- CreateEnum
+CREATE TYPE "KnowledgeItemVisibility" AS ENUM ('public', 'private');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -115,6 +118,8 @@ CREATE TABLE "knowledge_items" (
     "difficulty" INTEGER NOT NULL,
     "tags" TEXT[],
     "extension" JSONB,
+    "visibility" "KnowledgeItemVisibility" NOT NULL DEFAULT 'public',
+    "createdByUserId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -302,6 +307,9 @@ CREATE INDEX "knowledge_items_domain_subdomain_idx" ON "knowledge_items"("domain
 CREATE INDEX "knowledge_items_contentType_idx" ON "knowledge_items"("contentType");
 
 -- CreateIndex
+CREATE INDEX "knowledge_items_visibility_createdByUserId_idx" ON "knowledge_items"("visibility", "createdByUserId");
+
+-- CreateIndex
 CREATE INDEX "knowledge_item_variables_knowledgeItemId_idx" ON "knowledge_item_variables"("knowledgeItemId");
 
 -- CreateIndex
@@ -354,6 +362,9 @@ ALTER TABLE "auth_accounts" ADD CONSTRAINT "auth_accounts_userId_fkey" FOREIGN K
 
 -- AddForeignKey
 ALTER TABLE "knowledge_item_variables" ADD CONSTRAINT "knowledge_item_variables_knowledgeItemId_fkey" FOREIGN KEY ("knowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "knowledge_items" ADD CONSTRAINT "knowledge_items_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "knowledge_item_relations" ADD CONSTRAINT "knowledge_item_relations_fromKnowledgeItemId_fkey" FOREIGN KEY ("fromKnowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;

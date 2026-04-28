@@ -10,8 +10,8 @@ export async function GET(
 ) {
   const { id: rawId } = await params;
   const id = normalizeRouteParam(rawId);
-  return withAuthenticatedApi(async () => {
-    const relations = await getKnowledgeItemRelationDetails(id);
+  return withAuthenticatedApi(async (current) => {
+    const relations = await getKnowledgeItemRelationDetails(id, current.learner.id);
 
     if (!relations) {
       return NextResponse.json(

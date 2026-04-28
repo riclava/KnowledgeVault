@@ -1,9 +1,10 @@
 import type { AdminImportBatch } from "@/server/admin/admin-import-types";
+import { chatJson } from "@/server/ai/openai-compatible";
 
 export type AdminImportGenerateInput = {
   sourceMaterial: string;
   sourceTitle?: string;
-  defaultDomain: string;
+  defaultDomain?: string;
   defaultSubdomain?: string;
   preferredContentTypes?: string[];
 };
@@ -88,7 +89,7 @@ export function createAdminImportJsonSchema(): AdminImportJsonSchemaFormat {
           properties: {
             slug: {
               ...stringSchema,
-              description: "URL-safe lowercase words separated by hyphens.",
+              description: "用于 URL 的小写英文短横线标识。",
             },
             title: stringSchema,
             contentType: {
@@ -349,14 +350,27 @@ export function createAdminImportJsonSchema(): AdminImportJsonSchemaFormat {
 export async function generateAdminImportBatch(
   input: AdminImportGenerateInput,
 ): Promise<AdminImportBatch> {
-  const provider = process.env.ADMIN_IMPORT_PROVIDER ?? "mock";
+  const provider = normalizeAdminImportProvider(process.env.ADMIN_IMPORT_PROVIDER);
+  const globalAiProvider = normalizeAdminImportProvider(process.env.AI_PROVIDER);
 
   if (provider === "mock") {
     return generateMockAdminImportBatch(input);
   }
 
-  if (provider === "openai") {
-    return generateOpenAiAdminImportBatch(input);
+  if (provider === "ai" || provider === "openai-compatible") {
+    return generateCompatibleAdminImportBatch(input);
+  }
+
+  if (isDirectAiProvider(provider)) {
+    return generateCompatibleAdminImportBatch(input, provider);
+  }
+
+  if (!provider && isDirectAiProvider(globalAiProvider)) {
+    return generateCompatibleAdminImportBatch(input);
+  }
+
+  if (!provider) {
+    return generateMockAdminImportBatch(input);
   }
 
   throw new Error(`Unsupported ADMIN_IMPORT_PROVIDER: ${provider}`);
@@ -366,10 +380,11 @@ export async function generateMockAdminImportBatch(
   input: AdminImportGenerateInput,
 ): Promise<AdminImportBatch> {
   const sourceText = input.sourceMaterial.trim();
+  const inferredDomain = input.defaultDomain ?? "通用学习";
 
   return {
     sourceTitle: input.sourceTitle ?? "Mock admin import",
-    defaultDomain: input.defaultDomain,
+    defaultDomain: inferredDomain,
     items: [
       {
         slug: "mock-linear-equation",
@@ -378,7 +393,7 @@ export async function generateMockAdminImportBatch(
         renderPayload: {
           text: "线性方程是未知数最高次数为一的方程。",
         },
-        domain: input.defaultDomain,
+        domain: inferredDomain,
         subdomain: input.defaultSubdomain,
         summary: "线性方程是一类最高次数为一的方程。",
         body:
@@ -437,7 +452,7 @@ export async function generateMockAdminImportBatch(
           examples: ["2x + 3 = 7", "5y - 1 = 9"],
           misconceptions: ["含有一个未知数就一定是线性方程", "移项时符号不用改变"],
         },
-        domain: input.defaultDomain,
+        domain: inferredDomain,
         subdomain: input.defaultSubdomain,
         summary: "线性方程的核心是一次关系和保持等式平衡。",
         body: sourceText || "线性方程求解依赖等式两边执行同样操作。",
@@ -479,7 +494,7 @@ export async function generateMockAdminImportBatch(
             },
           ],
         },
-        domain: input.defaultDomain,
+        domain: inferredDomain,
         subdomain: input.defaultSubdomain,
         summary: "通过最高次数和图像直觉区分线性方程与二次方程。",
         body: "对比表帮助快速识别相近方程类型。",
@@ -541,7 +556,7 @@ export async function generateMockAdminImportBatch(
           mermaid:
             "flowchart TD\n  start([开始]) --> simplify[整理方程]\n  simplify --> isolate[隔离未知数]\n  isolate --> end([得到解])",
         },
-        domain: input.defaultDomain,
+        domain: inferredDomain,
         subdomain: input.defaultSubdomain,
         summary: "求解线性方程的流程是整理、隔离未知数、得到解。",
         body: "流程型知识适合表达稳定的解题步骤。",
@@ -570,107 +585,67 @@ export async function generateMockAdminImportBatch(
   };
 }
 
-export function extractResponseOutputText(payload: unknown): string {
-  if (!payload || typeof payload !== "object") {
-    throw new Error("OpenAI response payload is not an object.");
-  }
-
-  const record = payload as Record<string, unknown>;
-
-  if (typeof record.output_text === "string" && record.output_text.trim()) {
-    return record.output_text;
-  }
-
-  if (Array.isArray(record.output)) {
-    for (const outputEntry of record.output) {
-      if (!outputEntry || typeof outputEntry !== "object") {
-        continue;
-      }
-
-      const outputRecord = outputEntry as Record<string, unknown>;
-
-      if (!Array.isArray(outputRecord.content)) {
-        continue;
-      }
-
-      for (const contentEntry of outputRecord.content) {
-        if (!contentEntry || typeof contentEntry !== "object") {
-          continue;
+async function generateCompatibleAdminImportBatch(
+  input: AdminImportGenerateInput,
+  provider?: "deepseek" | "kimi" | "custom",
+): Promise<AdminImportBatch> {
+  return chatJson<AdminImportBatch>({
+    ...(provider
+      ? {
+          env: {
+            AI_PROVIDER: provider,
+            AI_API_KEY: process.env.AI_API_KEY,
+            AI_BASE_URL: process.env.AI_BASE_URL,
+            AI_MODEL: process.env.AI_MODEL,
+          },
         }
-
-        const contentRecord = contentEntry as Record<string, unknown>;
-
-        if (
-          contentRecord.type === "output_text" &&
-          typeof contentRecord.text === "string" &&
-          contentRecord.text.trim()
-        ) {
-          return contentRecord.text;
-        }
-      }
-    }
-  }
-
-  throw new Error("OpenAI response did not include output_text content.");
+      : {}),
+    messages: [
+      {
+        role: "system",
+        content: [
+          "所有提示词必须使用中文。你是 KnowledgeVault 的后台知识导入助手，负责把来源材料整理成后台导入批次。",
+          "只返回严格 JSON，不要包含 Markdown 代码块、解释文字或额外评论。",
+          "JSON 必须符合以下 schema：",
+          JSON.stringify(createAdminImportJsonSchema().schema),
+          "主要内容必须使用中文，包括 title、summary、body、intuition、deepDive、useConditions、nonUseConditions、antiPatterns、typicalProblems、examples、tags、reviewItems 和 relation.note。",
+          "外语词汇、专有名词、代码、公式、LaTeX、Mermaid、英文原文引用可以保留原文，但解释、定义、题目和答案仍应以中文为主。",
+          "defaultDomain、domain 和 subdomain 必须使用中文；如果管理员提供了英文领域或子领域，请翻译或重新推断为中文，不要原样复制英文值。",
+          "当管理员留空来源标题、默认领域或子领域时，请根据来源材料自行推断。",
+          "从来源材料中选择最具体的领域和子领域；例如：数学/概率、数学/代数、语言/词汇、计算机科学/算法、产品/策略。",
+          "默认领域、默认子领域和偏好内容类型只是参考，不是硬约束；如果来源材料显示更合适的选择，请覆盖它们。",
+          "根据知识形态为每个知识项选择唯一且最合适的 contentType，不要只根据表面关键词或管理员偏好选择。",
+          "当长期要记住的是公式、符号规则、方程或推导时，使用 math_formula，并提供干净的 LaTeX。",
+          "当长期要记住的是词语、定义、发音、词性和用法例句时，使用 vocabulary。",
+          "当内容适合定义、直觉、关键点、例子和误区时，使用 concept_card。",
+          "当来源材料要求学习者对比或区分相关、易混概念时，使用 comparison_table；除非来源本身就是表格，否则优先使用 matrix 模式。",
+          "当来源材料描述有顺序的操作、算法、决策流程或解题过程时，使用 procedure；Mermaid 的节点和边必须一致。",
+          "只有在没有更合适的结构化类型时，才使用 plain_text。",
+          "如果来源材料中不同部分最适合不同 contentType，请拆成多个知识项；为前置、应用和易混关系创建 relations。",
+        ].join("\n"),
+      },
+      {
+        role: "user",
+        content: [
+          `来源标题：${input.sourceTitle ?? ""}`,
+          `默认领域：${input.defaultDomain ?? ""}`,
+          `默认子领域：${input.defaultSubdomain ?? ""}`,
+          `偏好内容类型：${(input.preferredContentTypes ?? []).join(", ")}`,
+          "来源材料：",
+          input.sourceMaterial,
+        ].join("\n"),
+      },
+    ],
+    temperature: 0.1,
+  });
 }
 
-async function generateOpenAiAdminImportBatch(
-  input: AdminImportGenerateInput,
-): Promise<AdminImportBatch> {
-  const apiKey = process.env.OPENAI_API_KEY;
+function normalizeAdminImportProvider(value: string | undefined) {
+  return value?.trim().toLowerCase() || "";
+}
 
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is required when ADMIN_IMPORT_PROVIDER=openai.");
-  }
-
-  const response = await fetch("https://api.openai.com/v1/responses", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: process.env.OPENAI_IMPORT_MODEL ?? "gpt-4.1-mini",
-      instructions:
-        [
-          "You convert source material into a KnowledgeVault admin import batch.",
-          "Return only data matching the structured output schema.",
-          "Use concept_card for definitions, intuition, key points, examples, and misconceptions.",
-          "Use comparison_table when the source contrasts related or confusable ideas; prefer matrix mode unless the source is already tabular.",
-          "Use procedure when the source describes ordered operations, algorithms, decision flows, or solving processes; keep Mermaid consistent with nodes and edges.",
-        ].join(" "),
-      input: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "input_text",
-              text: [
-                `Source title: ${input.sourceTitle ?? ""}`,
-                `Default domain: ${input.defaultDomain}`,
-                `Default subdomain: ${input.defaultSubdomain ?? ""}`,
-                `Preferred content types: ${(input.preferredContentTypes ?? []).join(", ")}`,
-                "Source material:",
-                input.sourceMaterial,
-              ].join("\n"),
-            },
-          ],
-        },
-      ],
-      text: {
-        format: createAdminImportJsonSchema(),
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(
-      `OpenAI admin import request failed (${response.status}): ${await response.text()}`,
-    );
-  }
-
-  const payload = await response.json();
-  const outputText = extractResponseOutputText(payload);
-
-  return JSON.parse(outputText) as AdminImportBatch;
+function isDirectAiProvider(
+  value: string,
+): value is "deepseek" | "kimi" | "custom" {
+  return value === "deepseek" || value === "kimi" || value === "custom";
 }

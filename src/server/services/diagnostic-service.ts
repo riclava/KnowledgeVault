@@ -22,12 +22,18 @@ const DIAGNOSTIC_QUESTION_COUNT = 5;
 
 export async function startDiagnostic({
   domain,
+  userId,
 }: {
   domain?: string;
+  userId?: string;
 } = {}): Promise<DiagnosticStart> {
-  const currentDomain = domain ?? (await getKnowledgeItemSummaries())[0]?.domain ?? "默认知识域";
+  const currentDomain =
+    domain ??
+    (await getKnowledgeItemSummaries({ userId }))[0]?.domain ??
+    "默认知识域";
   const reviewItems = await listDiagnosticReviewItems({
     domain: currentDomain,
+    userId,
     take: DIAGNOSTIC_QUESTION_COUNT,
   });
 
@@ -57,6 +63,7 @@ export async function submitDiagnostic({
   const reviewItems = await listReviewItemsByIds({
     domain: submission.domain,
     reviewItemIds,
+    userId,
   });
   const knowledgeItemIds = Array.from(
     new Set(reviewItems.map((item) => item.knowledgeItemId)),
@@ -84,7 +91,10 @@ export async function submitDiagnostic({
     weakKnowledgeItemIds,
   });
 
-  const weakKnowledgeItems = await getWeakKnowledgeItemSummaries(weakKnowledgeItemIds);
+  const weakKnowledgeItems = await getWeakKnowledgeItemSummaries({
+    knowledgeItemIds: weakKnowledgeItemIds,
+    userId,
+  });
 
   return {
     id: attempt.id,
@@ -97,12 +107,18 @@ export async function submitDiagnostic({
   };
 }
 
-async function getWeakKnowledgeItemSummaries(knowledgeItemIds: string[]) {
+async function getWeakKnowledgeItemSummaries({
+  knowledgeItemIds,
+  userId,
+}: {
+  knowledgeItemIds: string[];
+  userId: string;
+}) {
   if (knowledgeItemIds.length === 0) {
     return [];
   }
 
-  const summaries = await getKnowledgeItemSummaries();
+  const summaries = await getKnowledgeItemSummaries({ userId });
   const knowledgeItemIdSet = new Set(knowledgeItemIds);
 
   return summaries.filter((knowledgeItem) => knowledgeItemIdSet.has(knowledgeItem.id));

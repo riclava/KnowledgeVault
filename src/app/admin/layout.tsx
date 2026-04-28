@@ -46,6 +46,18 @@ export default async function AdminLayout({
                 </Link>
               ))}
             </nav>
+
+            <div className="border-t pt-3">
+              <Link
+                href="/"
+                className={cn(
+                  buttonVariants({ variant: "ghost", size: "sm" }),
+                  "w-fit justify-start rounded-md px-2 text-muted-foreground hover:text-foreground md:w-full",
+                )}
+              >
+                返回主页
+              </Link>
+            </div>
           </div>
         </aside>
 

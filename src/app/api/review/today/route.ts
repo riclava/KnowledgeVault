@@ -9,7 +9,10 @@ export async function GET(request: Request) {
   const mode = url.searchParams.get("mode") === "weak" ? "weak" : "today";
 
   return withAuthenticatedApi(async (current) => {
-    const learningDomain = await resolveLearningDomain(url.searchParams.get("domain"));
+    const learningDomain = await resolveLearningDomain(
+      url.searchParams.get("domain"),
+      current.learner.id,
+    );
     const session = await getTodayReviewSession({
       userId: current.learner.id,
       domain: learningDomain.currentDomain,

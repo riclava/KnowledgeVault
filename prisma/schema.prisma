@@ -53,6 +53,11 @@ enum AdminImportStatus {
   ai_failed
 }
 
+enum KnowledgeItemVisibility {
+  public
+  private
+}
+
 model User {
   id                 String   @id @default(cuid())
   email              String?  @unique
@@ -68,6 +73,7 @@ model User {
   diagnosticAttempts  DiagnosticAttempt[]
   studySessions       StudySession[]
   adminImportRuns     AdminImportRun[]
+  createdKnowledgeItems KnowledgeItem[] @relation("KnowledgeItemCreator")
   authIdentity        AuthUser?
 
   @@map("users")
@@ -162,9 +168,12 @@ model KnowledgeItem {
   difficulty       Int
   tags             String[]
   extension        Json?
+  visibility       KnowledgeItemVisibility @default(public)
+  createdByUserId  String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
+  createdByUser     User?                   @relation("KnowledgeItemCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
   variables         KnowledgeItemVariable[]
   reviewItems       ReviewItem[]
   outgoingRelations KnowledgeItemRelation[]   @relation("KnowledgeItemRelationFrom")
@@ -175,6 +184,7 @@ model KnowledgeItem {
 
   @@index([domain, subdomain])
   @@index([contentType])
+  @@index([visibility, createdByUserId])
   @@map("knowledge_items")
 }
 

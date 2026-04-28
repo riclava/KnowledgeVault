@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState, useTransition } from "react";
-import { Check, Lightbulb, Loader2, Trash2 } from "lucide-react";
+import { Check, Lightbulb, Loader2, Trash2, WandSparkles } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -23,7 +24,6 @@ export function KnowledgeItemMemoryHookPanel({
   const initialHook = (initialHooks ?? EMPTY_HOOKS)[0] ?? null;
   const [hook, setHook] = useState<MemoryHookRecord | null>(initialHook);
   const [draftContent, setDraftContent] = useState(initialHook?.content ?? "");
-  const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -71,6 +71,7 @@ export function KnowledgeItemMemoryHookPanel({
 
     if (!content) {
       setError("先写一句下次能看懂的提示。");
+      toast.error("先写一句下次能看懂的提示。");
       return;
     }
 
@@ -94,10 +95,12 @@ export function KnowledgeItemMemoryHookPanel({
 
         setHook(payload.data);
         setDraftContent(payload.data.content);
-        setMessage("已保存，下次复习卡住时会优先显示这句。");
         setError(null);
+        toast.success("已保存，下次复习卡住时会优先显示这句。");
       } catch (saveError) {
-        setError(saveError instanceof Error ? saveError.message : "提示保存失败");
+        const message = saveError instanceof Error ? saveError.message : "提示保存失败";
+        setError(message);
+        toast.error(message);
       }
     });
   }
@@ -123,10 +126,41 @@ export function KnowledgeItemMemoryHookPanel({
 
         setHook(null);
         setDraftContent("");
-        setMessage("已删除。");
         setError(null);
+        toast.success("已删除");
       } catch (deleteError) {
-        setError(deleteError instanceof Error ? deleteError.message : "提示删除失败");
+        const message = deleteError instanceof Error ? deleteError.message : "提示删除失败";
+        setError(message);
+        toast.error(message);
+      }
+    });
+  }
+
+  function generateDraft() {
+    startTransition(async () => {
+      try {
+        const response = await fetch(
+          `/api/knowledge-items/${knowledgeItemIdOrSlug}/memory-hooks/draft`,
+          {
+            method: "POST",
+          },
+        );
+        const payload = (await response.json()) as {
+          data?: { content: string };
+          error?: string;
+        };
+
+        if (!response.ok || !payload.data?.content) {
+          throw new Error(payload.error ?? "AI 草稿生成失败。");
+        }
+
+        setDraftContent(payload.data.content);
+        setError(null);
+        toast.success("已生成草稿，确认后再保存。");
+      } catch (draftError) {
+        const message = draftError instanceof Error ? draftError.message : "AI 草稿生成失败。";
+        setError(message);
+        toast.error(message);
       }
     });
   }
@@ -148,12 +182,6 @@ export function KnowledgeItemMemoryHookPanel({
           {error}
         </div>
       ) : null}
-      {message ? (
-        <div className="mt-4 rounded-lg border border-success/25 bg-success/10 px-3 py-2 text-sm text-success">
-          {message}
-        </div>
-      ) : null}
-
       <div className="mt-4 flex flex-wrap gap-2">
         {GUIDED_MEMORY_PROMPTS.map((prompt) => (
           <button
@@ -175,6 +203,19 @@ export function KnowledgeItemMemoryHookPanel({
           className="min-h-28"
         />
         <div className="flex flex-wrap gap-3">
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={isPending}
+            onClick={generateDraft}
+          >
+            {isPending ? (
+              <Loader2 data-icon="inline-start" className="animate-spin" />
+            ) : (
+              <WandSparkles data-icon="inline-start" />
+            )}
+            AI 草稿
+          </Button>
           <Button
             type="button"
             disabled={isPending || !draftContent.trim()}

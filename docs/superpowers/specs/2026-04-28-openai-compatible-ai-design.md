@@ -39,7 +39,7 @@ Replace the current OpenAI Responses API-specific network path with the shared c
 
 The prompt should ask for strict JSON only. Since OpenAI-compatible providers vary in structured output support, the app should parse JSON from plain assistant text and then rely on the existing validator to reject malformed or incomplete batches.
 
-`ADMIN_IMPORT_PROVIDER=mock` remains supported for deterministic tests and local UI. `ADMIN_IMPORT_PROVIDER=openai-compatible` or `ADMIN_IMPORT_PROVIDER=ai` should call the shared AI client.
+By default, admin import should follow `AI_PROVIDER`. `ADMIN_IMPORT_PROVIDER=mock` remains supported for deterministic tests and local UI, and direct overrides such as `ADMIN_IMPORT_PROVIDER=deepseek`, `ADMIN_IMPORT_PROVIDER=kimi`, `ADMIN_IMPORT_PROVIDER=custom`, or `ADMIN_IMPORT_PROVIDER=ai` should call the shared AI client.
 
 ## Review Hints
 

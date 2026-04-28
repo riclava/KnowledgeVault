@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition } from "react";
+import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowRight, Loader2, LogOut } from "lucide-react";
+import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PasswordAuthForm } from "@/components/account/password-auth-form";
@@ -19,7 +20,6 @@ export function AccountPanel({
   returnTo: string;
 }) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -33,12 +33,6 @@ export function AccountPanel({
             </p>
           </div>
 
-          {error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {error}
-            </div>
-          ) : null}
-
           <div className="flex flex-wrap gap-3">
             <Link href={returnTo} className={buttonVariants()}>
               继续训练
@@ -50,12 +44,10 @@ export function AccountPanel({
               disabled={isPending}
               onClick={() =>
                 startTransition(async () => {
-                  setError(null);
-
                   const result = await authClient.signOut();
 
                   if (result?.error) {
-                    setError(result.error.message ?? "退出登录失败");
+                    toast.error(result.error.message ?? "退出登录失败");
                     return;
                   }
 
@@ -81,12 +73,6 @@ export function AccountPanel({
               使用邮箱和密码继续；没有账号时切到注册。
             </p>
           </div>
-
-          {error ? (
-            <div className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
-              {error}
-            </div>
-          ) : null}
 
           <PasswordAuthForm callbackURL={returnTo} />
         </div>

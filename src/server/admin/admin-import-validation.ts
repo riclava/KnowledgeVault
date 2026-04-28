@@ -27,6 +27,7 @@ const STRING_ARRAY_FIELDS = [
   "examples",
   "tags",
 ] as const;
+const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
 
 export type AdminImportValidationResult =
   | { ok: true; batch: AdminImportBatch }
@@ -78,6 +79,8 @@ export function validateAdminImportBatch(
     });
   }
 
+  validateChineseDomain(normalized.defaultDomain, "defaultDomain", errors);
+
   normalized.items.forEach((item, itemIndex) => {
     const path = `items.${itemIndex}`;
 
@@ -101,6 +104,8 @@ export function validateAdminImportBatch(
     }
 
     validateRequiredItemFields(item, path, errors);
+    validateChineseDomain(item.domain, `${path}.domain`, errors);
+    validateChineseDomain(item.subdomain, `${path}.subdomain`, errors);
     validateContentTypeAndPayload(item, path, errors);
     validateDifficulty(item.difficulty, `${path}.difficulty`, errors);
     validateReviewItems(item.reviewItems, `${path}.reviewItems`, errors);
@@ -207,6 +212,24 @@ function validateRequiredItemFields(
       });
     }
   });
+}
+
+function validateChineseDomain(
+  value: string | undefined,
+  path: string,
+  errors: AdminImportValidationError[],
+) {
+  if (!value) {
+    return;
+  }
+
+  if (!HAN_CHARACTER_PATTERN.test(value)) {
+    errors.push({
+      code: "non_chinese_domain",
+      path,
+      message: "领域和子领域必须使用中文。",
+    });
+  }
 }
 
 function validateTopLevelArray(

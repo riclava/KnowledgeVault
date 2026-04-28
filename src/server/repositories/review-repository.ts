@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import { buildKnowledgeItemVisibilityWhere } from "@/server/repositories/knowledge-item-visibility";
 
 export async function getUserKnowledgeItemState(userId: string, knowledgeItemId: string) {
   return prisma.userKnowledgeItemState.findUnique({
@@ -29,6 +30,7 @@ export async function listDueKnowledgeItemStates({
         lte: now,
       },
       knowledgeItem: {
+        ...buildKnowledgeItemVisibilityWhere(userId),
         domain,
       },
     },
@@ -69,6 +71,7 @@ export async function listWeakKnowledgeItemStatesForReview({
     where: {
       userId,
       knowledgeItem: {
+        ...buildKnowledgeItemVisibilityWhere(userId),
         domain,
       },
       OR: [
@@ -129,6 +132,7 @@ export async function countUserKnowledgeItemStates({
     where: {
       userId,
       knowledgeItem: {
+        ...buildKnowledgeItemVisibilityWhere(userId),
         domain,
       },
     },
@@ -171,15 +175,18 @@ export async function getStudySessionById({
 export async function getActiveReviewItemForKnowledgeItem({
   reviewItemId,
   knowledgeItemId,
+  userId,
 }: {
   reviewItemId: string;
   knowledgeItemId: string;
+  userId?: string;
 }) {
   return prisma.reviewItem.findFirst({
     where: {
       id: reviewItemId,
       knowledgeItemId,
       isActive: true,
+      knowledgeItem: buildKnowledgeItemVisibilityWhere(userId),
     },
     select: {
       id: true,
@@ -303,6 +310,13 @@ export async function getReviewHintSource({
               userId,
             },
             orderBy: { updatedAt: "desc" },
+            take: 1,
+          },
+          reviewItems: {
+            where: {
+              isActive: true,
+            },
+            orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
             take: 1,
           },
         },

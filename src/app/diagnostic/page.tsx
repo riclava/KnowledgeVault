@@ -8,9 +8,12 @@ export default async function DiagnosticPage({
 }: {
   searchParams: Promise<{ domain?: string }>;
 }) {
-  await requireCurrentLearner();
+  const current = await requireCurrentLearner();
   const params = await searchParams;
-  const learningDomain = await resolveLearningDomain(params.domain);
+  const learningDomain = await resolveLearningDomain(
+    params.domain,
+    current.learner.id,
+  );
 
   return (
     <PhaseShell

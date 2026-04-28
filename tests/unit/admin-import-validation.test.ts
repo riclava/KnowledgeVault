@@ -60,6 +60,32 @@ describe("admin import validation", () => {
     assert.equal(result.ok ? result.batch.items.length : 0, 1);
   });
 
+  it("rejects English default domains, item domains, and subdomains", () => {
+    const invalid: AdminImportBatch = {
+      ...validBatch,
+      defaultDomain: "mathematics",
+      items: [
+        {
+          ...validBatch.items[0],
+          domain: "mathematics",
+          subdomain: "algebra",
+        },
+      ],
+    };
+
+    const result = validateAdminImportBatch(invalid, new Set());
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.ok ? [] : result.errors.map((error) => error.path),
+      ["defaultDomain", "items.0.domain", "items.0.subdomain"],
+    );
+    assert.deepEqual(
+      result.ok ? [] : result.errors.map((error) => error.code),
+      ["non_chinese_domain", "non_chinese_domain", "non_chinese_domain"],
+    );
+  });
+
   it("accepts structured content type payloads", () => {
     const result = validateAdminImportBatch(
       {

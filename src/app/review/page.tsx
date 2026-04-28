@@ -12,10 +12,13 @@ export default async function ReviewPage({
 }: {
   searchParams: Promise<{ mode?: string; domain?: string }>;
 }) {
-  await requireCurrentLearner();
+  const current = await requireCurrentLearner();
   const params = await searchParams;
   const mode = params.mode === "weak" ? "weak" : "today";
-  const learningDomain = await resolveLearningDomain(params.domain);
+  const learningDomain = await resolveLearningDomain(
+    params.domain,
+    current.learner.id,
+  );
   const todayHref = `/review?domain=${encodeURIComponent(learningDomain.currentDomain)}`;
   const weakHref = `/review?mode=weak&domain=${encodeURIComponent(
     learningDomain.currentDomain,

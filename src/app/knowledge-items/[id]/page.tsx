@@ -76,10 +76,10 @@ export default async function KnowledgeItemDetailPage({
   const { focus, from, mode, domain } = await searchParams;
   const id = normalizeRouteParam(rawId);
   const current = await requireCurrentLearner();
-  const learningDomain = await resolveLearningDomain(domain);
+  const learningDomain = await resolveLearningDomain(domain, current.learner.id);
   const [knowledgeItem, relations, hooks] = await Promise.all([
-    getKnowledgeItemDetail(id),
-    getKnowledgeItemRelationDetails(id),
+    getKnowledgeItemDetail(id, current.learner.id),
+    getKnowledgeItemRelationDetails(id, current.learner.id),
     getKnowledgeItemMemoryHooks({
       knowledgeItemIdOrSlug: id,
       userId: current.learner.id,

@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import { prisma } from "@/lib/db/prisma";
 import {
   getAdminKnowledgeItem,
+  listAdminKnowledgeItemDomains,
   listAdminKnowledgeItems,
   normalizeAdminKnowledgeItemSearchParams,
 } from "@/server/admin/admin-knowledge-item-service";
@@ -20,9 +21,18 @@ describe("admin knowledge item service", () => {
       query: "algebra",
       domain: "Math",
       contentType: "concept_card",
-      difficulty: 2,
+      difficulties: [2],
       tag: "core",
     });
+  });
+
+  it("normalizes repeated difficulty filters", () => {
+    assert.deepEqual(
+      normalizeAdminKnowledgeItemSearchParams(
+        new URLSearchParams("difficulty=1&difficulty=3&difficulty=5"),
+      ),
+      { difficulties: [1, 3, 5] },
+    );
   });
 
   it("ignores invalid numeric filters", () => {
@@ -44,12 +54,12 @@ describe("admin knowledge item service", () => {
   it("keeps integer difficulty filters outside the review scale", () => {
     assert.deepEqual(
       normalizeAdminKnowledgeItemSearchParams(new URLSearchParams("difficulty=6")),
-      { difficulty: 6 },
+      { difficulties: [6] },
     );
 
     assert.deepEqual(
       normalizeAdminKnowledgeItemSearchParams(new URLSearchParams("difficulty=0")),
-      { difficulty: 0 },
+      { difficulties: [0] },
     );
   });
 
@@ -67,13 +77,13 @@ describe("admin knowledge item service", () => {
     };
 
     try {
-      await listAdminKnowledgeItems({ difficulty: 0 });
+      await listAdminKnowledgeItems({ difficulties: [0, 2] });
     } finally {
       knowledgeItemDelegate.findMany = originalFindMany;
     }
 
     assert.deepEqual(capturedArgs, {
-      where: { difficulty: 0 },
+      where: { difficulty: { in: [0, 2] } },
       include: {
         _count: {
           select: {
@@ -88,6 +98,39 @@ describe("admin knowledge item service", () => {
         },
       },
       orderBy: { updatedAt: "desc" },
+    });
+  });
+
+  it("lists distinct admin knowledge item domains alphabetically", async () => {
+    const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
+      findMany: (args: unknown) => Promise<{ domain: string }[]>;
+    };
+    const originalFindMany = knowledgeItemDelegate.findMany;
+    let capturedArgs: unknown;
+
+    knowledgeItemDelegate.findMany = async (args: unknown) => {
+      capturedArgs = args;
+
+      return [{ domain: "Math" }, { domain: "Writing" }];
+    };
+
+    try {
+      assert.deepEqual(await listAdminKnowledgeItemDomains(), [
+        "Math",
+        "Writing",
+      ]);
+    } finally {
+      knowledgeItemDelegate.findMany = originalFindMany;
+    }
+
+    assert.deepEqual(capturedArgs, {
+      distinct: ["domain"],
+      select: {
+        domain: true,
+      },
+      orderBy: {
+        domain: "asc",
+      },
     });
   });
 
