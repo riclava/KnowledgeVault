@@ -69,4 +69,25 @@ describe("admin knowledge item form", () => {
     assert.match(form, /contentType === "comparison_table"/);
     assert.match(form, /contentType === "procedure"/);
   });
+
+  it("optimizes the new knowledge item page for guided creation", () => {
+    const newPage = readFileSync(
+      "src/app/admin/knowledge-items/new/page.tsx",
+      "utf8",
+    );
+    const form = readFileSync(
+      "src/components/admin/knowledge-item-admin-form.tsx",
+      "utf8",
+    );
+
+    assert.match(newPage, /创建一个可训练的知识项/);
+    assert.match(newPage, /返回知识项/);
+    assert.match(newPage, /mode="create"/);
+    assert.match(form, /创建路径/);
+    assert.match(form, /ContentTypeGuide/);
+    assert.match(form, /FormSection/);
+    assert.match(form, /advanced/);
+    assert.match(form, /创建知识项/);
+    assert.match(form, /回到知识项列表/);
+  });
 });

@@ -94,12 +94,8 @@ export function KnowledgeItemDetailView({
 
     if (!initialKnowledgeItem) {
       loadBundle();
-      return () => {
-        ignore = true;
-      };
     }
 
-    loadBundle();
     return () => {
       ignore = true;
     };
@@ -111,8 +107,10 @@ export function KnowledgeItemDetailView({
     }
 
     const timer = window.setTimeout(() => {
+      const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
       sectionRefs.current[focusSection]?.scrollIntoView({
-        behavior: "smooth",
+        behavior: reduceMotion ? "auto" : "smooth",
         block: "start",
       });
     }, 80);
@@ -139,6 +137,8 @@ export function KnowledgeItemDetailView({
       </div>
     );
   }
+
+  const isReviewEntry = entryPoint === "review";
 
   return (
     <article className="flex flex-col gap-6">
@@ -209,7 +209,11 @@ export function KnowledgeItemDetailView({
           </DetailSection>
 
           {knowledgeItem.variables.length > 0 ? (
-            <DetailSection icon={BookOpen} title="变量说明">
+            <DetailSection
+              icon={BookOpen}
+              title="变量说明"
+              collapsed={isReviewEntry}
+            >
               <div className="grid gap-3">
                 {knowledgeItem.variables.map((variable) => (
                   <div key={variable.id} className="rounded-lg border p-3">
@@ -226,7 +230,11 @@ export function KnowledgeItemDetailView({
             </DetailSection>
           ) : null}
 
-          <DetailSection icon={BookOpen} title="典型场景">
+          <DetailSection
+            icon={BookOpen}
+            title="典型场景"
+            collapsed={isReviewEntry}
+          >
             <BulletList items={knowledgeItem.typicalProblems} tone="neutral" />
           </DetailSection>
 
@@ -263,6 +271,7 @@ export function KnowledgeItemDetailView({
             focused={focusSection === "examples"}
             icon={BookOpen}
             title="例子"
+            collapsed={isReviewEntry}
           >
             <BulletList items={knowledgeItem.examples} tone="neutral" />
           </DetailSection>
@@ -274,6 +283,7 @@ export function KnowledgeItemDetailView({
             focused={focusSection === "deep-dive"}
             icon={BookOpen}
             title="深入理解"
+            collapsed={isReviewEntry}
           >
             <p className="text-sm leading-6 text-muted-foreground">
               {knowledgeItem.deepDive ?? "当前还没有补充深入理解。"}
@@ -289,6 +299,7 @@ export function KnowledgeItemDetailView({
             focused={focusSection === "relations"}
             icon={Network}
             title="关联知识项"
+            collapsed={isReviewEntry && focusSection !== "relations"}
           >
             <div className="grid gap-3">
               {relations.length > 0 ? (
@@ -313,7 +324,11 @@ export function KnowledgeItemDetailView({
             </div>
           </DetailSection>
 
-          <DetailSection icon={BookOpen} title="知识项含义">
+          <DetailSection
+            icon={BookOpen}
+            title="知识项含义"
+            collapsed={isReviewEntry}
+          >
             <p className="text-sm leading-6 text-muted-foreground">{knowledgeItem.body}</p>
             {knowledgeItem.intuition ? (
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
@@ -341,7 +356,7 @@ function QuickActions({
   const actions = quickActionsByEntryPoint[entryPoint] ?? quickActionsByEntryPoint.direct;
 
   return (
-    <section className="flex flex-wrap gap-2">
+    <section className="sticky top-3 z-10 flex flex-wrap gap-2 rounded-lg border bg-background/95 p-2 shadow-sm backdrop-blur">
       {actions.map((action) => (
         <button
           key={action.section}
@@ -394,26 +409,29 @@ const DetailSection = ({
   children,
   focused,
   sectionRef,
+  collapsed = false,
 }: {
   icon: typeof BookOpen;
   title: string;
   children: React.ReactNode;
   focused?: boolean;
   sectionRef?: (node: HTMLElement | null) => void;
+  collapsed?: boolean;
 }) => (
-  <section
+  <details
     ref={sectionRef}
+    open={!collapsed || focused}
     className={cn(
       "rounded-lg border bg-background p-5 shadow-sm transition-shadow",
       focused && "ring-2 ring-primary/30 shadow-md",
     )}
   >
-    <div className="mb-4 flex items-center gap-2">
+    <summary className="flex cursor-pointer list-none items-center gap-2 marker:hidden">
       <Icon data-icon="inline-start" />
       <h3 className="font-medium">{title}</h3>
-    </div>
-    {children}
-  </section>
+    </summary>
+    <div className="mt-4">{children}</div>
+  </details>
 );
 
 function BulletList({

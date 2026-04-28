@@ -186,7 +186,11 @@ export function ReviewSession({
             </div>
             <div className="flex flex-wrap items-center gap-2">
               <Link
-                href={`/knowledge-items/${currentItem.knowledgeItem.slug}?from=review&mode=${mode}`}
+                href={buildKnowledgeItemHref({
+                  slug: currentItem.knowledgeItem.slug,
+                  mode,
+                  domain,
+                })}
                 className={buttonVariants({ variant: "ghost", size: "sm" })}
               >
                 查看知识项
@@ -251,7 +255,11 @@ export function ReviewSession({
                   <h3 className="font-medium">参考答案</h3>
                 </div>
                 <Link
-                  href={`/knowledge-items/${currentItem.knowledgeItem.slug}?from=review&mode=${mode}`}
+                  href={buildKnowledgeItemHref({
+                    slug: currentItem.knowledgeItem.slug,
+                    mode,
+                    domain,
+                  })}
                   className={buttonVariants({ variant: "outline", size: "sm" })}
                 >
                   查看详情
@@ -337,7 +345,7 @@ export function ReviewSession({
                     variant="ghost"
                     onClick={continueAfterRemediation}
                   >
-                    继续下一题
+                    跳过提示，继续下一题
                   </Button>
                 </div>
               </div>
@@ -350,7 +358,8 @@ export function ReviewSession({
                 disabled={isPending}
                 context={activeRemediation.grade}
                 onDraftChange={(value) => updateHookDraft(currentItem.knowledgeItemId, value)}
-                onSave={() => saveReviewMemoryHook(currentItem)}
+                onSave={() => saveReviewMemoryHookAndContinue(currentItem)}
+                saveLabel="保存并继续"
               />
             </div>
           ) : (
@@ -381,12 +390,13 @@ export function ReviewSession({
         item={activeRemediation?.item ?? null}
         grade={activeRemediation?.grade ?? null}
         mode={mode}
+        domain={domain}
         currentIndex={currentIndex + 1}
         totalItems={items.length}
         open={isRemediationOpen}
         onOpenChange={setIsRemediationOpen}
         onDefer={() => deferAfterRemediation(currentItem)}
-        onContinue={continueAfterRemediation}
+        onContinue={() => setIsRemediationOpen(false)}
       />
     </>
   );
@@ -466,7 +476,7 @@ export function ReviewSession({
     }));
   }
 
-  function saveReviewMemoryHook(item: ReviewQueueItem) {
+  function saveReviewMemoryHook(item: ReviewQueueItem, afterSave?: () => void) {
     const content = hookDraftByKnowledgeItemId[item.knowledgeItemId]?.trim();
 
     if (!content) {
@@ -500,6 +510,7 @@ export function ReviewSession({
         );
         setStatusMessage("已保存为这条知识项的下次提示。");
         setError(null);
+        afterSave?.();
       } catch (saveError) {
         setError(saveError instanceof Error ? saveError.message : "提醒保存失败");
       }
@@ -592,6 +603,10 @@ export function ReviewSession({
     moveToNextItem();
   }
 
+  function saveReviewMemoryHookAndContinue(item: ReviewQueueItem) {
+    saveReviewMemoryHook(item, continueAfterRemediation);
+  }
+
   function deferAfterRemediation(item: ReviewQueueItem) {
     setPendingRemediation(null);
     setIsRemediationOpen(false);
@@ -608,6 +623,7 @@ function ReviewMemoryHookCapture({
   context,
   onDraftChange,
   onSave,
+  saveLabel = "保存为下次提示",
 }: {
   item: ReviewQueueItem;
   currentHint?: ReviewHint;
@@ -617,6 +633,7 @@ function ReviewMemoryHookCapture({
   context: "hint" | "again" | "hard";
   onDraftChange: (value: string) => void;
   onSave: () => void;
+  saveLabel?: string;
 }) {
   const fieldId = `review-memory-hook-${item.reviewItemId}-${context}`;
   const title =
@@ -672,7 +689,7 @@ function ReviewMemoryHookCapture({
           onClick={onSave}
           disabled={disabled || saved || !draft.trim()}
         >
-          {saved ? "已保存" : "保存为下次提示"}
+          {saved ? "已保存" : saveLabel}
         </Button>
         <p className="text-xs leading-5 text-muted-foreground">
           保存后会成为 {item.knowledgeItem.title} 的下次提示。
@@ -798,6 +815,22 @@ function gradeToneClassName(grade: ReviewGrade) {
   }
 
   return "border-success/25 bg-success/10";
+}
+
+function buildKnowledgeItemHref({
+  slug,
+  mode,
+  domain,
+  focus,
+}: {
+  slug: string;
+  mode: ReviewMode;
+  domain: string;
+  focus?: string;
+}) {
+  const focusQuery = focus ? `&focus=${encodeURIComponent(focus)}` : "";
+
+  return `/knowledge-items/${slug}?from=review&mode=${mode}&domain=${encodeURIComponent(domain)}${focusQuery}`;
 }
 
 function estimateRemainingMinutes(

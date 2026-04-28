@@ -87,6 +87,7 @@ export function DiagnosticQuiz({ domain }: { domain: string }) {
 
   const questions = diagnostic?.questions ?? [];
   const currentQuestion = questions[currentIndex];
+  const currentAssessment = currentQuestion ? answers[currentQuestion.id] : undefined;
   const progressValue = useMemo(() => {
     if (questions.length === 0) {
       return 0;
@@ -104,16 +105,34 @@ export function DiagnosticQuiz({ domain }: { domain: string }) {
       ...previous,
       [currentQuestion.id]: assessment,
     }));
+  }
+
+  function handleConfirmAssessment() {
+    if (!currentQuestion) {
+      return;
+    }
+
+    const assessment = answers[currentQuestion.id];
+
+    if (!assessment) {
+      setError("请先选择一个自评结果。");
+      return;
+    }
+
     setShowAnswer(false);
+    setError(null);
 
     if (currentIndex < questions.length - 1) {
       setCurrentIndex((index) => index + 1);
     } else {
-      submitDiagnostic({
-        ...answers,
-        [currentQuestion.id]: assessment,
-      });
+      submitDiagnostic(answers);
     }
+  }
+
+  function handlePreviousQuestion() {
+    setShowAnswer(false);
+    setError(null);
+    setCurrentIndex((index) => Math.max(0, index - 1));
   }
 
   function submitDiagnostic(
@@ -247,12 +266,13 @@ export function DiagnosticQuiz({ domain }: { domain: string }) {
                 key={option.value}
                 className={cn(
                   "rounded-lg border p-4 text-left transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60",
-                  answers[currentQuestion.id] === option.value &&
+                  currentAssessment === option.value &&
                     "border-primary bg-muted",
                 )}
                 disabled={isPending}
                 onClick={() => handleAssessment(option.value)}
                 type="button"
+                aria-pressed={currentAssessment === option.value}
               >
                 <span className="block font-medium">{option.label}</span>
                 <span className="mt-1 block text-sm text-muted-foreground">
@@ -260,6 +280,25 @@ export function DiagnosticQuiz({ domain }: { domain: string }) {
                 </span>
               </button>
             ))}
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={isPending || currentIndex === 0}
+              onClick={handlePreviousQuestion}
+            >
+              上一步
+            </Button>
+            <Button
+              type="button"
+              disabled={isPending || !currentAssessment}
+              onClick={handleConfirmAssessment}
+            >
+              {currentIndex === questions.length - 1 ? "提交诊断" : "确认自评"}
+              <ArrowRight data-icon="inline-end" />
+            </Button>
           </div>
         </div>
       </div>

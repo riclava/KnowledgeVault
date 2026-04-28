@@ -1,6 +1,8 @@
 import Link from "next/link";
 
 import { buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   listAdminKnowledgeItems,
   normalizeAdminKnowledgeItemSearchParams,
@@ -12,13 +14,22 @@ type KnowledgeItemsPageProps = {
 
 export const dynamic = "force-dynamic";
 
+const contentTypes = [
+  "math_formula",
+  "vocabulary",
+  "plain_text",
+  "concept_card",
+  "comparison_table",
+  "procedure",
+];
+
 export default async function AdminKnowledgeItemsPage({
   searchParams,
 }: KnowledgeItemsPageProps) {
   const params = toURLSearchParams(await searchParams);
-  const items = await listAdminKnowledgeItems(
-    normalizeAdminKnowledgeItemSearchParams(params),
-  );
+  const filters = normalizeAdminKnowledgeItemSearchParams(params);
+  const hasFilters = Array.from(params.keys()).length > 0;
+  const items = await listAdminKnowledgeItems(filters);
 
   return (
     <div className="grid gap-5">
@@ -36,6 +47,68 @@ export default async function AdminKnowledgeItemsPage({
           新建知识项
         </Link>
       </header>
+
+      <form className="grid gap-3 rounded-lg border bg-background p-4 shadow-sm lg:grid-cols-[minmax(12rem,1fr)_10rem_10rem_7rem_auto] lg:items-end">
+        <div className="grid gap-2">
+          <Label htmlFor="admin-query">搜索</Label>
+          <Input
+            id="admin-query"
+            name="query"
+            defaultValue={filters.query ?? ""}
+            placeholder="标题、slug、摘要或标签"
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="admin-domain">领域</Label>
+          <Input
+            id="admin-domain"
+            name="domain"
+            defaultValue={filters.domain ?? ""}
+            placeholder="learning"
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="admin-content-type">类型</Label>
+          <select
+            id="admin-content-type"
+            name="contentType"
+            defaultValue={filters.contentType ?? ""}
+            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <option value="">全部类型</option>
+            {contentTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="admin-difficulty">难度</Label>
+          <Input
+            id="admin-difficulty"
+            name="difficulty"
+            type="number"
+            min={1}
+            max={5}
+            defaultValue={filters.difficulty ?? ""}
+            placeholder="1-5"
+          />
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button className={buttonVariants({ size: "sm" })} type="submit">
+            筛选
+          </button>
+          {hasFilters ? (
+            <Link
+              href="/admin/knowledge-items"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              清除筛选
+            </Link>
+          ) : null}
+        </div>
+      </form>
 
       <div className="overflow-x-auto rounded-lg border bg-background">
         <table className="min-w-[52rem] w-full text-left text-sm">
@@ -96,7 +169,7 @@ export default async function AdminKnowledgeItemsPage({
                   colSpan={6}
                   className="px-3 py-8 text-center text-sm text-muted-foreground"
                 >
-                  没有匹配的知识项。
+                  {hasFilters ? "没有匹配的知识项，可清除筛选后再试。" : "还没有知识项。"}
                 </td>
               </tr>
             )}

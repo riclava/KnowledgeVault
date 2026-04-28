@@ -1,7 +1,8 @@
 "use client";
 
-import type { ComponentProps, FormEvent } from "react";
+import type { ComponentProps, FormEvent, ReactNode } from "react";
 import { useState, useTransition } from "react";
+import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,21 +13,47 @@ type KnowledgeItemAdminFormProps = {
   initialValue?: Record<string, unknown>;
   endpoint: string;
   method: "POST" | "PUT";
+  mode?: "create" | "edit";
 };
 
-const CONTENT_TYPES = [
-  "math_formula",
-  "vocabulary",
-  "plain_text",
-  "concept_card",
-  "comparison_table",
-  "procedure",
+const CONTENT_TYPE_OPTIONS = [
+  {
+    value: "plain_text",
+    label: "纯文本",
+    description: "适合定义、原则、短知识点。",
+  },
+  {
+    value: "concept_card",
+    label: "概念卡片",
+    description: "适合概念、关键点和常见误区。",
+  },
+  {
+    value: "procedure",
+    label: "流程",
+    description: "适合步骤、决策节点和 Mermaid 流程图。",
+  },
+  {
+    value: "comparison_table",
+    label: "对比表",
+    description: "适合区分相似知识点或流程差异。",
+  },
+  {
+    value: "math_formula",
+    label: "数学公式",
+    description: "适合 LaTeX 公式和变量说明。",
+  },
+  {
+    value: "vocabulary",
+    label: "词汇",
+    description: "适合术语、定义、音标和词性。",
+  },
 ] as const;
 
 export function KnowledgeItemAdminForm({
   initialValue = {},
   endpoint,
   method,
+  mode = "edit",
 }: KnowledgeItemAdminFormProps) {
   const initialContentType =
     getString(initialValue, "contentType") || "plain_text";
@@ -35,6 +62,7 @@ export function KnowledgeItemAdminForm({
   const [success, setSuccess] = useState("");
   const [isPending, startTransition] = useTransition();
   const renderPayload = getRecord(initialValue, "renderPayload");
+  const isCreate = mode === "create";
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -76,11 +104,11 @@ export function KnowledgeItemAdminForm({
         const responseBody = await response.json().catch(() => null);
 
         if (!response.ok) {
-          setError(JSON.stringify(responseBody, null, 2));
+          setError(formatSaveError(responseBody));
           return;
         }
 
-        setSuccess("已保存");
+        setSuccess(isCreate ? "已创建知识项。" : "已保存");
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "保存失败。");
       }
@@ -89,23 +117,41 @@ export function KnowledgeItemAdminForm({
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-5">
-      <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">基础信息</h2>
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_18rem] lg:items-start">
+        <div className="grid gap-5">
+      <FormSection
+        title="基础信息"
+        description="这部分决定知识项能否被搜索、分组和进入训练队列。"
+      >
         <div className="grid gap-4 md:grid-cols-2">
-          <Field name="slug" label="Slug" initialValue={initialValue} required />
+          <Field
+            name="slug"
+            label="Slug"
+            initialValue={initialValue}
+            placeholder="例如：bayes-theorem"
+            helperText="用于 URL 和关系引用，建议使用小写英文、数字和连字符。"
+            required
+          />
           <Field
             name="title"
             label="标题"
             initialValue={initialValue}
+            placeholder="例如：贝叶斯公式"
             required
           />
           <Field
             name="domain"
             label="领域"
             initialValue={initialValue}
+            placeholder="math"
             required
           />
-          <Field name="subdomain" label="子领域" initialValue={initialValue} />
+          <Field
+            name="subdomain"
+            label="子领域"
+            initialValue={initialValue}
+            placeholder="probability"
+          />
           <Field
             name="difficulty"
             label="难度"
@@ -114,6 +160,7 @@ export function KnowledgeItemAdminForm({
             max={5}
             initialValue={initialValue}
             fallback="3"
+            helperText="1 最容易，5 最难。"
             required
           />
           <div className="grid gap-2">
@@ -123,16 +170,21 @@ export function KnowledgeItemAdminForm({
               name="contentType"
               value={contentType}
               onChange={(event) => setContentType(event.target.value)}
-              className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+              className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
             >
-              {CONTENT_TYPES.map((type) => (
-                <option key={type} value={type}>
-                  {type}
+              {CONTENT_TYPE_OPTIONS.map((type) => (
+                <option key={type.value} value={type.value}>
+                  {type.label} · {type.value}
                 </option>
               ))}
             </select>
+            <p className="text-xs leading-5 text-muted-foreground">
+              选择后下方会显示对应的内容字段。
+            </p>
           </div>
         </div>
+
+        <ContentTypeGuide contentType={contentType} />
 
         <RenderPayloadFields
           contentType={contentType}
@@ -143,6 +195,7 @@ export function KnowledgeItemAdminForm({
           name="summary"
           label="摘要"
           initialValue={initialValue}
+          placeholder="一句话说明这个知识项解决什么问题。"
           required
         />
         <TextareaField
@@ -150,6 +203,7 @@ export function KnowledgeItemAdminForm({
           label="正文"
           initialValue={initialValue}
           className="min-h-40"
+          placeholder="写清定义、背景、关键推理或使用方式。"
           required
         />
         <div className="grid gap-4 md:grid-cols-2">
@@ -157,88 +211,205 @@ export function KnowledgeItemAdminForm({
             name="intuition"
             label="直觉解释"
             initialValue={initialValue}
+            placeholder="用更口语的方式解释它为什么成立。"
           />
           <TextareaField
             name="deepDive"
             label="深入说明"
             initialValue={initialValue}
+            placeholder="可选：补充推导、边界或更深入的解释。"
           />
         </div>
-      </section>
+      </FormSection>
 
-      <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">数组字段</h2>
+      <FormSection
+        title="训练语境"
+        description="每行一条。这里会直接影响学习者在详情页和补弱时看到的结构。"
+      >
         <div className="grid gap-4 md:grid-cols-2">
-          <ArrayTextarea name="useConditions" label="使用条件" value={initialValue} />
+          <ArrayTextarea name="useConditions" label="使用条件" value={initialValue} placeholder="题目要求反推条件概率&#10;已知 P(B|A)、P(A)、P(B)" />
           <ArrayTextarea
             name="nonUseConditions"
             label="不使用条件"
             value={initialValue}
+            placeholder="只需要正向条件概率&#10;缺少总体概率信息"
           />
-          <ArrayTextarea name="antiPatterns" label="反模式" value={initialValue} />
+          <ArrayTextarea
+            name="antiPatterns"
+            label="反模式"
+            value={initialValue}
+            placeholder="把 P(A|B) 和 P(B|A) 混用"
+          />
           <ArrayTextarea
             name="typicalProblems"
             label="典型问题"
             value={initialValue}
+            placeholder="医学检测阳性后的真实患病概率"
           />
-          <ArrayTextarea name="examples" label="示例" value={initialValue} />
-          <ArrayTextarea name="tags" label="标签" value={initialValue} />
+          <ArrayTextarea
+            name="examples"
+            label="示例"
+            value={initialValue}
+            placeholder="如果检测准确率为..."
+          />
+          <ArrayTextarea
+            name="tags"
+            label="标签"
+            value={initialValue}
+            placeholder="probability&#10;conditional"
+          />
         </div>
-      </section>
+      </FormSection>
 
-      <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">变量</h2>
-        <Label htmlFor="variables">变量明细</Label>
-        <Textarea
-          id="variables"
-          name="variables"
-          defaultValue={variablesText(initialValue.variables)}
-          className="min-h-32 font-mono text-sm"
-          placeholder="symbol | name | description | unit"
-        />
-      </section>
-
-      <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">复习题</h2>
+      <FormSection
+        title="复习题"
+        description="至少准备 1 道题。每行格式：type | prompt | answer | explanation | difficulty。"
+      >
         <Label htmlFor="reviewItems">复习题明细</Label>
         <Textarea
           id="reviewItems"
           name="reviewItems"
           defaultValue={reviewItemsText(initialValue.reviewItems)}
           className="min-h-40 font-mono text-sm"
-          placeholder="type | prompt | answer | explanation | difficulty"
+          placeholder="recall | 贝叶斯公式解决什么问题？ | 用结果反推原因概率 | 注意和正向条件概率区分 | 3"
         />
-      </section>
+      </FormSection>
 
-      <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">知识关系</h2>
+      <FormSection
+        title="变量"
+        description="公式或流程需要变量时再填。每行格式：symbol | name | description | unit。"
+        advanced
+        defaultOpen={!isCreate}
+      >
+        <Label htmlFor="variables">变量明细</Label>
+        <Textarea
+          id="variables"
+          name="variables"
+          defaultValue={variablesText(initialValue.variables)}
+          className="min-h-32 font-mono text-sm"
+          placeholder="P(A|B) | 后验概率 | 已知 B 发生后 A 发生的概率 |"
+        />
+      </FormSection>
+
+      <FormSection
+        title="知识关系"
+        description="可选。每行格式：toSlug | relationType | note。"
+        advanced
+        defaultOpen={!isCreate}
+      >
         <Label htmlFor="relations">知识关系明细</Label>
         <Textarea
           id="relations"
           name="relations"
           defaultValue={relationsText(initialValue.relations)}
           className="min-h-32 font-mono text-sm"
-          placeholder="toSlug | relationType | note"
+          placeholder="total-probability | prerequisite | 需要先理解全概率公式"
         />
-      </section>
+      </FormSection>
 
       {error ? (
-        <pre className="max-h-72 overflow-auto rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
+        <pre className="max-h-72 whitespace-pre-wrap overflow-auto rounded-md border border-destructive/30 bg-destructive/10 p-3 text-sm leading-6 text-destructive">
           {error}
         </pre>
       ) : null}
       {success ? (
-        <p className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-700 dark:text-emerald-300">
-          {success}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-success/25 bg-success/10 px-3 py-2 text-sm text-success">
+          <p>{success}</p>
+          <Link
+            href="/admin/knowledge-items"
+            className="font-medium underline underline-offset-4"
+          >
+            回到知识项列表
+          </Link>
+        </div>
       ) : null}
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isPending}>
-          {isPending ? "保存中..." : "保存"}
+          {isPending ? "保存中..." : isCreate ? "创建知识项" : "保存修改"}
         </Button>
       </div>
+        </div>
+
+        <aside className="sticky top-5 grid gap-3 rounded-lg border bg-background p-4 shadow-sm">
+          <div className="grid gap-1">
+            <h2 className="text-base font-semibold">创建路径</h2>
+            <p className="text-sm leading-6 text-muted-foreground">
+              先保证知识项能被训练，再补高级结构。
+            </p>
+          </div>
+          <ol className="grid gap-2 text-sm">
+            <li className="rounded-md border bg-muted/30 px-3 py-2">1. 基础信息和内容类型</li>
+            <li className="rounded-md border bg-muted/30 px-3 py-2">2. 正文、使用条件和误用</li>
+            <li className="rounded-md border bg-muted/30 px-3 py-2">3. 至少 1 道复习题</li>
+            <li className="rounded-md border bg-muted/30 px-3 py-2">4. 需要时再补变量和关系</li>
+          </ol>
+          <p className="text-xs leading-5 text-muted-foreground">
+            如果素材较长，优先使用 AI 导入生成草稿，再回来人工校正。
+          </p>
+        </aside>
+      </div>
     </form>
+  );
+}
+
+function ContentTypeGuide({ contentType }: { contentType: string }) {
+  const active = CONTENT_TYPE_OPTIONS.find((option) => option.value === contentType);
+
+  if (!active) {
+    return null;
+  }
+
+  return (
+    <div className="rounded-lg border bg-muted/30 px-3 py-2 text-sm leading-6">
+      <span className="font-medium">{active.label}</span>
+      <span className="text-muted-foreground">：{active.description}</span>
+    </div>
+  );
+}
+
+function FormSection({
+  title,
+  description,
+  children,
+  advanced = false,
+  defaultOpen = true,
+}: {
+  title: string;
+  description?: string;
+  children: ReactNode;
+  advanced?: boolean;
+  defaultOpen?: boolean;
+}) {
+  if (advanced) {
+    return (
+      <details
+        open={defaultOpen}
+        className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm"
+      >
+        <summary className="cursor-pointer list-none marker:hidden">
+          <span className="text-lg font-semibold">{title}</span>
+          {description ? (
+            <span className="mt-1 block text-sm leading-6 text-muted-foreground">
+              {description}
+            </span>
+          ) : null}
+        </summary>
+        <div className="mt-4 grid gap-4">{children}</div>
+      </details>
+    );
+  }
+
+  return (
+    <section className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm">
+      <div className="grid gap-1">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {description ? (
+          <p className="text-sm leading-6 text-muted-foreground">{description}</p>
+        ) : null}
+      </div>
+      {children}
+    </section>
   );
 }
 
@@ -423,17 +594,47 @@ function RenderPayloadFields({
   );
 }
 
+function formatSaveError(responseBody: unknown) {
+  const record = isRecord(responseBody) ? responseBody : {};
+  const errors = Array.isArray(record.errors) ? record.errors : [];
+
+  if (errors.length > 0) {
+    return errors
+      .map((error, index) => {
+        if (!isRecord(error)) {
+          return `${index + 1}. 保存失败：${String(error)}`;
+        }
+
+        const path = getString(error, "path") || "表单";
+        const message = getString(error, "message") || "请检查字段内容。";
+
+        return `${index + 1}. ${path}：${message}`;
+      })
+      .join("\n");
+  }
+
+  const message = getString(record, "error");
+
+  if (message) {
+    return message;
+  }
+
+  return "保存失败，请检查字段内容。";
+}
+
 function Field({
   name,
   label,
   initialValue,
   fallback = "",
+  helperText,
   ...props
 }: {
   name: string;
   label: string;
   initialValue: Record<string, unknown>;
   fallback?: string;
+  helperText?: string;
 } & ComponentProps<typeof Input>) {
   return (
     <div className="grid gap-2">
@@ -444,6 +645,9 @@ function Field({
         defaultValue={getString(initialValue, name) || fallback}
         {...props}
       />
+      {helperText ? (
+        <p className="text-xs leading-5 text-muted-foreground">{helperText}</p>
+      ) : null}
     </div>
   );
 }
@@ -478,10 +682,12 @@ function ArrayTextarea({
   name,
   label,
   value,
+  placeholder,
 }: {
   name: string;
   label: string;
   value: Record<string, unknown>;
+  placeholder?: string;
 }) {
   return (
     <TextareaField
@@ -489,6 +695,7 @@ function ArrayTextarea({
       label={label}
       initialValue={{ [name]: arrayText(value[name]) }}
       className="min-h-28"
+      placeholder={placeholder}
     />
   );
 }

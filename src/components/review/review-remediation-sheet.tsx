@@ -47,6 +47,7 @@ export function ReviewRemediationSheet({
   item,
   grade,
   mode,
+  domain,
   currentIndex,
   totalItems,
   open,
@@ -57,6 +58,7 @@ export function ReviewRemediationSheet({
   item: ReviewQueueItem | null;
   grade: Extract<ReviewGrade, "again" | "hard"> | null;
   mode: ReviewMode;
+  domain: string;
   currentIndex: number;
   totalItems: number;
   open: boolean;
@@ -69,7 +71,7 @@ export function ReviewRemediationSheet({
   }
 
   const meta = remediationMeta[grade];
-  const detailHref = `/knowledge-items/${item.knowledgeItem.slug}?focus=${meta.focusSection}&from=review&mode=${mode}`;
+  const detailHref = `/knowledge-items/${item.knowledgeItem.slug}?focus=${meta.focusSection}&from=review&mode=${mode}&domain=${encodeURIComponent(domain)}`;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -130,7 +132,7 @@ export function ReviewRemediationSheet({
               </Link>
             </div>
             <Button type="button" onClick={onContinue}>
-              继续下一题
+              回到复习卡片
               <ArrowRight data-icon="inline-end" />
             </Button>
           </div>

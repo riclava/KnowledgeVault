@@ -7,6 +7,7 @@ import {
 } from "@/components/knowledge-item/knowledge-item-detail-view";
 import { normalizeRouteParam } from "@/lib/route-params";
 import { requireCurrentLearner } from "@/server/auth/current-learner";
+import { resolveLearningDomain } from "@/server/learning-domain";
 import {
   getKnowledgeItemDetail,
   getKnowledgeItemMemoryHooks,
@@ -40,19 +41,25 @@ function parseEntryPoint(value?: string) {
 function buildReturnLink({
   entryPoint,
   mode,
+  domain,
 }: {
   entryPoint: ReturnType<typeof parseEntryPoint>;
   mode?: string;
+  domain: string;
 }) {
+  const domainQuery = `domain=${encodeURIComponent(domain)}`;
+
   switch (entryPoint) {
     case "review":
       return {
-        href: mode === "weak" ? "/review?mode=weak" : "/review",
+        href: mode === "weak"
+          ? `/review?mode=weak&${domainQuery}`
+          : `/review?${domainQuery}`,
         label: mode === "weak" ? "回到弱项重练" : "回到今日复习",
       };
     default:
       return {
-        href: "/review",
+        href: `/review?${domainQuery}`,
         label: "回到今日复习",
       };
   }
@@ -63,12 +70,13 @@ export default async function KnowledgeItemDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ focus?: string; from?: string; mode?: string }>;
+  searchParams: Promise<{ focus?: string; from?: string; mode?: string; domain?: string }>;
 }) {
   const { id: rawId } = await params;
-  const { focus, from, mode } = await searchParams;
+  const { focus, from, mode, domain } = await searchParams;
   const id = normalizeRouteParam(rawId);
   const current = await requireCurrentLearner();
+  const learningDomain = await resolveLearningDomain(domain);
   const [knowledgeItem, relations, hooks] = await Promise.all([
     getKnowledgeItemDetail(id),
     getKnowledgeItemRelationDetails(id),
@@ -87,6 +95,7 @@ export default async function KnowledgeItemDetailPage({
       activePath="/review"
       eyebrow="知识项详情"
       title="查看知识项详情"
+      learningDomain={learningDomain}
     >
       <KnowledgeItemDetailView
         knowledgeItemIdOrSlug={id}
@@ -98,6 +107,7 @@ export default async function KnowledgeItemDetailPage({
         returnLink={buildReturnLink({
           entryPoint: parseEntryPoint(from),
           mode,
+          domain: learningDomain.currentDomain,
         })}
       />
     </PhaseShell>
