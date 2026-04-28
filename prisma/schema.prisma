@@ -18,6 +18,9 @@ enum KnowledgeItemType {
   math_formula
   vocabulary
   plain_text
+  concept_card
+  comparison_table
+  procedure
 }
 
 enum ReviewItemType {

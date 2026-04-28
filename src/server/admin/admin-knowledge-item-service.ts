@@ -14,6 +14,9 @@ const SUPPORTED_CONTENT_TYPES = new Set<string>([
   "math_formula",
   "vocabulary",
   "plain_text",
+  "concept_card",
+  "comparison_table",
+  "procedure",
 ]);
 
 export type AdminKnowledgeItemListParams = {

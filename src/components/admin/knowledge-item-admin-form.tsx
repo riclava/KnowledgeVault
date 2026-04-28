@@ -14,7 +14,14 @@ type KnowledgeItemAdminFormProps = {
   method: "POST" | "PUT";
 };
 
-const CONTENT_TYPES = ["math_formula", "vocabulary", "plain_text"] as const;
+const CONTENT_TYPES = [
+  "math_formula",
+  "vocabulary",
+  "plain_text",
+  "concept_card",
+  "comparison_table",
+  "procedure",
+] as const;
 
 export function KnowledgeItemAdminForm({
   initialValue = {},
@@ -269,6 +276,143 @@ function RenderPayloadFields({
     );
   }
 
+  if (contentType === "concept_card") {
+    return (
+      <div className="grid gap-4">
+        <TextareaField
+          name="definition"
+          label="概念定义"
+          initialValue={renderPayload}
+          required
+        />
+        <TextareaField
+          name="conceptIntuition"
+          label="概念直觉"
+          initialValue={{ conceptIntuition: getString(renderPayload, "intuition") }}
+        />
+        <div className="grid gap-4 md:grid-cols-3">
+          <TextareaField
+            name="keyPoints"
+            label="关键点"
+            initialValue={{ keyPoints: arrayText(renderPayload.keyPoints) }}
+            className="min-h-28"
+          />
+          <TextareaField
+            name="conceptExamples"
+            label="概念示例"
+            initialValue={{ conceptExamples: arrayText(renderPayload.examples) }}
+            className="min-h-28"
+          />
+          <TextareaField
+            name="misconceptions"
+            label="常见误区"
+            initialValue={{ misconceptions: arrayText(renderPayload.misconceptions) }}
+            className="min-h-28"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (contentType === "comparison_table") {
+    const comparisonMode = getString(renderPayload, "mode") || "matrix";
+
+    return (
+      <div className="grid gap-4">
+        <div className="grid gap-2">
+          <Label htmlFor="comparisonMode">对比表模式</Label>
+          <select
+            id="comparisonMode"
+            name="comparisonMode"
+            defaultValue={comparisonMode}
+            className="h-8 w-full rounded-lg border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          >
+            <option value="matrix">matrix</option>
+            <option value="table">table</option>
+          </select>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          <TextareaField
+            name="matrixSubjects"
+            label="Matrix subjects"
+            initialValue={{ matrixSubjects: arrayText(renderPayload.subjects) }}
+            className="min-h-28"
+            placeholder="Bayes&#10;Total probability"
+          />
+          <TextareaField
+            name="matrixAspects"
+            label="Matrix aspects"
+            initialValue={{ matrixAspects: matrixAspectsText(renderPayload.aspects) }}
+            className="min-h-28 font-mono text-sm"
+            placeholder="Use | Reverse conditional | Marginalize cases"
+          />
+          <TextareaField
+            name="tableColumns"
+            label="Table columns"
+            initialValue={{ tableColumns: arrayText(renderPayload.columns) }}
+            className="min-h-28"
+            placeholder="Step&#10;Action"
+          />
+          <TextareaField
+            name="tableRows"
+            label="Table rows"
+            initialValue={{ tableRows: tableRowsText(renderPayload.rows) }}
+            className="min-h-28 font-mono text-sm"
+            placeholder="1 | Read source&#10;2 | Extract concepts"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (contentType === "procedure") {
+    return (
+      <div className="grid gap-4">
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field
+            name="procedureTitle"
+            label="流程标题"
+            initialValue={{ procedureTitle: getString(renderPayload, "title") }}
+            required
+          />
+          <TextareaField
+            name="procedureOverview"
+            label="流程概览"
+            initialValue={{ procedureOverview: getString(renderPayload, "overview") }}
+          />
+        </div>
+        <TextareaField
+          name="procedureSteps"
+          label="流程步骤"
+          initialValue={{ procedureSteps: procedureStepsText(renderPayload.steps) }}
+          className="min-h-32 font-mono text-sm"
+          placeholder="id | title | description | tip 1, tip 2 | pitfall 1"
+        />
+        <TextareaField
+          name="procedureNodes"
+          label="流程节点"
+          initialValue={{ procedureNodes: procedureNodesText(renderPayload.nodes) }}
+          className="min-h-32 font-mono text-sm"
+          placeholder="id | label | start|step|decision|end"
+        />
+        <TextareaField
+          name="procedureEdges"
+          label="流程边"
+          initialValue={{ procedureEdges: procedureEdgesText(renderPayload.edges) }}
+          className="min-h-32 font-mono text-sm"
+          placeholder="from | to | label"
+        />
+        <TextareaField
+          name="mermaid"
+          label="Mermaid"
+          initialValue={renderPayload}
+          className="min-h-40 font-mono text-sm"
+          required
+        />
+      </div>
+    );
+  }
+
   return (
     <TextareaField
       name="plainText"
@@ -363,7 +507,106 @@ function buildRenderPayload(contentType: string, formData: FormData) {
     };
   }
 
+  if (contentType === "concept_card") {
+    return {
+      definition: field(formData, "definition"),
+      intuition: field(formData, "conceptIntuition"),
+      keyPoints: lines(field(formData, "keyPoints")),
+      examples: lines(field(formData, "conceptExamples")),
+      misconceptions: lines(field(formData, "misconceptions")),
+    };
+  }
+
+  if (contentType === "comparison_table") {
+    const mode = field(formData, "comparisonMode") || "matrix";
+
+    if (mode === "table") {
+      return {
+        mode,
+        columns: lines(field(formData, "tableColumns")),
+        rows: parsePipeRows(field(formData, "tableRows")),
+      };
+    }
+
+    return {
+      mode: "matrix",
+      subjects: lines(field(formData, "matrixSubjects")),
+      aspects: parseMatrixAspects(field(formData, "matrixAspects")),
+    };
+  }
+
+  if (contentType === "procedure") {
+    return {
+      mode: "flowchart",
+      title: field(formData, "procedureTitle"),
+      overview: field(formData, "procedureOverview"),
+      steps: parseProcedureSteps(field(formData, "procedureSteps")),
+      nodes: parseProcedureNodes(field(formData, "procedureNodes")),
+      edges: parseProcedureEdges(field(formData, "procedureEdges")),
+      mermaid: field(formData, "mermaid"),
+    };
+  }
+
   return { text: field(formData, "plainText") };
+}
+
+function parseMatrixAspects(value: string) {
+  return lines(value).map((line) => {
+    const [label = "", ...values] = splitLine(line);
+
+    return {
+      label,
+      values,
+    };
+  });
+}
+
+function parsePipeRows(value: string) {
+  return lines(value).map(splitLine);
+}
+
+function parseProcedureSteps(value: string) {
+  return lines(value).map((line) => {
+    const [
+      id = "",
+      title = "",
+      description = "",
+      tips = "",
+      pitfalls = "",
+    ] = splitLine(line);
+
+    return {
+      id,
+      title,
+      description,
+      tips: splitCellList(tips),
+      pitfalls: splitCellList(pitfalls),
+    };
+  });
+}
+
+function parseProcedureNodes(value: string) {
+  return lines(value).map((line) => {
+    const [id = "", label = "", kind = "step"] = splitLine(line);
+
+    return {
+      id,
+      label,
+      kind,
+    };
+  });
+}
+
+function parseProcedureEdges(value: string) {
+  return lines(value).map((line) => {
+    const [from = "", to = "", label = ""] = splitLine(line);
+
+    return {
+      from,
+      to,
+      label,
+    };
+  });
 }
 
 function parseVariables(value: string) {
@@ -467,10 +710,94 @@ function relationsText(value: unknown) {
     .join("\n");
 }
 
+function matrixAspectsText(value: unknown) {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .filter(isRecord)
+    .map((aspect) =>
+      [
+        getString(aspect, "label"),
+        ...arrayStrings(aspect.values),
+      ].join(" | "),
+    )
+    .join("\n");
+}
+
+function tableRowsText(value: unknown) {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .filter((row): row is unknown[] => Array.isArray(row))
+    .map((row) => row.map(String).join(" | "))
+    .join("\n");
+}
+
+function procedureStepsText(value: unknown) {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .filter(isRecord)
+    .map((step) =>
+      [
+        getString(step, "id"),
+        getString(step, "title"),
+        getString(step, "description"),
+        arrayStrings(step.tips).join(", "),
+        arrayStrings(step.pitfalls).join(", "),
+      ].join(" | "),
+    )
+    .join("\n");
+}
+
+function procedureNodesText(value: unknown) {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .filter(isRecord)
+    .map((node) =>
+      [
+        getString(node, "id"),
+        getString(node, "label"),
+        getString(node, "kind"),
+      ].join(" | "),
+    )
+    .join("\n");
+}
+
+function procedureEdgesText(value: unknown) {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  return value
+    .filter(isRecord)
+    .map((edge) =>
+      [
+        getString(edge, "from"),
+        getString(edge, "to"),
+        getString(edge, "label"),
+      ].join(" | "),
+    )
+    .join("\n");
+}
+
 function arrayText(value: unknown) {
   return Array.isArray(value)
     ? value.map((entry) => String(entry)).join("\n")
     : "";
+}
+
+function arrayStrings(value: unknown) {
+  return Array.isArray(value) ? value.map((entry) => String(entry)) : [];
 }
 
 function lines(value: string) {
@@ -482,6 +809,13 @@ function lines(value: string) {
 
 function splitLine(value: string) {
   return value.split("|").map((part) => part.trim());
+}
+
+function splitCellList(value: string) {
+  return value
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }
 
 function numberField(formData: FormData, name: string, fallback: number) {

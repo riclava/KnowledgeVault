@@ -9,6 +9,17 @@ const baseline = readFileSync(
 );
 
 describe("admin schema shape", () => {
+  it("adds structured knowledge item content types", () => {
+    assert.match(
+      schema,
+      /enum KnowledgeItemType\s*{\s*math_formula\s*vocabulary\s*plain_text\s*concept_card\s*comparison_table\s*procedure\s*}/s,
+    );
+    assert.match(
+      baseline,
+      /CREATE TYPE "KnowledgeItemType" AS ENUM \('math_formula', 'vocabulary', 'plain_text', 'concept_card', 'comparison_table', 'procedure'\)/,
+    );
+  });
+
   it("adds database roles and import-run tracking", () => {
     assert.match(schema, /enum UserRole\s*{\s*learner\s*admin\s*}/s);
     assert.match(schema, /role\s+UserRole\s+@default\(learner\)/);
