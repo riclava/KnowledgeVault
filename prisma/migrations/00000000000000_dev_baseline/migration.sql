@@ -5,7 +5,7 @@ CREATE SCHEMA IF NOT EXISTS "public";
 CREATE TYPE "KnowledgeItemRelationType" AS ENUM ('prerequisite', 'related', 'confusable', 'application_of');
 
 -- CreateEnum
-CREATE TYPE "KnowledgeItemType" AS ENUM ('math_formula', 'vocabulary', 'plain_text');
+CREATE TYPE "KnowledgeItemType" AS ENUM ('math_formula', 'vocabulary', 'plain_text', 'concept_card', 'comparison_table', 'procedure');
 
 -- CreateEnum
 CREATE TYPE "ReviewItemType" AS ENUM ('recall', 'recognition', 'application');

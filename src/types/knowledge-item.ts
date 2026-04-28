@@ -1,6 +1,12 @@
 import type { MemoryHookRecord } from "@/types/memory-hook";
 
-export type KnowledgeItemType = "math_formula" | "vocabulary" | "plain_text";
+export type KnowledgeItemType =
+  | "math_formula"
+  | "vocabulary"
+  | "plain_text"
+  | "concept_card"
+  | "comparison_table"
+  | "procedure";
 
 export type MathFormulaRenderPayload = {
   latex: string;
@@ -18,16 +24,69 @@ export type PlainTextRenderPayload = {
   text: string;
 };
 
+export type ConceptCardRenderPayload = {
+  definition: string;
+  intuition: string;
+  keyPoints: string[];
+  examples: string[];
+  misconceptions: string[];
+};
+
+export type ComparisonTableRenderPayload =
+  | {
+      mode: "matrix";
+      subjects: string[];
+      aspects: Array<{
+        label: string;
+        values: string[];
+      }>;
+    }
+  | {
+      mode: "table";
+      columns: string[];
+      rows: string[][];
+    };
+
+export type ProcedureRenderPayload = {
+  mode: "flowchart";
+  title: string;
+  overview: string;
+  steps: Array<{
+    id: string;
+    title: string;
+    description: string;
+    tips: string[];
+    pitfalls: string[];
+  }>;
+  nodes: Array<{
+    id: string;
+    label: string;
+    kind: "start" | "step" | "decision" | "end";
+  }>;
+  edges: Array<{
+    from: string;
+    to: string;
+    label: string | null;
+  }>;
+  mermaid: string;
+};
+
 export type KnowledgeItemRenderPayloadByType = {
   math_formula: MathFormulaRenderPayload;
   vocabulary: VocabularyRenderPayload;
   plain_text: PlainTextRenderPayload;
+  concept_card: ConceptCardRenderPayload;
+  comparison_table: ComparisonTableRenderPayload;
+  procedure: ProcedureRenderPayload;
 };
 
 export type KnowledgeItemRenderPayload =
   | ({ type: "math_formula" } & MathFormulaRenderPayload)
   | ({ type: "vocabulary" } & VocabularyRenderPayload)
-  | ({ type: "plain_text" } & PlainTextRenderPayload);
+  | ({ type: "plain_text" } & PlainTextRenderPayload)
+  | ({ type: "concept_card" } & ConceptCardRenderPayload)
+  | ({ type: "comparison_table" } & ComparisonTableRenderPayload)
+  | ({ type: "procedure" } & ProcedureRenderPayload);
 
 export type KnowledgeItemTrainingStatus =
   | "not_started"
