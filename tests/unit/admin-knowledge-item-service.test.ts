@@ -85,6 +85,12 @@ describe("admin knowledge item service", () => {
     assert.deepEqual(capturedArgs, {
       where: { difficulty: { in: [0, 2] } },
       include: {
+        createdByUser: {
+          select: {
+            displayName: true,
+            email: true,
+          },
+        },
         _count: {
           select: {
             variables: true,

@@ -13,7 +13,7 @@ export const comparisonTableRenderer: KnowledgeItemRendererPlugin<"comparison_ta
   },
   renderBlock(payload) {
     return (
-      <div className="overflow-x-auto rounded-lg border bg-background shadow-sm">
+      <div className="overflow-x-auto rounded-lg border bg-background">
         <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
           {payload.mode === "matrix" ? (
             <MatrixTable payload={payload} />

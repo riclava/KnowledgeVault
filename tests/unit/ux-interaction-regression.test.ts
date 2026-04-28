@@ -101,4 +101,29 @@ describe("learner interaction UX regressions", () => {
     assert.match(authForm, /aria-invalid/);
     assert.match(authForm, /fieldErrors/);
   });
+
+  it("uses a type-aware detail shell without nested renderer cards", () => {
+    const detail = readFileSync(
+      "src/components/knowledge-item/knowledge-item-detail-view.tsx",
+      "utf8",
+    );
+    const rendererFiles = [
+      "src/components/knowledge-item/renderers/math-formula-renderer.tsx",
+      "src/components/knowledge-item/renderers/vocabulary-renderer.tsx",
+      "src/components/knowledge-item/renderers/plain-text-renderer.tsx",
+      "src/components/knowledge-item/renderers/concept-card-renderer.tsx",
+      "src/components/knowledge-item/renderers/comparison-table-renderer.tsx",
+      "src/components/knowledge-item/renderers/procedure-renderer.tsx",
+    ].map((file) => readFileSync(file, "utf8"));
+
+    assert.match(detail, /contentTypeLayoutClass\(knowledgeItem\.contentType\)/);
+    assert.match(detail, /data-content-type=\{knowledgeItem\.contentType\}/);
+    assert.match(detail, /LearningPriorityRail/);
+    assert.match(detail, /aria-label="知识项快捷跳转"/);
+    assert.match(detail, /overflow-x-auto/);
+
+    for (const renderer of rendererFiles) {
+      assert.doesNotMatch(renderer, /shadow-sm/);
+    }
+  });
 });

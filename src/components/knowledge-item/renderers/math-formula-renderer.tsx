@@ -23,7 +23,7 @@ function renderLatex({
     <span
       className={cn(
         block &&
-          "block max-w-full overflow-x-auto rounded-lg border bg-background px-4 py-5 text-center text-lg shadow-sm [&_.katex-display]:my-0",
+          "block max-w-full overflow-x-auto rounded-lg border bg-background px-4 py-5 text-center text-lg [&_.katex-display]:my-0",
         className,
       )}
       dangerouslySetInnerHTML={{ __html: html }}

@@ -10,7 +10,7 @@ export const conceptCardRenderer: KnowledgeItemRendererPlugin<"concept_card"> = 
   },
   renderBlock(payload) {
     return (
-      <div className="grid gap-4 rounded-lg border bg-background px-4 py-5 shadow-sm">
+      <div className="grid gap-4">
         <section className="grid gap-2">
           <h3 className="text-sm font-semibold text-muted-foreground">定义</h3>
           <p className="text-sm leading-7">{payload.definition}</p>

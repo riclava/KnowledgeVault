@@ -8,7 +8,7 @@ export const plainTextRenderer: KnowledgeItemRendererPlugin<"plain_text"> = {
   },
   renderBlock(payload) {
     return (
-      <div className="rounded-lg border bg-background px-4 py-5 text-sm leading-7 shadow-sm">
+      <div className="text-sm leading-7">
         <p className="whitespace-pre-wrap">{payload.text}</p>
       </div>
     );

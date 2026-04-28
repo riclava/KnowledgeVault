@@ -9,7 +9,7 @@ export const procedureRenderer: KnowledgeItemRendererPlugin<"procedure"> = {
   },
   renderBlock(payload) {
     return (
-      <div className="grid gap-4 rounded-lg border bg-background px-4 py-5 shadow-sm">
+      <div className="grid gap-4">
         <section className="grid gap-2">
           <h3 className="text-base font-semibold">{payload.title}</h3>
           {payload.overview ? (

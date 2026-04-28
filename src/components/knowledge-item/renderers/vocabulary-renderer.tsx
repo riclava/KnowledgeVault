@@ -20,7 +20,7 @@ export const vocabularyRenderer: KnowledgeItemRendererPlugin<"vocabulary"> = {
   },
   renderBlock(payload) {
     return (
-      <div className="grid gap-3 rounded-lg border bg-background px-4 py-5 shadow-sm">
+      <div className="grid gap-3">
         <div className="flex flex-wrap items-baseline gap-3">
           <strong className="text-2xl">{payload.term}</strong>
           {payload.phonetic ? (
