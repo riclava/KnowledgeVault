@@ -60,6 +60,116 @@ describe("admin import validation", () => {
     assert.equal(result.ok ? result.batch.items.length : 0, 1);
   });
 
+  it("accepts structured content type payloads", () => {
+    const result = validateAdminImportBatch(
+      {
+        ...validBatch,
+        items: [
+          {
+            ...validBatch.items[0],
+            slug: "limit-concept",
+            title: "Limit Concept",
+            contentType: "concept_card",
+            renderPayload: {
+              definition: "A limit is the value a function approaches.",
+              intuition: "Getting close matters more than arriving.",
+              keyPoints: ["approach", "neighborhood"],
+              examples: ["lim x->0 sin(x)/x = 1"],
+              misconceptions: ["The function must be defined at the point."],
+            },
+          },
+          {
+            ...validBatch.items[0],
+            slug: "conditional-comparison",
+            title: "Conditional Probability Comparison",
+            contentType: "comparison_table",
+            renderPayload: {
+              mode: "matrix",
+              subjects: ["Bayes", "Total probability"],
+              aspects: [
+                {
+                  label: "Use",
+                  values: ["Reverse conditional", "Marginalize cases"],
+                },
+              ],
+            },
+          },
+          {
+            ...validBatch.items[0],
+            slug: "solve-linear-equation",
+            title: "Solve Linear Equation",
+            contentType: "procedure",
+            renderPayload: {
+              mode: "flowchart",
+              title: "Solve linear equation",
+              overview: "Isolate the unknown.",
+              steps: [
+                {
+                  id: "isolate",
+                  title: "Isolate",
+                  description: "Move constants away.",
+                  tips: ["Keep both sides balanced."],
+                  pitfalls: ["Forgetting sign changes."],
+                },
+              ],
+              nodes: [
+                { id: "start", label: "Start", kind: "start" },
+                { id: "isolate", label: "Isolate x", kind: "step" },
+              ],
+              edges: [{ from: "start", to: "isolate", label: null }],
+              mermaid: "flowchart TD\n  start([Start]) --> isolate[Isolate x]",
+            },
+          },
+        ],
+      },
+      new Set(),
+    );
+
+    assert.equal(result.ok, true);
+    assert.equal(result.ok ? result.batch.items.length : 0, 3);
+  });
+
+  it("rejects malformed procedure edge references", () => {
+    const result = validateAdminImportBatch(
+      {
+        ...validBatch,
+        items: [
+          {
+            ...validBatch.items[0],
+            contentType: "procedure",
+            renderPayload: {
+              mode: "flowchart",
+              title: "Broken flow",
+              overview: "",
+              steps: [
+                {
+                  id: "step",
+                  title: "Step",
+                  description: "Do it.",
+                  tips: [],
+                  pitfalls: [],
+                },
+              ],
+              nodes: [
+                { id: "start", label: "Start", kind: "start" },
+                { id: "step", label: "Step", kind: "step" },
+              ],
+              edges: [{ from: "start", to: "missing", label: null }],
+              mermaid: "flowchart TD\n  start --> missing",
+            },
+          },
+        ],
+      },
+      new Set(),
+    );
+
+    assert.equal(result.ok, false);
+    assert.deepEqual(
+      result.ok ? [] : result.errors.map((error) => error.code),
+      ["invalid_render_payload"],
+    );
+  });
+
   it("rejects variables with blank symbol or name", () => {
     const invalid: AdminImportBatch = {
       ...validBatch,

@@ -11,11 +11,36 @@ import {
 describe("admin import AI provider", () => {
   it("creates a strict structured output schema", () => {
     const schema = createAdminImportJsonSchema();
+    const itemSchema = schema.schema.$defs?.item;
+    const contentTypeSchema = itemSchema?.properties?.contentType;
+    const renderPayloadSchema = itemSchema?.properties?.renderPayload;
 
     assert.equal(schema.type, "json_schema");
     assert.equal(schema.strict, true);
     assert.equal(schema.schema.additionalProperties, false);
     assert.deepEqual(schema.schema.required, ["sourceTitle", "defaultDomain", "items", "relations"]);
+    assert.deepEqual(contentTypeSchema?.enum, [
+      "math_formula",
+      "vocabulary",
+      "plain_text",
+      "concept_card",
+      "comparison_table",
+      "procedure",
+    ]);
+    assert.ok(schema.schema.$defs?.conceptCardPayload);
+    assert.ok(schema.schema.$defs?.comparisonTablePayload);
+    assert.ok(schema.schema.$defs?.procedurePayload);
+    assert.deepEqual(
+      renderPayloadSchema?.anyOf?.map((entry) => entry.$ref),
+      [
+        "#/$defs/mathFormulaPayload",
+        "#/$defs/vocabularyPayload",
+        "#/$defs/plainTextPayload",
+        "#/$defs/conceptCardPayload",
+        "#/$defs/comparisonTablePayload",
+        "#/$defs/procedurePayload",
+      ],
+    );
   });
 
   it("keeps object schemas strict and schema references bare", () => {
@@ -33,9 +58,21 @@ describe("admin import AI provider", () => {
     });
 
     assert.equal(batch.defaultDomain, "数学");
-    assert.equal(batch.items.length, 1);
+    assert.ok(batch.items.length >= 3);
     assert.equal(batch.items[0].slug, "mock-linear-equation");
     assert.equal(batch.items[0].reviewItems.length, 3);
+    assert.equal(
+      batch.items.some((item) => item.contentType === "concept_card"),
+      true,
+    );
+    assert.equal(
+      batch.items.some((item) => item.contentType === "comparison_table"),
+      true,
+    );
+    assert.equal(
+      batch.items.some((item) => item.contentType === "procedure"),
+      true,
+    );
   });
 
   it("rejects unsupported providers before using network", async () => {

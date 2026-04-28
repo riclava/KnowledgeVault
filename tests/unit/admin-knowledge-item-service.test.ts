@@ -12,14 +12,14 @@ describe("admin knowledge item service", () => {
   it("normalizes list query params", () => {
     const params = normalizeAdminKnowledgeItemSearchParams(
       new URLSearchParams(
-        "query=  algebra  &domain= Math &contentType=plain_text&difficulty=2&tag=core",
+        "query=  algebra  &domain= Math &contentType=concept_card&difficulty=2&tag=core",
       ),
     );
 
     assert.deepEqual(params, {
       query: "algebra",
       domain: "Math",
-      contentType: "plain_text",
+      contentType: "concept_card",
       difficulty: 2,
       tag: "core",
     });
