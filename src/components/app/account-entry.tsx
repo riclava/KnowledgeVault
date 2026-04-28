@@ -1,29 +1,45 @@
 import Link from "next/link";
-import { LogIn, UserRound } from "lucide-react";
+import { LayoutDashboard, LogIn, UserRound } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { getCurrentAuthSession } from "@/server/auth/current-learner";
+import { getCurrentLearner } from "@/server/auth/current-learner";
 
 export async function AccountEntry({ returnTo }: { returnTo: string }) {
-  const session = await getCurrentAuthSession();
+  const current = await getCurrentLearner();
   const href = `/account?returnTo=${encodeURIComponent(returnTo)}`;
 
-  if (session?.user) {
+  if (current) {
+    const accountLabel = current.authUser?.email ?? current.learner.email ?? "账户";
+
     return (
-      <Link
-        href={href}
-        className={cn(
-          buttonVariants({
-            size: "sm",
-            variant: "outline",
-          }),
-          "max-w-56 justify-start",
-        )}
-      >
-        <UserRound data-icon="inline-start" />
-        <span className="truncate">{session.user.email}</span>
-      </Link>
+      <>
+        {current.learner.role === "admin" ? (
+          <Link
+            href="/admin"
+            className={buttonVariants({
+              size: "sm",
+              variant: "secondary",
+            })}
+          >
+            <LayoutDashboard data-icon="inline-start" />
+            管理后台
+          </Link>
+        ) : null}
+        <Link
+          href={href}
+          className={cn(
+            buttonVariants({
+              size: "sm",
+              variant: "outline",
+            }),
+            "max-w-56 justify-start",
+          )}
+        >
+          <UserRound data-icon="inline-start" />
+          <span className="truncate">{accountLabel}</span>
+        </Link>
+      </>
     );
   }
 
