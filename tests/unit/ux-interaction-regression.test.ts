@@ -126,4 +126,13 @@ describe("learner interaction UX regressions", () => {
       assert.doesNotMatch(renderer, /shadow-sm/);
     }
   });
+
+  it("protects popup AI chat behind authenticated API access", () => {
+    const route = readFileSync("src/app/api/ai/chat/route.ts", "utf8");
+
+    assert.match(route, /withAuthenticatedApi/);
+    assert.match(route, /generateAiChatReply/);
+    assert.match(route, /NextResponse\.json\(\{ data: reply \}\)/);
+    assert.match(route, /status: 400/);
+  });
 });
