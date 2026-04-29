@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  bulkDeleteAdminKnowledgeItems,
   bulkUpdateAdminKnowledgeItemDomain,
   listAdminKnowledgeItems,
   normalizeAdminKnowledgeItemSearchParams,
@@ -48,5 +49,19 @@ export async function PATCH(request: Request) {
     }
 
     return NextResponse.json({ data: { updated: result.count } });
+  });
+}
+
+export async function DELETE(request: Request) {
+  return withAdminApi(async () => {
+    const result = await bulkDeleteAdminKnowledgeItems(
+      await request.json().catch(() => null),
+    );
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    return NextResponse.json({ data: { deleted: result.count } });
   });
 }

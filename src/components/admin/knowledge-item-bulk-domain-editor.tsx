@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useMemo, useState, useTransition } from "react";
-import { Eye, Loader2, Pencil, Tags } from "lucide-react";
+import { Eye, Loader2, Pencil, Tags, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { KnowledgeItemDeleteButton } from "@/components/admin/knowledge-item-delete-button";
@@ -123,6 +123,50 @@ export function AdminKnowledgeItemBulkDomainEditor({
     });
   }
 
+  function handleBulkDelete() {
+    if (selectedIds.length === 0) {
+      toast.error("请选择要删除的知识项。");
+      return;
+    }
+
+    toast("确认删除知识项", {
+      description: `确定删除选中的 ${selectedIds.length} 个知识项吗？相关复习题、变量、关系和学习记录会一并删除。`,
+      action: {
+        label: "删除",
+        onClick: performBulkDelete,
+      },
+      cancel: {
+        label: "取消",
+        onClick: () => undefined,
+      },
+    });
+  }
+
+  function performBulkDelete() {
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/admin/knowledge-items", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ids: selectedIds }),
+        });
+        const responseBody = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          toast.error(getResponseError(responseBody) ?? `批量删除失败：${response.status}`);
+          return;
+        }
+
+        toast.success(`已删除 ${getDeletedCount(responseBody)} 个知识项`);
+        setSelectedIds([]);
+        setSheetOpen(false);
+        router.refresh();
+      } catch (caught) {
+        toast.error(caught instanceof Error ? caught.message : "批量删除失败。");
+      }
+    });
+  }
+
   return (
     <div className="grid gap-3">
       {selectedIds.length > 0 ? (
@@ -232,6 +276,20 @@ export function AdminKnowledgeItemBulkDomainEditor({
                 </form>
               </SheetContent>
             </Sheet>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              disabled={isPending}
+              onClick={handleBulkDelete}
+            >
+              {isPending ? (
+                <Loader2 data-icon="inline-start" className="animate-spin" />
+              ) : (
+                <Trash2 data-icon="inline-start" />
+              )}
+              批量删除
+            </Button>
             <Button
               type="button"
               variant="outline"
@@ -399,6 +457,22 @@ function getUpdatedCount(responseBody: unknown) {
     typeof responseBody.data.updated === "number"
   ) {
     return responseBody.data.updated;
+  }
+
+  return 0;
+}
+
+function getDeletedCount(responseBody: unknown) {
+  if (
+    responseBody &&
+    typeof responseBody === "object" &&
+    "data" in responseBody &&
+    responseBody.data &&
+    typeof responseBody.data === "object" &&
+    "deleted" in responseBody.data &&
+    typeof responseBody.data.deleted === "number"
+  ) {
+    return responseBody.data.deleted;
   }
 
   return 0;

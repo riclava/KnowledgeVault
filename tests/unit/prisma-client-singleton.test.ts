@@ -21,6 +21,8 @@ describe("Prisma client singleton", () => {
     const client = {
       knowledgeDedupeRun: {},
       knowledgeDedupeCandidate: {},
+      adminBulkGenerateImportRun: {},
+      adminBulkGenerateImportRow: {},
     };
 
     assert.equal(

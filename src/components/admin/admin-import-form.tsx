@@ -9,6 +9,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type {
   KnowledgeItemRenderPayloadByType,
@@ -144,6 +152,7 @@ const RELATION_TYPE_OPTIONS = [
   { value: "confusable", label: "易混淆" },
   { value: "application_of", label: "应用于" },
 ] as const;
+const SELECT_EXISTING_OPTION_VALUE = "__select_existing_option__";
 
 export function AdminImportForm({
   endpoint = "/api/admin/import",
@@ -317,8 +326,6 @@ export function AdminImportForm({
       onSubmit={handleSubmit}
       className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm"
     >
-      <ImportDomainDatalists domainOptions={domainOptions} />
-
       <div className="grid gap-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div className="grid gap-1">
@@ -362,7 +369,6 @@ export function AdminImportForm({
               <Input
                 id="defaultDomain"
                 name="defaultDomain"
-                list="import-domain-options"
                 placeholder="留空自动判断"
               />
             </div>
@@ -371,7 +377,6 @@ export function AdminImportForm({
               <Input
                 id="defaultSubdomain"
                 name="defaultSubdomain"
-                list="import-all-subdomain-options"
                 placeholder="留空自动判断"
               />
             </div>
@@ -795,22 +800,28 @@ function PreviewRelationListItem({
         />
         <div className="grid gap-2">
           <Label htmlFor={`preview-relation-${index}-type`}>关系</Label>
-          <select
+          <Select
             id={`preview-relation-${index}-type`}
             name="relationType"
             value={relation.relationType}
             disabled={disabled}
-            className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
-            onChange={(event) =>
-              onFieldChange("relationType", event.currentTarget.value)
-            }
+            onValueChange={(value) => {
+              if (value) onFieldChange("relationType", value);
+            }}
           >
-            {RELATION_TYPE_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-10 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {RELATION_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
         <PreviewInput
           id={`preview-relation-${index}-to`}
@@ -877,7 +888,6 @@ function PreviewInput({
   name,
   value,
   disabled,
-  listId,
   options,
   selectLabel,
   onChange,
@@ -887,7 +897,6 @@ function PreviewInput({
   name: string;
   value: string;
   disabled: boolean;
-  listId?: string;
   options?: string[];
   selectLabel?: string;
   onChange: (value: string) => void;
@@ -909,7 +918,6 @@ function PreviewInput({
           id={id}
           name={name}
           value={value}
-          list={listId}
           disabled={disabled}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
@@ -919,54 +927,35 @@ function PreviewInput({
           onChange={(event) => onChange(event.currentTarget.value)}
         />
         {showsSelect ? (
-          <select
+          <Select
             aria-label={selectLabel ?? label}
-            value=""
+            value={SELECT_EXISTING_OPTION_VALUE}
             disabled={disabled || !hasOptions}
-            className="h-10 min-w-0 rounded-lg border border-input bg-background px-3 text-sm"
-            onChange={(event) => {
-              const nextValue = event.currentTarget.value;
-
-              if (nextValue) {
+            onValueChange={(nextValue) => {
+              if (nextValue && nextValue !== SELECT_EXISTING_OPTION_VALUE) {
                 onChange(nextValue);
               }
             }}
           >
-            <option value="">
-              {hasOptions ? "从存量选择" : "暂无存量可选"}
-            </option>
-            {options?.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-10 min-w-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={SELECT_EXISTING_OPTION_VALUE}>
+                  {hasOptions ? "从存量选择" : "暂无存量可选"}
+                </SelectItem>
+                {options?.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         ) : null}
       </div>
     </div>
-  );
-}
-
-function ImportDomainDatalists({
-  domainOptions,
-}: {
-  domainOptions: ImportDomainOptions;
-}) {
-  const allSubdomains = allSubdomainOptions(domainOptions);
-
-  return (
-    <>
-      <datalist id="import-domain-options">
-        {domainOptions.domains.map((option) => (
-          <option key={option} value={option} />
-        ))}
-      </datalist>
-      <datalist id="import-all-subdomain-options">
-        {allSubdomains.map((option) => (
-          <option key={option} value={option} />
-        ))}
-      </datalist>
-    </>
   );
 }
 

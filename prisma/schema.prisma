@@ -71,6 +71,25 @@ enum KnowledgeDedupeCandidateStatus {
   stale
 }
 
+enum AdminBulkGenerateImportRunStatus {
+  pending
+  running
+  completed
+  failed
+  canceled
+}
+
+enum AdminBulkGenerateImportRowStatus {
+  pending
+  processing
+  imported
+  duplicate_skipped
+  ai_failed
+  validation_failed
+  save_failed
+  canceled
+}
+
 model User {
   id                 String   @id @default(cuid())
   email              String?  @unique
@@ -87,6 +106,7 @@ model User {
   studySessions       StudySession[]
   adminImportRuns     AdminImportRun[]
   knowledgeDedupeRuns KnowledgeDedupeRun[]
+  bulkGenerateImportRuns AdminBulkGenerateImportRun[]
   createdKnowledgeItems KnowledgeItem[] @relation("KnowledgeItemCreator")
   authIdentity        AuthUser?
 
@@ -418,4 +438,54 @@ model AdminImportRun {
   @@index([adminUserId, createdAt])
   @@index([status, createdAt])
   @@map("admin_import_runs")
+}
+
+model AdminBulkGenerateImportRun {
+  id                    String                            @id @default(cuid())
+  adminUserId           String
+  contentType           KnowledgeItemType
+  domain                String
+  subdomain             String?
+  status                AdminBulkGenerateImportRunStatus  @default(pending)
+  totalCount            Int
+  importedCount         Int                               @default(0)
+  failedCount           Int                               @default(0)
+  duplicateSkippedCount Int                               @default(0)
+  errorMessage          String?
+  startedAt             DateTime?
+  completedAt           DateTime?
+  createdAt             DateTime                          @default(now())
+  updatedAt             DateTime                          @updatedAt
+
+  adminUser User                         @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  rows      AdminBulkGenerateImportRow[]
+
+  @@index([adminUserId, createdAt])
+  @@index([status, createdAt])
+  @@map("admin_bulk_generate_import_runs")
+}
+
+model AdminBulkGenerateImportRow {
+  id                   String                           @id @default(cuid())
+  runId                String
+  lineNumber           Int
+  sourceText           String
+  status               AdminBulkGenerateImportRowStatus @default(pending)
+  generatedSlug        String?
+  generatedTitle       String?
+  savedKnowledgeItemId String?
+  duplicateWarnings    Json?
+  validationErrors     Json?
+  errorMessage         String?
+  aiOutput             Json?
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime                         @default(now())
+  updatedAt            DateTime                         @updatedAt
+
+  run AdminBulkGenerateImportRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@unique([runId, lineNumber])
+  @@index([runId, status])
+  @@map("admin_bulk_generate_import_rows")
 }

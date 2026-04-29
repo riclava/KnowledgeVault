@@ -7,6 +7,14 @@ import { type FormEvent, useMemo, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type DomainOptions = {
   domains: string[];
@@ -59,6 +67,8 @@ type DedupeRunDetail = {
   };
   items: DedupeItemSummary[];
 };
+
+const ALL_SUBDOMAINS_VALUE = "__all_subdomains__";
 
 export function KnowledgeDedupePanel({
   domainOptions,
@@ -155,37 +165,51 @@ export function KnowledgeDedupePanel({
       >
         <div className="grid gap-2">
           <Label htmlFor="dedupe-domain">领域</Label>
-          <select
+          <Select
             id="dedupe-domain"
             value={domain}
-            onChange={(event) => {
-              setDomain(event.target.value);
+            onValueChange={(value) => {
+              setDomain(value ?? "");
               setSubdomain("");
             }}
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            {domainOptions.domains.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-10 w-full">
+              <SelectValue placeholder="选择领域" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                {domainOptions.domains.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="dedupe-subdomain">子领域</Label>
-          <select
+          <Select
             id="dedupe-subdomain"
-            value={subdomain}
-            onChange={(event) => setSubdomain(event.target.value)}
-            className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+            value={subdomain || ALL_SUBDOMAINS_VALUE}
+            onValueChange={(value) =>
+              setSubdomain(value === ALL_SUBDOMAINS_VALUE ? "" : value ?? "")
+            }
           >
-            <option value="">全部子领域</option>
-            {availableSubdomains.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            <SelectTrigger className="h-10 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value={ALL_SUBDOMAINS_VALUE}>全部子领域</SelectItem>
+                {availableSubdomains.map((option) => (
+                  <SelectItem key={option} value={option}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-2">
           <Label htmlFor="dedupe-threshold">阈值</Label>
@@ -358,23 +382,29 @@ function CandidateCard({
 
       <div className="grid gap-2">
         <Label htmlFor={`canonical-${candidate.id}`}>保留项</Label>
-        <select
+        <Select
           id={`canonical-${candidate.id}`}
           value={canonicalId}
-          onChange={(event) => setCanonicalId(event.target.value)}
+          onValueChange={(value) => setCanonicalId(value ?? "")}
           disabled={!canEdit}
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
         >
-          {candidate.knowledgeItemIds.map((itemId) => {
-            const item = itemById.get(itemId);
+          <SelectTrigger className="h-10 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {candidate.knowledgeItemIds.map((itemId) => {
+                const item = itemById.get(itemId);
 
-            return (
-              <option key={itemId} value={itemId}>
-                {item?.title ?? itemId}
-              </option>
-            );
-          })}
-        </select>
+                return (
+                  <SelectItem key={itemId} value={itemId}>
+                    {item?.title ?? itemId}
+                  </SelectItem>
+                );
+              })}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </div>
 
       <div className="grid gap-3 xl:grid-cols-2">

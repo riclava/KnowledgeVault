@@ -66,4 +66,32 @@ describe("admin schema shape", () => {
     assert.match(baseline, /CREATE TABLE "knowledge_dedupe_candidates"/);
     assert.match(baseline, /knowledge_dedupe_runs_adminUserId_createdAt_idx/);
   });
+
+  it("adds backend-owned bulk generate import progress tracking", () => {
+    assert.match(
+      schema,
+      /enum AdminBulkGenerateImportRunStatus\s*{\s*pending\s*running\s*completed\s*failed\s*canceled\s*}/s,
+    );
+    assert.match(
+      schema,
+      /enum AdminBulkGenerateImportRowStatus\s*{\s*pending\s*processing\s*imported\s*duplicate_skipped\s*ai_failed\s*validation_failed\s*save_failed\s*canceled\s*}/s,
+    );
+    assert.match(schema, /model AdminBulkGenerateImportRun\s*{/);
+    assert.match(schema, /model AdminBulkGenerateImportRow\s*{/);
+    assert.match(schema, /@@map\("admin_bulk_generate_import_runs"\)/);
+    assert.match(schema, /@@map\("admin_bulk_generate_import_rows"\)/);
+    assert.match(schema, /bulkGenerateImportRuns\s+AdminBulkGenerateImportRun\[\]/);
+    assert.match(
+      baseline,
+      /CREATE TYPE "AdminBulkGenerateImportRunStatus" AS ENUM \('pending', 'running', 'completed', 'failed', 'canceled'\)/,
+    );
+    assert.match(
+      baseline,
+      /CREATE TYPE "AdminBulkGenerateImportRowStatus" AS ENUM \('pending', 'processing', 'imported', 'duplicate_skipped', 'ai_failed', 'validation_failed', 'save_failed', 'canceled'\)/,
+    );
+    assert.match(baseline, /CREATE TABLE "admin_bulk_generate_import_runs"/);
+    assert.match(baseline, /CREATE TABLE "admin_bulk_generate_import_rows"/);
+    assert.match(baseline, /admin_bulk_generate_import_runs_adminUserId_createdAt_idx/);
+    assert.match(baseline, /admin_bulk_generate_import_rows_runId_lineNumber_key/);
+  });
 });

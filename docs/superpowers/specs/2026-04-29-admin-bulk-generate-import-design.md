@@ -194,6 +194,7 @@ enum AdminBulkGenerateImportRunStatus {
   running
   completed
   failed
+  canceled
 }
 
 enum AdminBulkGenerateImportRowStatus {
@@ -204,6 +205,7 @@ enum AdminBulkGenerateImportRowStatus {
   ai_failed
   validation_failed
   save_failed
+  canceled
 }
 
 model AdminBulkGenerateImportRun {
@@ -307,7 +309,7 @@ UI tests or copy tests should cover:
 
 ## Implementation Decisions
 
-- The first version accepts at most 50 non-empty rows per request. This keeps AI cost manageable while still using backend-owned progress state.
+- The first version accepts at most 10000 non-empty rows per request while still using backend-owned progress state.
 - Initial file support is UTF-8 text content. CSV files are accepted as plain text, where each line is treated as the source phrase after trimming.
 - The implementation uses a database-backed task model plus a backend worker or queue-backed task runner for deployed environments. The process endpoint only starts or enqueues work and returns quickly.
 - The frontend never decides row success or failure. It only creates runs, starts processing, polls persisted state, and renders progress.

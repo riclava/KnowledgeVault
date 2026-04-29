@@ -3,6 +3,24 @@ import { describe, it } from "node:test";
 import { readFileSync } from "node:fs";
 
 describe("admin UI files", () => {
+  it("uses shadcn select components instead of native dropdown controls", () => {
+    const sourceFiles = [
+      "src/components/admin/admin-bulk-generate-import-form.tsx",
+      "src/components/admin/admin-import-form.tsx",
+      "src/components/admin/knowledge-dedupe-panel.tsx",
+      "src/components/admin/knowledge-item-admin-form.tsx",
+      "src/components/admin/knowledge-item-filter-form.tsx",
+    ];
+
+    for (const sourceFile of sourceFiles) {
+      const source = readFileSync(sourceFile, "utf8");
+
+      assert.doesNotMatch(source, /<select\b|<\/select>|<option\b/);
+      assert.doesNotMatch(source, /<datalist\b|<\/datalist>/);
+      assert.match(source, /@\/components\/ui\/select/);
+    }
+  });
+
   it("contains the backstage navigation and AI import action", () => {
     const layout = readFileSync("src/app/admin/layout.tsx", "utf8");
     const importForm = readFileSync(
@@ -60,6 +78,26 @@ describe("admin UI files", () => {
     assert.ok(defaultDomainField);
     assert.doesNotMatch(sourceTitleField, /required/);
     assert.doesNotMatch(defaultDomainField, /required/);
+  });
+
+  it("allows manual domain entry on the admin bulk generate import form", () => {
+    const bulkForm = readFileSync(
+      "src/components/admin/admin-bulk-generate-import-form.tsx",
+      "utf8",
+    );
+
+    assert.match(bulkForm, /BulkDomainInput/);
+    assert.match(bulkForm, /selectLabel="选择已有领域"/);
+    assert.match(bulkForm, /selectLabel="选择已有子领域"/);
+    assert.match(bulkForm, /placeholder="填写或选择领域"/);
+    assert.match(bulkForm, /placeholder="填写或选择子领域"/);
+    assert.match(bulkForm, /options=\{domainOptions\.domains\}/);
+    assert.match(bulkForm, /options=\{availableSubdomains\}/);
+    assert.match(bulkForm, /name="domain"/);
+    assert.match(bulkForm, /name="subdomain"/);
+    assert.match(bulkForm, /从存量选择/);
+    assert.match(bulkForm, /<SelectValue>\{labelForContentType\(contentType\)\}<\/SelectValue>/);
+    assert.match(bulkForm, /selectDisplayLabel/);
   });
 
   it("marks public and private knowledge items in the admin list", () => {
@@ -151,8 +189,8 @@ describe("admin UI files", () => {
     assert.match(page, /listAdminKnowledgeItemDomains/);
     assert.match(page, /const \[result, domains\] = await Promise\.all/);
     assert.match(page, /AdminKnowledgeItemFilterForm/);
-    assert.match(filterForm, /<select[\s\S]*id="admin-domain"[\s\S]*name="domain"/);
-    assert.match(filterForm, /<option value="">全部领域<\/option>/);
+    assert.match(filterForm, /Select/);
+    assert.match(filterForm, /SelectItem value=\{ALL_FILTER_VALUE\}/);
     assert.match(filterForm, /domains\.map\(\(domain\) =>/);
 
     const domainField = filterForm.match(
@@ -232,11 +270,113 @@ describe("admin UI files", () => {
     assert.match(route, /bulkUpdateAdminKnowledgeItemDomain/);
   });
 
+  it("exposes bulk delete on the admin knowledge item list", () => {
+    const bulkEditor = readFileSync(
+      "src/components/admin/knowledge-item-bulk-domain-editor.tsx",
+      "utf8",
+    );
+    const route = readFileSync(
+      "src/app/api/admin/knowledge-items/route.ts",
+      "utf8",
+    );
+
+    assert.match(route, /export async function DELETE/);
+    assert.match(route, /bulkDeleteAdminKnowledgeItems/);
+    assert.match(bulkEditor, /批量删除/);
+    assert.match(bulkEditor, /确认删除知识项/);
+    assert.match(bulkEditor, /method: "DELETE"/);
+    assert.match(bulkEditor, /已删除 \$\{getDeletedCount\(responseBody\)\} 个知识项/);
+  });
+
   it("feeds existing domain options into the admin import form", () => {
     const page = readFileSync("src/app/admin/import/page.tsx", "utf8");
 
     assert.match(page, /listAdminKnowledgeItemDomainOptions/);
     assert.match(page, /await listAdminKnowledgeItemDomainOptions\(\)/);
     assert.match(page, /domainOptions=\{domainOptions\}/);
+  });
+
+  it("exposes admin bulk generate import API routes", () => {
+    const runsRoute = readFileSync(
+      "src/app/api/admin/bulk-generate-import/runs/route.ts",
+      "utf8",
+    );
+    const runRoute = readFileSync(
+      "src/app/api/admin/bulk-generate-import/runs/[id]/route.ts",
+      "utf8",
+    );
+    const processRoute = readFileSync(
+      "src/app/api/admin/bulk-generate-import/runs/[id]/process/route.ts",
+      "utf8",
+    );
+    const cancelRoute = readFileSync(
+      "src/app/api/admin/bulk-generate-import/runs/[id]/cancel/route.ts",
+      "utf8",
+    );
+
+    assert.match(runsRoute, /withAdminApi/);
+    assert.match(runsRoute, /createAdminBulkGenerateImportRunForAdmin/);
+    assert.match(runsRoute, /export async function GET/);
+    assert.match(runsRoute, /listAdminBulkGenerateImportRunsForAdmin/);
+    assert.match(runRoute, /withAdminApi/);
+    assert.match(runRoute, /getAdminBulkGenerateImportRunDetailForAdmin/);
+    assert.match(runRoute, /export async function DELETE/);
+    assert.match(runRoute, /deleteAdminBulkGenerateImportRunForAdmin/);
+    assert.match(processRoute, /withAdminApi/);
+    assert.match(processRoute, /startAdminBulkGenerateImportRunForAdmin/);
+    assert.match(processRoute, /status: 202/);
+    assert.match(cancelRoute, /withAdminApi/);
+    assert.match(cancelRoute, /cancelAdminBulkGenerateImportRunForAdmin/);
+    assert.match(cancelRoute, /export async function POST/);
+  });
+
+  it("exposes the admin bulk generate import UI with polling progress", () => {
+    const layout = readFileSync("src/app/admin/layout.tsx", "utf8");
+    const page = readFileSync(
+      "src/app/admin/bulk-generate-import/page.tsx",
+      "utf8",
+    );
+    const form = readFileSync(
+      "src/components/admin/admin-bulk-generate-import-form.tsx",
+      "utf8",
+    );
+
+    assert.match(layout, /批量生成导入/);
+    assert.match(layout, /href: "\/admin\/bulk-generate-import"/);
+    assert.match(page, /listAdminKnowledgeItemDomainOptions/);
+    assert.match(page, /listAdminBulkGenerateImportRunsForAdmin/);
+    assert.match(page, /AdminBulkGenerateImportForm/);
+    assert.match(page, /initialRuns=\{initialRuns\}/);
+    assert.match(form, /type="file"/);
+    assert.match(form, /name="contentType"/);
+    assert.match(form, /name="domain"/);
+    assert.match(form, /name="subdomain"/);
+    assert.match(form, /const \[domain, setDomain\] = useState/);
+    assert.match(form, /availableSubdomains/);
+    assert.match(form, /setSubdomain\(""\)/);
+    assert.doesNotMatch(form, /<datalist/);
+    assert.doesNotMatch(form, /Object\.values\(domainOptions\.subdomainsByDomain\)/);
+    assert.match(form, /createRun/);
+    assert.match(form, /refreshRuns/);
+    assert.match(form, /loadRun/);
+    assert.match(form, /任务管理/);
+    assert.match(form, /最近任务/);
+    assert.match(form, /继续处理/);
+    assert.match(form, /cancelRun/);
+    assert.match(form, /取消任务/);
+    assert.match(form, /已取消/);
+    assert.match(form, /deleteRun/);
+    assert.match(form, /确认删除批量生成任务/);
+    assert.match(form, /删除任务/);
+    assert.match(form, /method: "DELETE"/);
+    assert.match(form, /canDeleteRun/);
+    assert.match(form, /startProcessing/);
+    assert.match(form, /window\.setInterval/);
+    assert.match(form, /处理进度/);
+    assert.match(form, /等待中/);
+    assert.match(form, /处理中/);
+    assert.match(form, /已导入/);
+    assert.match(form, /重复跳过/);
+    assert.match(form, /失败/);
   });
 });

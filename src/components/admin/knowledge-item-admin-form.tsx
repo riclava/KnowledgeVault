@@ -8,6 +8,14 @@ import { KnowledgeItemDeleteButton } from "@/components/admin/knowledge-item-del
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -177,19 +185,27 @@ export function KnowledgeItemAdminForm({
                 <Label htmlFor="contentType" className="text-xs">
                   内容类型
                 </Label>
-                <select
+                <Select
                   id="contentType"
                   name="contentType"
                   value={contentType}
-                  onChange={(event) => setContentType(event.target.value)}
-                  className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+                  onValueChange={(value) => {
+                    if (value) setContentType(value);
+                  }}
                 >
-                  {CONTENT_TYPE_OPTIONS.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label} · {type.value}
-                    </option>
-                  ))}
-                </select>
+                  <SelectTrigger className="h-9 w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {CONTENT_TYPE_OPTIONS.map((type) => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label} · {type.value}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
                 <p className="text-xs leading-4 text-muted-foreground">
                   选择后下方会显示对应的内容字段。
                 </p>
@@ -539,15 +555,21 @@ function RenderPayloadFields({
           <Label htmlFor="comparisonMode" className="text-xs">
             对比表模式
           </Label>
-          <select
+          <Select
             id="comparisonMode"
             name="comparisonMode"
             defaultValue={comparisonMode}
-            className="h-9 w-full rounded-md border border-input bg-background px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
           >
-            <option value="matrix">matrix</option>
-            <option value="table">table</option>
-          </select>
+            <SelectTrigger className="h-9 w-full">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectItem value="matrix">matrix</SelectItem>
+                <SelectItem value="table">table</SelectItem>
+              </SelectGroup>
+            </SelectContent>
+          </Select>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <TextareaField

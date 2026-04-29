@@ -203,6 +203,33 @@ export async function deleteAdminKnowledgeItem(id: string) {
   });
 }
 
+export function normalizeAdminKnowledgeItemBulkDeleteInput(input: unknown) {
+  const record = isRecord(input) ? input : {};
+  const ids = Array.isArray(record.ids)
+    ? unique(record.ids.filter(isString).map(text).filter(Boolean))
+    : [];
+
+  if (ids.length === 0) {
+    return { ok: false as const, error: "请选择要删除的知识项。" };
+  }
+
+  return { ok: true as const, ids };
+}
+
+export async function bulkDeleteAdminKnowledgeItems(input: unknown) {
+  const normalized = normalizeAdminKnowledgeItemBulkDeleteInput(input);
+
+  if (!normalized.ok) {
+    return normalized;
+  }
+
+  const result = await prisma.knowledgeItem.deleteMany({
+    where: { id: { in: normalized.ids } },
+  });
+
+  return { ok: true as const, count: result.count };
+}
+
 export async function bulkUpdateAdminKnowledgeItemDomain(input: unknown) {
   const record = isRecord(input) ? input : {};
   const ids = Array.isArray(record.ids)
@@ -382,6 +409,10 @@ function text(value: unknown) {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function isString(value: unknown): value is string {
+  return typeof value === "string";
 }
 
 function unique<T>(values: T[]) {

@@ -2,10 +2,12 @@ import { PrismaPg } from "@prisma/adapter-pg";
 
 import { PrismaClient } from "@/generated/prisma/client";
 
-const PRISMA_CLIENT_SCHEMA_SIGNATURE = "2026-04-29-knowledge-dedupe";
+const PRISMA_CLIENT_SCHEMA_SIGNATURE = "2026-04-29-admin-bulk-generate-import-cancel";
 const REQUIRED_PRISMA_DELEGATES = [
   "knowledgeDedupeRun",
   "knowledgeDedupeCandidate",
+  "adminBulkGenerateImportRun",
+  "adminBulkGenerateImportRow",
 ] as const;
 
 const globalForPrisma = globalThis as unknown as {

@@ -13,6 +13,14 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type KnowledgeItemFilterFormProps = {
   filters: {
@@ -41,6 +49,7 @@ const DIFFICULTY_OPTIONS = [
   { value: 4, label: "4" },
   { value: 5, label: "5" },
 ] as const;
+const ALL_FILTER_VALUE = "__all__";
 
 export function AdminKnowledgeItemFilterForm({
   filters,
@@ -108,11 +117,15 @@ export function AdminKnowledgeItemFilterForm({
     const params = new URLSearchParams(latestSearchParams);
 
     setOptionalParam(params, "query", String(formData.get("query") ?? ""));
-    setOptionalParam(params, "domain", String(formData.get("domain") ?? ""));
+    setOptionalParam(
+      params,
+      "domain",
+      normalizeSelectFilterValue(String(formData.get("domain") ?? "")),
+    );
     setOptionalParam(
       params,
       "contentType",
-      String(formData.get("contentType") ?? ""),
+      normalizeSelectFilterValue(String(formData.get("contentType") ?? "")),
     );
 
     params.delete("difficulty");
@@ -120,6 +133,13 @@ export function AdminKnowledgeItemFilterForm({
       params.append("difficulty", String(difficulty));
     }
 
+    params.delete("page");
+    router.replace(buildFilterHref(pathname, params), { scroll: false });
+  }
+
+  function applySelectFilter(name: "domain" | "contentType", value: string | null) {
+    const params = new URLSearchParams(latestSearchParams);
+    setOptionalParam(params, name, normalizeSelectFilterValue(value ?? ""));
     params.delete("page");
     router.replace(buildFilterHref(pathname, params), { scroll: false });
   }
@@ -142,35 +162,49 @@ export function AdminKnowledgeItemFilterForm({
       </div>
       <div className="grid gap-2">
         <Label htmlFor="admin-domain">领域</Label>
-        <select
+        <Select
           id="admin-domain"
           name="domain"
-          defaultValue={filters.domain ?? ""}
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          value={filters.domain ?? ALL_FILTER_VALUE}
+          onValueChange={(value) => applySelectFilter("domain", value)}
         >
-          <option value="">全部领域</option>
-          {domains.map((domain) => (
-            <option key={domain} value={domain}>
-              {domain}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="h-10 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={ALL_FILTER_VALUE}>全部领域</SelectItem>
+              {domains.map((domain) => (
+                <SelectItem key={domain} value={domain}>
+                  {domain}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="admin-content-type">类型</Label>
-        <select
+        <Select
           id="admin-content-type"
           name="contentType"
-          defaultValue={filters.contentType ?? ""}
-          className="h-10 w-full rounded-lg border border-input bg-background px-3 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50"
+          value={filters.contentType ?? ALL_FILTER_VALUE}
+          onValueChange={(value) => applySelectFilter("contentType", value)}
         >
-          <option value="">全部类型</option>
-          {CONTENT_TYPE_OPTIONS.map((type) => (
-            <option key={type.value} value={type.value}>
-              {type.label}
-            </option>
-          ))}
-        </select>
+          <SelectTrigger className="h-10 w-full">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              <SelectItem value={ALL_FILTER_VALUE}>全部类型</SelectItem>
+              {CONTENT_TYPE_OPTIONS.map((type) => (
+                <SelectItem key={type.value} value={type.value}>
+                  {type.label}
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
       </div>
       <div className="grid gap-2">
         <Label htmlFor="admin-difficulty">难度</Label>
@@ -230,6 +264,10 @@ function setOptionalParam(
   }
 
   params.delete(key);
+}
+
+function normalizeSelectFilterValue(value: string) {
+  return value === ALL_FILTER_VALUE ? "" : value;
 }
 
 function buildFilterHref(pathname: string, params: URLSearchParams) {

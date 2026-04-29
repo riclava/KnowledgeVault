@@ -31,6 +31,12 @@ CREATE TYPE "KnowledgeDedupeRunStatus" AS ENUM ('running', 'completed', 'failed'
 -- CreateEnum
 CREATE TYPE "KnowledgeDedupeCandidateStatus" AS ENUM ('pending', 'merged', 'ignored', 'stale');
 
+-- CreateEnum
+CREATE TYPE "AdminBulkGenerateImportRunStatus" AS ENUM ('pending', 'running', 'completed', 'failed', 'canceled');
+
+-- CreateEnum
+CREATE TYPE "AdminBulkGenerateImportRowStatus" AS ENUM ('pending', 'processing', 'imported', 'duplicate_skipped', 'ai_failed', 'validation_failed', 'save_failed', 'canceled');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -311,6 +317,49 @@ CREATE TABLE "admin_import_runs" (
     CONSTRAINT "admin_import_runs_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "admin_bulk_generate_import_runs" (
+    "id" TEXT NOT NULL,
+    "adminUserId" TEXT NOT NULL,
+    "contentType" "KnowledgeItemType" NOT NULL,
+    "domain" TEXT NOT NULL,
+    "subdomain" TEXT,
+    "status" "AdminBulkGenerateImportRunStatus" NOT NULL DEFAULT 'pending',
+    "totalCount" INTEGER NOT NULL,
+    "importedCount" INTEGER NOT NULL DEFAULT 0,
+    "failedCount" INTEGER NOT NULL DEFAULT 0,
+    "duplicateSkippedCount" INTEGER NOT NULL DEFAULT 0,
+    "errorMessage" TEXT,
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "admin_bulk_generate_import_runs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "admin_bulk_generate_import_rows" (
+    "id" TEXT NOT NULL,
+    "runId" TEXT NOT NULL,
+    "lineNumber" INTEGER NOT NULL,
+    "sourceText" TEXT NOT NULL,
+    "status" "AdminBulkGenerateImportRowStatus" NOT NULL DEFAULT 'pending',
+    "generatedSlug" TEXT,
+    "generatedTitle" TEXT,
+    "savedKnowledgeItemId" TEXT,
+    "duplicateWarnings" JSONB,
+    "validationErrors" JSONB,
+    "errorMessage" TEXT,
+    "aiOutput" JSONB,
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "admin_bulk_generate_import_rows_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
@@ -407,6 +456,18 @@ CREATE INDEX "admin_import_runs_adminUserId_createdAt_idx" ON "admin_import_runs
 -- CreateIndex
 CREATE INDEX "admin_import_runs_status_createdAt_idx" ON "admin_import_runs"("status", "createdAt");
 
+-- CreateIndex
+CREATE INDEX "admin_bulk_generate_import_runs_adminUserId_createdAt_idx" ON "admin_bulk_generate_import_runs"("adminUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "admin_bulk_generate_import_runs_status_createdAt_idx" ON "admin_bulk_generate_import_runs"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "admin_bulk_generate_import_rows_runId_status_idx" ON "admin_bulk_generate_import_rows"("runId", "status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "admin_bulk_generate_import_rows_runId_lineNumber_key" ON "admin_bulk_generate_import_rows"("runId", "lineNumber");
+
 -- AddForeignKey
 ALTER TABLE "auth_users" ADD CONSTRAINT "auth_users_learnerId_fkey" FOREIGN KEY ("learnerId") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
@@ -472,3 +533,9 @@ ALTER TABLE "study_sessions" ADD CONSTRAINT "study_sessions_userId_fkey" FOREIGN
 
 -- AddForeignKey
 ALTER TABLE "admin_import_runs" ADD CONSTRAINT "admin_import_runs_adminUserId_fkey" FOREIGN KEY ("adminUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "admin_bulk_generate_import_runs" ADD CONSTRAINT "admin_bulk_generate_import_runs_adminUserId_fkey" FOREIGN KEY ("adminUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "admin_bulk_generate_import_rows" ADD CONSTRAINT "admin_bulk_generate_import_rows_runId_fkey" FOREIGN KEY ("runId") REFERENCES "admin_bulk_generate_import_runs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
