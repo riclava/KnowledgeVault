@@ -9,6 +9,7 @@ import type {
   AdminBulkGenerateImportRunRepository,
   AdminBulkGenerateImportRunListRepository,
   AdminBulkGenerateImportProcessorRepository,
+  AdminBulkGenerateImportRecoveryRepository,
 } from "@/server/admin/admin-bulk-generate-import-service";
 import type {
   AdminBulkGenerateImportRowResult,
@@ -38,7 +39,8 @@ export const adminBulkGenerateImportRepository:
     AdminBulkGenerateImportRunListRepository &
     AdminBulkGenerateImportRunCancelRepository &
     AdminBulkGenerateImportRunDeleteRepository &
-    AdminBulkGenerateImportProcessorRepository = {
+    AdminBulkGenerateImportProcessorRepository &
+    AdminBulkGenerateImportRecoveryRepository = {
   async createRun({ adminUserId, contentType, domain, subdomain, rows }) {
     return prisma.adminBulkGenerateImportRun.create({
       data: {
@@ -147,6 +149,55 @@ export const adminBulkGenerateImportRepository:
     }
 
     return run.status;
+  },
+
+  async listInterruptedRuns() {
+    const runs = await prisma.adminBulkGenerateImportRun.findMany({
+      where: {
+        status: { in: ["pending", "running"] },
+      },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        adminUserId: true,
+      },
+    });
+
+    return runs;
+  },
+
+  async resetInterruptedRows(runId) {
+    const now = new Date();
+
+    await prisma.$transaction(async (tx) => {
+      await tx.adminBulkGenerateImportRow.updateMany({
+        where: {
+          runId,
+          status: "processing",
+        },
+        data: {
+          status: "pending",
+          startedAt: null,
+          completedAt: null,
+          errorMessage: null,
+        },
+      });
+
+      await tx.adminBulkGenerateImportRun.updateMany({
+        where: {
+          id: runId,
+          status: { in: ["pending", "running"] },
+        },
+        data: {
+          status: "pending",
+          errorMessage: null,
+          completedAt: null,
+          updatedAt: now,
+        },
+      });
+    });
+
+    await refreshRunCounts(runId);
   },
 
   async getRunSettings(runId) {

@@ -4,6 +4,7 @@ import {
   createReviewLog,
   createStudySession,
   deferKnowledgeItemReview,
+  ensureUnstartedKnowledgeItemStatesForReview,
   getActiveReviewItemForKnowledgeItem,
   getReviewHintSource,
   getStudySessionById,
@@ -28,8 +29,6 @@ import type {
   ReviewSubmitResult,
 } from "@/types/review";
 
-const REVIEW_QUEUE_LIMIT = 8;
-
 export async function getTodayReviewSession({
   userId,
   domain,
@@ -39,24 +38,31 @@ export async function getTodayReviewSession({
   domain: string;
   mode?: ReviewMode;
 }): Promise<ReviewSessionPayload> {
-  const [knowledgeItemStateCount, states] = await Promise.all([
-    countUserKnowledgeItemStates({
+  const now = new Date();
+  const knowledgeItemStateCount = await countUserKnowledgeItemStates({
+    userId,
+    domain,
+  });
+
+  if (mode === "today" && knowledgeItemStateCount > 0) {
+    await ensureUnstartedKnowledgeItemStatesForReview({
       userId,
       domain,
-    }),
+      now,
+    });
+  }
+
+  const states =
     mode === "weak"
-      ? listWeakKnowledgeItemStatesForReview({
+      ? await listWeakKnowledgeItemStatesForReview({
           userId,
           domain,
-          take: REVIEW_QUEUE_LIMIT,
         })
-      : listDueKnowledgeItemStates({
+      : await listDueKnowledgeItemStates({
           userId,
           domain,
-          now: new Date(),
-          take: REVIEW_QUEUE_LIMIT,
-        }),
-  ]);
+          now,
+        });
 
   if (states.length === 0) {
     return {
@@ -399,8 +405,8 @@ function buildReviewReason({
 
   if (state.totalReviews === 0) {
     return {
-      label: "诊断薄弱",
-      detail: "首次诊断把它标成了今天最该开始的一批内容。",
+      label: "新进队列",
+      detail: "这条知识项已经进入你的复习队列，先建立第一轮记忆。",
     };
   }
 

@@ -9,6 +9,7 @@ import {
   listAdminBulkGenerateImportRuns,
   normalizeAdminBulkGenerateImportRequest,
   processAdminBulkGenerateImportRun,
+  recoverInterruptedAdminBulkGenerateImportRuns,
 } from "@/server/admin/admin-bulk-generate-import-service";
 import type { AdminImportBatch } from "@/server/admin/admin-import-types";
 
@@ -201,6 +202,35 @@ describe("admin bulk generate import service", () => {
 
     assert.deepEqual(calls, [{ adminUserId: "admin_1", runId: "run_1" }]);
     assert.deepEqual(result, { runId: "run_1", deleted: true });
+  });
+
+  it("recovers pending and running runs after a process restart", async () => {
+    const events: string[] = [];
+    const result = await recoverInterruptedAdminBulkGenerateImportRuns({
+      repository: {
+        listInterruptedRuns: async () => [
+          { id: "run_pending", adminUserId: "admin_1" },
+          { id: "run_running", adminUserId: "admin_2" },
+        ],
+        resetInterruptedRows: async (runId) => {
+          events.push(`${runId}:reset`);
+        },
+      },
+      enqueueRun: async ({ runId, adminUserId }) => {
+        events.push(`${runId}:enqueue:${adminUserId}`);
+      },
+    });
+
+    assert.deepEqual(result, {
+      recoveredCount: 2,
+      runIds: ["run_pending", "run_running"],
+    });
+    assert.deepEqual(events, [
+      "run_pending:reset",
+      "run_pending:enqueue:admin_1",
+      "run_running:reset",
+      "run_running:enqueue:admin_2",
+    ]);
   });
 
   it("stops picking more rows after a run is canceled", async () => {

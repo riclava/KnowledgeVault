@@ -21,7 +21,7 @@ export async function listDueKnowledgeItemStates({
   userId: string;
   domain: string;
   now: Date;
-  take: number;
+  take?: number;
 }) {
   return prisma.userKnowledgeItemState.findMany({
     where: {
@@ -54,7 +54,7 @@ export async function listDueKnowledgeItemStates({
       },
     },
     orderBy: [{ nextReviewAt: "asc" }, { updatedAt: "asc" }],
-    take,
+    ...(typeof take === "number" ? { take } : {}),
   });
 }
 
@@ -65,7 +65,7 @@ export async function listWeakKnowledgeItemStatesForReview({
 }: {
   userId: string;
   domain: string;
-  take: number;
+  take?: number;
 }) {
   return prisma.userKnowledgeItemState.findMany({
     where: {
@@ -117,8 +117,57 @@ export async function listWeakKnowledgeItemStatesForReview({
       { difficultyEstimate: "desc" },
       { updatedAt: "desc" },
     ],
-    take,
+    ...(typeof take === "number" ? { take } : {}),
   });
+}
+
+export async function ensureUnstartedKnowledgeItemStatesForReview({
+  userId,
+  domain,
+  now,
+}: {
+  userId: string;
+  domain: string;
+  now: Date;
+}) {
+  const knowledgeItems = await prisma.knowledgeItem.findMany({
+    where: {
+      ...buildKnowledgeItemVisibilityWhere(userId),
+      domain,
+      reviewItems: {
+        some: {
+          isActive: true,
+        },
+      },
+      userStates: {
+        none: {
+          userId,
+        },
+      },
+    },
+    select: {
+      id: true,
+      difficulty: true,
+    },
+  });
+
+  if (knowledgeItems.length === 0) {
+    return 0;
+  }
+
+  const result = await prisma.userKnowledgeItemState.createMany({
+    data: knowledgeItems.map((knowledgeItem) => ({
+      userId,
+      knowledgeItemId: knowledgeItem.id,
+      memoryStrength: 0.15,
+      stability: 0,
+      difficultyEstimate: knowledgeItem.difficulty,
+      nextReviewAt: now,
+    })),
+    skipDuplicates: true,
+  });
+
+  return result.count;
 }
 
 export async function countUserKnowledgeItemStates({

@@ -47,6 +47,7 @@ const FAILED_ROW_STATUSES = new Set<AdminBulkGenerateImportRowStatus>([
   "validation_failed",
   "save_failed",
 ]);
+const activeAdminBulkGenerateImportRunIds = new Set<string>();
 
 export function normalizeAdminBulkGenerateImportRequest(
   input: unknown,
@@ -201,6 +202,21 @@ export type AdminBulkGenerateImportProcessorRepository = {
     runId: string;
     errorMessage: string;
   }) => Promise<void>;
+};
+
+export type AdminBulkGenerateImportRecoveryRepository = {
+  listInterruptedRuns: () => Promise<
+    Array<{
+      id: string;
+      adminUserId: string;
+    }>
+  >;
+  resetInterruptedRows: (runId: string) => Promise<void>;
+};
+
+export type AdminBulkGenerateImportRunEnqueueInput = {
+  runId: string;
+  adminUserId: string;
 };
 
 export type AdminBulkGenerateImportProcessorDependencies = {
@@ -358,38 +374,113 @@ export async function startAdminBulkGenerateImportRunForAdmin({
     throw new Error("批量生成任务不存在。");
   }
 
-  if (run.status !== "pending") {
+  if (run.status === "completed" || run.status === "failed" || run.status === "canceled") {
     return { runId };
   }
 
-  queueMicrotask(() => {
-    void processAdminBulkGenerateImportRun({
-      runId,
-      repository: adminBulkGenerateImportRepository,
-      generateBatch: generateAdminBulkGenerateImportItemBatch,
-      validateBatch: (batch) => validateAdminImportBatch(batch, new Set()),
-      findDedupeWarnings: findAdminImportDedupeWarnings,
-      saveBatch: async ({ batch, sourceExcerpt }) => {
-        const importRun = await saveAdminImportBatch({
-          adminUserId,
-          sourceTitle: batch.sourceTitle,
-          sourceExcerpt,
-          batch,
-          aiOutput: batch,
-        });
-        const slugToId = await listExistingKnowledgeItemIdsBySlug(
-          batch.items.map((item) => item.slug),
-        );
-        const firstSlug = batch.items[0]?.slug ?? "";
-
-        return {
-          savedKnowledgeItemId: slugToId.get(firstSlug) ?? importRun.id,
-        };
-      },
-    });
+  await enqueueAdminBulkGenerateImportRun({
+    runId,
+    adminUserId,
   });
 
   return { runId };
+}
+
+export async function recoverInterruptedAdminBulkGenerateImportRuns({
+  repository,
+  enqueueRun,
+}: {
+  repository: AdminBulkGenerateImportRecoveryRepository;
+  enqueueRun: (input: AdminBulkGenerateImportRunEnqueueInput) => Promise<void>;
+}) {
+  const runs = await repository.listInterruptedRuns();
+
+  for (const run of runs) {
+    await repository.resetInterruptedRows(run.id);
+    await enqueueRun({ runId: run.id, adminUserId: run.adminUserId });
+  }
+
+  return {
+    recoveredCount: runs.length,
+    runIds: runs.map((run) => run.id),
+  };
+}
+
+let recoveryPromise:
+  | Promise<{
+      recoveredCount: number;
+      runIds: string[];
+    }>
+  | null = null;
+
+export function recoverInterruptedAdminBulkGenerateImportRunsForApp() {
+  if (recoveryPromise) {
+    return recoveryPromise;
+  }
+
+  recoveryPromise = recoverInterruptedAdminBulkGenerateImportRuns({
+    repository: adminBulkGenerateImportRepository,
+    enqueueRun: enqueueAdminBulkGenerateImportRun,
+  }).catch((error) => {
+    recoveryPromise = null;
+    throw error;
+  });
+
+  return recoveryPromise;
+}
+
+async function enqueueAdminBulkGenerateImportRun({
+  runId,
+  adminUserId,
+}: AdminBulkGenerateImportRunEnqueueInput) {
+  if (activeAdminBulkGenerateImportRunIds.has(runId)) {
+    return;
+  }
+
+  activeAdminBulkGenerateImportRunIds.add(runId);
+
+  queueMicrotask(() => {
+    void (async () => {
+      try {
+        await processAdminBulkGenerateImportRun({
+          runId,
+          repository: adminBulkGenerateImportRepository,
+          ...createProductionAdminBulkGenerateImportProcessorDependencies(adminUserId),
+        });
+      } catch (error) {
+        console.error("Admin bulk generate import processing failed.", error);
+      } finally {
+        activeAdminBulkGenerateImportRunIds.delete(runId);
+      }
+    })();
+  });
+}
+
+function createProductionAdminBulkGenerateImportProcessorDependencies(
+  adminUserId: string,
+): Omit<AdminBulkGenerateImportProcessorDependencies, "repository"> {
+  return {
+    generateBatch: generateAdminBulkGenerateImportItemBatch,
+    validateBatch: (batch) => validateAdminImportBatch(batch, new Set()),
+    findDedupeWarnings: findAdminImportDedupeWarnings,
+    saveBatch: async ({ batch, sourceExcerpt }) => {
+      const importRun = await saveAdminImportBatch({
+        adminUserId,
+        sourceTitle: batch.sourceTitle,
+        sourceExcerpt,
+        batch,
+        aiOutput: batch,
+      });
+      const slugToId = await listExistingKnowledgeItemIdsBySlug(
+        batch.items.map((item) => item.slug),
+      );
+      const firstSlug = batch.items[0]?.slug ?? "";
+
+      return {
+        savedKnowledgeItemId: slugToId.get(firstSlug) ?? importRun.id,
+      };
+    },
+  };
 }
 
 export async function processAdminBulkGenerateImportRun({

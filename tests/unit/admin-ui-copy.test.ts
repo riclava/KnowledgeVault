@@ -379,4 +379,15 @@ describe("admin UI files", () => {
     assert.match(form, /重复跳过/);
     assert.match(form, /失败/);
   });
+
+  it("registers app startup recovery for interrupted bulk generate imports", () => {
+    const instrumentation = readFileSync("src/instrumentation.ts", "utf8");
+
+    assert.match(instrumentation, /export async function register/);
+    assert.match(instrumentation, /NEXT_RUNTIME/);
+    assert.match(
+      instrumentation,
+      /recoverInterruptedAdminBulkGenerateImportRunsForApp/,
+    );
+  });
 });
