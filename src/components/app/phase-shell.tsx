@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 
 import { AccountEntry } from "@/components/app/account-entry";
+import { AiChatPopup } from "@/components/ai/ai-chat-popup";
 import { LearningDomainSelector } from "@/components/app/learning-domain-selector";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -174,6 +175,7 @@ export function PhaseShell({
           {children}
         </div>
       </div>
+      <AiChatPopup />
     </main>
   );
 }

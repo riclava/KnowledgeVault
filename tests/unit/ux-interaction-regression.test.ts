@@ -135,4 +135,16 @@ describe("learner interaction UX regressions", () => {
     assert.match(route, /NextResponse\.json\(\{ data: reply \}\)/);
     assert.match(route, /status: 400/);
   });
+
+  it("mounts the popup AI chat in the logged-in learning shell", () => {
+    const shell = readFileSync("src/components/app/phase-shell.tsx", "utf8");
+    const popup = readFileSync("src/components/ai/ai-chat-popup.tsx", "utf8");
+
+    assert.match(shell, /AiChatPopup/);
+    assert.match(shell, /<AiChatPopup \/>/);
+    assert.match(popup, /window\.getSelection\(\)/);
+    assert.match(popup, /\/api\/ai\/chat/);
+    assert.match(popup, /aria-label="打开 AI 学习助手"/);
+    assert.match(popup, /使用选中文字/);
+  });
 });
