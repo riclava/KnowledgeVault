@@ -27,14 +27,15 @@ const HISTORY_CONTENT_LIMIT = 1200;
 const HISTORY_LIMIT = 6;
 
 export function normalizeAiChatRequest(
-  input: AiChatRequest,
+  input: unknown,
 ): NormalizedAiChatRequest {
-  const message = trimToLimit(textOrEmpty(input.message), MESSAGE_LIMIT);
+  const source = isRecord(input) ? input : {};
+  const message = trimToLimit(textOrEmpty(source.message), MESSAGE_LIMIT);
   const selectedText = trimToLimit(
-    textOrEmpty(input.selectedText),
+    textOrEmpty(source.selectedText),
     SELECTED_TEXT_LIMIT,
   );
-  const history = normalizeHistory(input.history);
+  const history = normalizeHistory(source.history);
 
   if (!message && !selectedText) {
     throw new Error("请输入问题或先选中一段文本。");
@@ -54,7 +55,7 @@ export async function generateAiChatReply({
 }: {
   env?: AiEnv;
   fetcher?: typeof fetch;
-  input: AiChatRequest;
+  input: unknown;
 }) {
   const request = normalizeAiChatRequest(input);
   const message = await chatText({
@@ -136,6 +137,10 @@ function buildMockReply(request: NormalizedAiChatRequest) {
 
 function textOrEmpty(value: unknown) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === "object";
 }
 
 function trimToLimit(value: string, limit: number) {
