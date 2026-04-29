@@ -25,12 +25,20 @@ export default async function AdminDashboardPage() {
             查看内容库存和最近的 AI 导入结果。
           </p>
         </div>
-        <Link
-          href="/admin/import"
-          className={cn(buttonVariants({ size: "sm" }), "w-fit")}
-        >
-          AI 导入
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/admin/import"
+            className={cn(buttonVariants({ size: "sm" }), "w-fit")}
+          >
+            AI 导入
+          </Link>
+          <Link
+            href="/admin/dedupe"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }), "w-fit")}
+          >
+            知识去重
+          </Link>
+        </div>
       </header>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

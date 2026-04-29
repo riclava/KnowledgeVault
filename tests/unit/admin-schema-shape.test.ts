@@ -44,4 +44,26 @@ describe("admin schema shape", () => {
     assert.match(schema, /model ReviewItem\s*{[^}]*isActive\s+Boolean\s+@default\(true\)/s);
     assert.match(baseline, /"isActive" BOOLEAN NOT NULL DEFAULT true/);
   });
+
+  it("adds public knowledge dedupe run and candidate tracking", () => {
+    assert.match(
+      schema,
+      /enum KnowledgeDedupeRunStatus\s*{\s*running\s*completed\s*failed\s*}/s,
+    );
+    assert.match(
+      schema,
+      /enum KnowledgeDedupeCandidateStatus\s*{\s*pending\s*merged\s*ignored\s*stale\s*}/s,
+    );
+    assert.match(schema, /model KnowledgeDedupeRun\s*{/);
+    assert.match(schema, /model KnowledgeDedupeCandidate\s*{/);
+    assert.match(schema, /@@map\("knowledge_dedupe_runs"\)/);
+    assert.match(schema, /@@map\("knowledge_dedupe_candidates"\)/);
+    assert.match(
+      baseline,
+      /CREATE TYPE "KnowledgeDedupeRunStatus" AS ENUM \('running', 'completed', 'failed'\)/,
+    );
+    assert.match(baseline, /CREATE TABLE "knowledge_dedupe_runs"/);
+    assert.match(baseline, /CREATE TABLE "knowledge_dedupe_candidates"/);
+    assert.match(baseline, /knowledge_dedupe_runs_adminUserId_createdAt_idx/);
+  });
 });

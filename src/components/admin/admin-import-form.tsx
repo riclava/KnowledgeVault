@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState, useTransition } from "react";
-import { CheckCircle2, Loader2, Sparkles } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 
 import { KnowledgeItemRenderer } from "@/components/knowledge-item/renderers/knowledge-item-renderer";
@@ -62,6 +62,7 @@ type PreviewKnowledgeItem = {
   typicalProblems: string[];
   examples: string[];
   tags: string[];
+  tagsInput?: string;
   difficulty: number;
   variables: PreviewVariable[];
   reviewItems: PreviewReviewItem[];
@@ -74,11 +75,58 @@ type PreviewRelation = {
   note: string;
 };
 
+type PreviewImportBatch = {
+  sourceTitle?: string;
+  defaultDomain?: string;
+  items: PreviewKnowledgeItem[];
+  relations: PreviewRelation[];
+};
+
+type PreviewDedupeWarning = {
+  generatedSlug: string;
+  generatedTitle: string;
+  score: number;
+  reasons: {
+    kind: string;
+    score: number;
+    detail: string;
+  }[];
+  existingItem: {
+    id: string;
+    slug: string;
+    title: string;
+    domain: string;
+    subdomain: string;
+    summary: string;
+  };
+};
+
+type PreviewKnowledgeItemField =
+  | "slug"
+  | "title"
+  | "domain"
+  | "subdomain"
+  | "summary"
+  | "difficulty"
+  | "tags";
+
+type PreviewRelationField =
+  | "fromSlug"
+  | "toSlug"
+  | "relationType"
+  | "note";
+
+type ImportDomainOptions = {
+  domains: string[];
+  subdomainsByDomain: Record<string, string[]>;
+};
+
 type AdminImportFormProps = {
   endpoint?: string;
   sourceMaterialDescription?: string;
   confirmHint?: string;
   successTitle?: string;
+  domainOptions?: ImportDomainOptions;
 };
 
 const CONTENT_TYPE_OPTIONS = [
@@ -90,21 +138,49 @@ const CONTENT_TYPE_OPTIONS = [
   { value: "plain_text", label: "纯文本" },
 ] as const;
 
+const RELATION_TYPE_OPTIONS = [
+  { value: "prerequisite", label: "前置知识" },
+  { value: "related", label: "相关" },
+  { value: "confusable", label: "易混淆" },
+  { value: "application_of", label: "应用于" },
+] as const;
+
 export function AdminImportForm({
   endpoint = "/api/admin/import",
   sourceMaterialDescription = "粘贴教材、笔记、文章或题目，AI 先生成可检查的预览，确认后再写入知识库。",
   confirmHint = "确认预览内容没问题后，再写入知识库。",
   successTitle = "导入完成",
+  domainOptions = { domains: [], subdomainsByDomain: {} },
 }: AdminImportFormProps = {}) {
   const [result, setResult] = useState<ImportResult>(null);
+  const [editableBatch, setEditableBatch] =
+    useState<PreviewImportBatch | null>(null);
+  const [allowDedupeOverride, setAllowDedupeOverride] = useState(false);
   const [isPending, startTransition] = useTransition();
   const summary = useMemo(() => getImportSummary(result), [result]);
-  const previewItems = useMemo(() => getImportPreviewItems(result), [result]);
-  const previewRelations = useMemo(() => getImportPreviewRelations(result), [result]);
+  const generatedPreviewItems = useMemo(() => getImportPreviewItems(result), [result]);
+  const generatedPreviewRelations = useMemo(() => getImportPreviewRelations(result), [result]);
+  const dedupeWarnings = useMemo(() => getImportDedupeWarnings(result), [result]);
+  const hasDedupeWarnings = dedupeWarnings.length > 0;
+  const previewItems = editableBatch?.items ?? generatedPreviewItems;
+  const previewRelations = editableBatch?.relations ?? generatedPreviewRelations;
+  const previewSummary = {
+    ...summary,
+    generatedCount: editableBatch?.items.length ?? summary.generatedCount,
+    reviewItemCount: editableBatch
+      ? countReviewItems(editableBatch.items)
+      : summary.reviewItemCount,
+    relationCount: editableBatch?.relations.length ?? summary.relationCount,
+    sourceTitle: editableBatch?.sourceTitle || summary.sourceTitle,
+    defaultDomain: editableBatch?.defaultDomain || summary.defaultDomain,
+  };
+  const isPreviewEditable = previewSummary.status !== "saved";
   const canConfirmImport =
-    summary.status === "previewed" &&
-    Boolean(summary.importRunId) &&
-    summary.errorMessages.length === 0;
+    (previewSummary.status === "previewed" ||
+      previewSummary.status === "validation_failed") &&
+    Boolean(previewSummary.importRunId) &&
+    Boolean(editableBatch) &&
+    (!hasDedupeWarnings || allowDedupeOverride);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -112,6 +188,8 @@ export function AdminImportForm({
 
     startTransition(async () => {
       setResult(null);
+      setEditableBatch(null);
+      setAllowDedupeOverride(false);
 
       try {
         const response = await fetch(endpoint, {
@@ -127,6 +205,7 @@ export function AdminImportForm({
         }
 
         setResult(responseBody);
+        setEditableBatch(getImportPreviewBatch(responseBody));
 
         const nextSummary = getImportSummary(responseBody);
 
@@ -144,7 +223,7 @@ export function AdminImportForm({
   }
 
   function handleConfirmImport() {
-    if (!summary.importRunId) {
+    if (!previewSummary.importRunId) {
       toast.error("缺少预览批次，无法导入。");
       return;
     }
@@ -156,7 +235,9 @@ export function AdminImportForm({
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             mode: "save",
-            importRunId: summary.importRunId,
+            importRunId: previewSummary.importRunId,
+            batch: editableBatch,
+            allowDedupeOverride,
           }),
         });
         const responseBody = await response.json().catch(() => null);
@@ -167,6 +248,8 @@ export function AdminImportForm({
         }
 
         setResult(responseBody);
+        setEditableBatch(getImportPreviewBatch(responseBody) ?? editableBatch);
+        setAllowDedupeOverride(false);
 
         const nextSummary = getImportSummary(responseBody);
 
@@ -183,11 +266,59 @@ export function AdminImportForm({
     });
   }
 
+  function updatePreviewItemField(
+    index: number,
+    field: PreviewKnowledgeItemField,
+    value: string | number,
+  ) {
+    setEditableBatch((current) => {
+      if (!current) {
+        return current;
+      }
+
+      setAllowDedupeOverride(false);
+
+      return {
+        ...current,
+        items: current.items.map((item, itemIndex) =>
+          itemIndex === index
+            ? updatePreviewItemValue(item, field, value)
+            : item,
+        ),
+      };
+    });
+  }
+
+  function updatePreviewRelationField(
+    index: number,
+    field: PreviewRelationField,
+    value: string,
+  ) {
+    setEditableBatch((current) => {
+      if (!current) {
+        return current;
+      }
+
+      setAllowDedupeOverride(false);
+
+      return {
+        ...current,
+        relations: current.relations.map((relation, relationIndex) =>
+          relationIndex === index
+            ? { ...relation, [field]: value }
+            : relation,
+        ),
+      };
+    });
+  }
+
   return (
     <form
       onSubmit={handleSubmit}
       className="grid gap-4 rounded-lg border bg-background p-4 shadow-sm"
     >
+      <ImportDomainDatalists domainOptions={domainOptions} />
+
       <div className="grid gap-2">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div className="grid gap-1">
@@ -231,6 +362,7 @@ export function AdminImportForm({
               <Input
                 id="defaultDomain"
                 name="defaultDomain"
+                list="import-domain-options"
                 placeholder="留空自动判断"
               />
             </div>
@@ -239,6 +371,7 @@ export function AdminImportForm({
               <Input
                 id="defaultSubdomain"
                 name="defaultSubdomain"
+                list="import-all-subdomain-options"
                 placeholder="留空自动判断"
               />
             </div>
@@ -294,15 +427,15 @@ export function AdminImportForm({
             <div className="grid gap-1">
               <h2 className="flex items-center gap-2 text-base font-semibold text-success">
                 <CheckCircle2 className="size-4" />
-                {summary.status === "saved" ? successTitle : "预览已生成"}
+                {previewSummary.status === "saved" ? successTitle : "预览已生成"}
               </h2>
               <p className="text-sm leading-6 text-muted-foreground">
-                {summary.sourceTitle} · {summary.defaultDomain} · {summary.statusLabel}
+                {previewSummary.sourceTitle} · {previewSummary.defaultDomain} · {previewSummary.statusLabel}
               </p>
             </div>
-            {summary.importRunId ? (
+            {previewSummary.importRunId ? (
               <p className="text-xs text-muted-foreground">
-                批次：{summary.importRunId}
+                批次：{previewSummary.importRunId}
               </p>
             ) : null}
           </div>
@@ -310,28 +443,47 @@ export function AdminImportForm({
           <div className="grid gap-2 sm:grid-cols-3">
             <ResultMetric
               label="知识项"
-              value={summary.status === "saved" ? summary.savedCount : summary.generatedCount}
+              value={previewSummary.status === "saved" ? previewSummary.savedCount : previewSummary.generatedCount}
             />
-            <ResultMetric label="复习题" value={summary.reviewItemCount} />
-            <ResultMetric label="关系" value={summary.relationCount} />
+            <ResultMetric label="复习题" value={previewSummary.reviewItemCount} />
+            <ResultMetric label="关系" value={previewSummary.relationCount} />
           </div>
 
-          {summary.errorMessages.length > 0 ? (
+          {previewSummary.errorMessages.length > 0 ? (
             <div className="rounded-md border border-warning/30 bg-background/70 px-3 py-2 text-sm text-warning">
               <p className="font-medium">需要调整：</p>
               <ul className="mt-1 grid gap-1">
-                {summary.errorMessages.map((message) => (
+                {previewSummary.errorMessages.map((message) => (
                   <li key={message}>{message}</li>
                 ))}
               </ul>
             </div>
           ) : null}
 
-          {summary.status !== "saved" ? (
+          {hasDedupeWarnings ? (
+            <ImportDedupeWarningPanel warnings={dedupeWarnings} />
+          ) : null}
+
+          {previewSummary.status !== "saved" ? (
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-background/75 px-3 py-2">
-              <p className="text-sm text-muted-foreground">
-                {confirmHint}
-              </p>
+              <div className="grid gap-2">
+                <p className="text-sm text-muted-foreground">
+                  {confirmHint}
+                </p>
+                {hasDedupeWarnings ? (
+                  <label className="inline-flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={allowDedupeOverride}
+                      className="size-4 accent-primary"
+                      onChange={(event) =>
+                        setAllowDedupeOverride(event.currentTarget.checked)
+                      }
+                    />
+                    仍然导入这些疑似重复知识
+                  </label>
+                ) : null}
+              </div>
               <Button
                 type="button"
                 disabled={isPending || !canConfirmImport}
@@ -353,6 +505,15 @@ export function AdminImportForm({
                   <PreviewKnowledgeItemCard
                     key={item.slug || `${item.title}-${index}`}
                     item={item}
+                    index={index}
+                    disabled={!isPreviewEditable}
+                    domainOptions={domainOptions}
+                    dedupeWarnings={dedupeWarnings.filter(
+                      (warning) => warning.generatedSlug === item.slug,
+                    )}
+                    onFieldChange={(field, value) =>
+                      updatePreviewItemField(index, field, value)
+                    }
                   />
                 ))
               ) : (
@@ -366,21 +527,15 @@ export function AdminImportForm({
                   <h3 className="text-sm font-semibold">知识关系</h3>
                   <ul className="grid gap-2 text-sm">
                     {previewRelations.map((relation, index) => (
-                      <li
+                      <PreviewRelationListItem
                         key={`${relation.fromSlug}-${relation.toSlug}-${relation.relationType}-${index}`}
-                        className="rounded-md border bg-muted/30 px-3 py-2"
-                      >
-                        <span className="font-medium">{relation.fromSlug}</span>
-                        <span className="px-2 text-muted-foreground">
-                          {relation.relationType}
-                        </span>
-                        <span className="font-medium">{relation.toSlug}</span>
-                        {relation.note ? (
-                          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                            {relation.note}
-                          </p>
-                        ) : null}
-                      </li>
+                        relation={relation}
+                        index={index}
+                        disabled={!isPreviewEditable}
+                        onFieldChange={(field, value) =>
+                          updatePreviewRelationField(index, field, value)
+                        }
+                      />
                     ))}
                   </ul>
                 </section>
@@ -393,7 +548,30 @@ export function AdminImportForm({
   );
 }
 
-function PreviewKnowledgeItemCard({ item }: { item: PreviewKnowledgeItem }) {
+function PreviewKnowledgeItemCard({
+  item,
+  index,
+  disabled,
+  domainOptions,
+  dedupeWarnings,
+  onFieldChange,
+}: {
+  item: PreviewKnowledgeItem;
+  index: number;
+  disabled: boolean;
+  domainOptions: ImportDomainOptions;
+  dedupeWarnings: PreviewDedupeWarning[];
+  onFieldChange: (
+    field: PreviewKnowledgeItemField,
+    value: string | number,
+  ) => void;
+}) {
+  const subdomainOptions = subdomainOptionsForDomain(domainOptions, item.domain);
+  const subdomainSelectOptions =
+    subdomainOptions.length > 0
+      ? subdomainOptions
+      : allSubdomainOptions(domainOptions);
+
   return (
     <article className="grid gap-3 rounded-md border bg-background p-3">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
@@ -408,6 +586,116 @@ function PreviewKnowledgeItemCard({ item }: { item: PreviewKnowledgeItem }) {
           <Badge variant="outline">{item.domain || "未分领域"}</Badge>
           {item.subdomain ? <Badge variant="outline">{item.subdomain}</Badge> : null}
           <Badge variant="outline">难度 {item.difficulty || 1}</Badge>
+        </div>
+      </div>
+
+      {dedupeWarnings.length > 0 ? (
+        <div className="grid gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-warning">
+            <AlertTriangle className="size-4" />
+            疑似重复
+          </div>
+          <ul className="grid gap-1 text-sm text-muted-foreground">
+            {dedupeWarnings.map((warning) => (
+              <li key={`${warning.generatedSlug}-${warning.existingItem.id}`}>
+                与「{warning.existingItem.title}」相似度 {formatPercent(warning.score)}
+                <span className="ml-1 text-xs">
+                  ({warning.existingItem.slug})
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      <div className="grid gap-3 rounded-md border bg-muted/20 p-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+          <PreviewInput
+            id={`preview-${index}-title`}
+            label="标题"
+            name="title"
+            value={item.title}
+            disabled={disabled}
+            onChange={(value) => onFieldChange("title", value)}
+          />
+          <PreviewInput
+            id={`preview-${index}-slug`}
+            label="Slug"
+            name="slug"
+            value={item.slug}
+            disabled={disabled}
+            onChange={(value) => onFieldChange("slug", value)}
+          />
+        </div>
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_8rem]">
+          <PreviewInput
+            id={`preview-${index}-domain`}
+            label="领域"
+            name="domain"
+            value={item.domain}
+            disabled={disabled}
+            options={domainOptions.domains}
+            selectLabel="选择已有领域"
+            onChange={(value) => onFieldChange("domain", value)}
+          />
+          <PreviewInput
+            id={`preview-${index}-subdomain`}
+            label="子领域"
+            name="subdomain"
+            value={item.subdomain}
+            disabled={disabled}
+            options={subdomainSelectOptions}
+            selectLabel="选择已有子领域"
+            onChange={(value) => onFieldChange("subdomain", value)}
+          />
+          <div className="grid gap-2">
+            <Label htmlFor={`preview-${index}-difficulty`}>难度</Label>
+            <Input
+              id={`preview-${index}-difficulty`}
+              name="difficulty"
+              type="number"
+              min={1}
+              max={5}
+              value={item.difficulty}
+              disabled={disabled}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                }
+              }}
+              onChange={(event) =>
+                onFieldChange("difficulty", Number(event.currentTarget.value) || 1)
+              }
+            />
+          </div>
+        </div>
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)]">
+          <div className="grid gap-2">
+            <Label htmlFor={`preview-${index}-summary`}>摘要</Label>
+            <Textarea
+              id={`preview-${index}-summary`}
+              name="summary"
+              value={item.summary}
+              disabled={disabled}
+              className="min-h-20 resize-y"
+              onChange={(event) => onFieldChange("summary", event.currentTarget.value)}
+            />
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`preview-${index}-tags`}>
+              标签（逗号或换行分隔）
+            </Label>
+            <Textarea
+              id={`preview-${index}-tags`}
+              name="tags"
+              value={item.tagsInput ?? item.tags.join("\n")}
+              disabled={disabled}
+              className="min-h-20 resize-y"
+              onChange={(event) =>
+                onFieldChange("tags", event.currentTarget.value)
+              }
+            />
+          </div>
         </div>
       </div>
 
@@ -483,6 +771,205 @@ function PreviewKnowledgeItemCard({ item }: { item: PreviewKnowledgeItem }) {
   );
 }
 
+function PreviewRelationListItem({
+  relation,
+  index,
+  disabled,
+  onFieldChange,
+}: {
+  relation: PreviewRelation;
+  index: number;
+  disabled: boolean;
+  onFieldChange: (field: PreviewRelationField, value: string) => void;
+}) {
+  return (
+    <li className="grid gap-3 rounded-md border bg-muted/30 px-3 py-2">
+      <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_11rem_minmax(0,1fr)]">
+        <PreviewInput
+          id={`preview-relation-${index}-from`}
+          label="来源"
+          name="fromSlug"
+          value={relation.fromSlug}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("fromSlug", value)}
+        />
+        <div className="grid gap-2">
+          <Label htmlFor={`preview-relation-${index}-type`}>关系</Label>
+          <select
+            id={`preview-relation-${index}-type`}
+            name="relationType"
+            value={relation.relationType}
+            disabled={disabled}
+            className="h-10 rounded-lg border border-input bg-background px-3 text-sm"
+            onChange={(event) =>
+              onFieldChange("relationType", event.currentTarget.value)
+            }
+          >
+            {RELATION_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <PreviewInput
+          id={`preview-relation-${index}-to`}
+          label="目标"
+          name="toSlug"
+          value={relation.toSlug}
+          disabled={disabled}
+          onChange={(value) => onFieldChange("toSlug", value)}
+        />
+      </div>
+      <PreviewInput
+        id={`preview-relation-${index}-note`}
+        label="备注"
+        name="note"
+        value={relation.note}
+        disabled={disabled}
+        onChange={(value) => onFieldChange("note", value)}
+      />
+    </li>
+  );
+}
+
+function ImportDedupeWarningPanel({
+  warnings,
+}: {
+  warnings: PreviewDedupeWarning[];
+}) {
+  const groupedWarnings = groupDedupeWarningsByGeneratedSlug(warnings);
+
+  return (
+    <section className="grid gap-2 rounded-md border border-warning/30 bg-warning/10 px-3 py-2">
+      <div className="flex items-center gap-2 text-sm font-medium text-warning">
+        <AlertTriangle className="size-4" />
+        疑似重复知识
+      </div>
+      <ul className="grid gap-2 text-sm text-muted-foreground">
+        {groupedWarnings.map((group) => (
+          <li key={group.generatedSlug} className="grid gap-1">
+            <span className="font-medium text-foreground">
+              {group.generatedTitle || group.generatedSlug}
+            </span>
+            {group.warnings.map((warning) => (
+              <span key={`${warning.generatedSlug}-${warning.existingItem.id}`}>
+                与存量「{warning.existingItem.title}」相似度 {formatPercent(warning.score)}
+                <span className="ml-1 text-xs">
+                  ({warning.existingItem.domain}
+                  {warning.existingItem.subdomain
+                    ? ` / ${warning.existingItem.subdomain}`
+                    : ""}
+                  · {warning.existingItem.slug})
+                </span>
+              </span>
+            ))}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function PreviewInput({
+  id,
+  label,
+  name,
+  value,
+  disabled,
+  listId,
+  options,
+  selectLabel,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  name: string;
+  value: string;
+  disabled: boolean;
+  listId?: string;
+  options?: string[];
+  selectLabel?: string;
+  onChange: (value: string) => void;
+}) {
+  const hasOptions = Boolean(options?.length);
+  const showsSelect = Boolean(selectLabel);
+
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div
+        className={
+          showsSelect
+            ? "grid gap-2 sm:grid-cols-[minmax(0,1fr)_10rem]"
+            : "grid gap-2"
+        }
+      >
+        <Input
+          id={id}
+          name={name}
+          value={value}
+          list={listId}
+          disabled={disabled}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") {
+              event.preventDefault();
+            }
+          }}
+          onChange={(event) => onChange(event.currentTarget.value)}
+        />
+        {showsSelect ? (
+          <select
+            aria-label={selectLabel ?? label}
+            value=""
+            disabled={disabled || !hasOptions}
+            className="h-10 min-w-0 rounded-lg border border-input bg-background px-3 text-sm"
+            onChange={(event) => {
+              const nextValue = event.currentTarget.value;
+
+              if (nextValue) {
+                onChange(nextValue);
+              }
+            }}
+          >
+            <option value="">
+              {hasOptions ? "从存量选择" : "暂无存量可选"}
+            </option>
+            {options?.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ImportDomainDatalists({
+  domainOptions,
+}: {
+  domainOptions: ImportDomainOptions;
+}) {
+  const allSubdomains = allSubdomainOptions(domainOptions);
+
+  return (
+    <>
+      <datalist id="import-domain-options">
+        {domainOptions.domains.map((option) => (
+          <option key={option} value={option} />
+        ))}
+      </datalist>
+      <datalist id="import-all-subdomain-options">
+        {allSubdomains.map((option) => (
+          <option key={option} value={option} />
+        ))}
+      </datalist>
+    </>
+  );
+}
+
 function RenderPayloadPreview({
   contentType,
   payload,
@@ -550,6 +1037,23 @@ function buildPreviewPayload(formData: FormData) {
   };
 }
 
+function getImportPreviewBatch(result: unknown): PreviewImportBatch | null {
+  const data = getRecord(getRecord(result)?.data) ?? getRecord(result);
+  const importRun = getRecord(data?.importRun);
+  const aiOutput = getRecord(importRun?.aiOutput) ?? getRecord(data?.aiOutput);
+
+  if (!aiOutput) {
+    return null;
+  }
+
+  return {
+    sourceTitle: textValue(aiOutput.sourceTitle),
+    defaultDomain: textValue(aiOutput.defaultDomain),
+    items: getImportPreviewItems(result),
+    relations: getImportPreviewRelations(result),
+  };
+}
+
 function getImportPreviewItems(result: unknown): PreviewKnowledgeItem[] {
   const data = getRecord(getRecord(result)?.data) ?? getRecord(result);
   const importRun = getRecord(data?.importRun);
@@ -580,9 +1084,59 @@ function getImportPreviewItems(result: unknown): PreviewKnowledgeItem[] {
       typicalProblems: arrayStrings(record.typicalProblems),
       examples: arrayStrings(record.examples),
       tags: arrayStrings(record.tags),
+      tagsInput: arrayStrings(record.tags).join("\n"),
       difficulty: numberValue(record.difficulty) || 1,
       variables: getPreviewVariables(record.variables),
       reviewItems: getPreviewReviewItems(record.reviewItems),
+    }];
+  });
+}
+
+function getImportDedupeWarnings(result: unknown): PreviewDedupeWarning[] {
+  const data = getRecord(getRecord(result)?.data) ?? getRecord(result);
+  const warnings = Array.isArray(data?.dedupeWarnings)
+    ? data.dedupeWarnings
+    : [];
+
+  return warnings.flatMap((warning) => {
+    const record = getRecord(warning);
+    const existingItem = getRecord(record?.existingItem);
+
+    if (!record || !existingItem) {
+      return [];
+    }
+
+    return [{
+      generatedSlug: textValue(record.generatedSlug),
+      generatedTitle: textValue(record.generatedTitle),
+      score: numberValue(record.score),
+      reasons: getDedupeWarningReasons(record.reasons),
+      existingItem: {
+        id: textValue(existingItem.id),
+        slug: textValue(existingItem.slug),
+        title: textValue(existingItem.title),
+        domain: textValue(existingItem.domain),
+        subdomain: textValue(existingItem.subdomain),
+        summary: textValue(existingItem.summary),
+      },
+    }];
+  });
+}
+
+function getDedupeWarningReasons(value: unknown) {
+  const reasons = Array.isArray(value) ? value : [];
+
+  return reasons.flatMap((reason) => {
+    const record = getRecord(reason);
+
+    if (!record) {
+      return [];
+    }
+
+    return [{
+      kind: textValue(record.kind),
+      score: numberValue(record.score),
+      detail: textValue(record.detail),
     }];
   });
 }
@@ -773,12 +1327,76 @@ function arrayStrings(value: unknown) {
     : [];
 }
 
+function splitListInput(value: string) {
+  return value
+    .split(/[\n,，]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function updatePreviewItemValue(
+  item: PreviewKnowledgeItem,
+  field: PreviewKnowledgeItemField,
+  value: string | number,
+): PreviewKnowledgeItem {
+  if (field === "tags" && typeof value === "string") {
+    return {
+      ...item,
+      tags: splitListInput(value),
+      tagsInput: value,
+    };
+  }
+
+  return { ...item, [field]: value };
+}
+
+function subdomainOptionsForDomain(
+  domainOptions: ImportDomainOptions,
+  domain: string,
+) {
+  return domainOptions.subdomainsByDomain[domain] ?? [];
+}
+
+function allSubdomainOptions(domainOptions: ImportDomainOptions) {
+  return Array.from(
+    new Set(Object.values(domainOptions.subdomainsByDomain).flat()),
+  );
+}
+
 function isKnowledgeItemType(value: string): value is KnowledgeItemType {
   return CONTENT_TYPE_OPTIONS.some((option) => option.value === value);
 }
 
 function labelForContentType(value: string) {
   return CONTENT_TYPE_OPTIONS.find((option) => option.value === value)?.label ?? value;
+}
+
+function groupDedupeWarningsByGeneratedSlug(warnings: PreviewDedupeWarning[]) {
+  const groups = new Map<
+    string,
+    {
+      generatedSlug: string;
+      generatedTitle: string;
+      warnings: PreviewDedupeWarning[];
+    }
+  >();
+
+  for (const warning of warnings) {
+    const group = groups.get(warning.generatedSlug) ?? {
+      generatedSlug: warning.generatedSlug,
+      generatedTitle: warning.generatedTitle,
+      warnings: [],
+    };
+
+    group.warnings.push(warning);
+    groups.set(warning.generatedSlug, group);
+  }
+
+  return Array.from(groups.values());
+}
+
+function formatPercent(value: number) {
+  return `${Math.round(value * 100)}%`;
 }
 
 function getRecord(value: unknown): Record<string, unknown> | undefined {

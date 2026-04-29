@@ -33,6 +33,8 @@ export async function POST(request: Request) {
         : await savePreviewedAdminImport({
             adminUserId: admin.id,
             importRunId: action.importRunId,
+            batch: action.batch,
+            allowDedupeOverride: action.allowDedupeOverride,
           });
     } catch (error) {
       return NextResponse.json(

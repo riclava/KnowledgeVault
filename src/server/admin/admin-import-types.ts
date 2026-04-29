@@ -56,6 +56,25 @@ export type AdminImportBatch = {
   relations: AdminImportedRelation[];
 };
 
+export type AdminImportDedupeWarning = {
+  generatedSlug: string;
+  generatedTitle: string;
+  score: number;
+  reasons: {
+    kind: string;
+    score: number;
+    detail: string;
+  }[];
+  existingItem: {
+    id: string;
+    slug: string;
+    title: string;
+    domain: string;
+    subdomain?: string;
+    summary: string;
+  };
+};
+
 export type AdminImportValidationErrorCode =
   | "empty_batch"
   | "duplicate_slug"

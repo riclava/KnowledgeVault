@@ -9,6 +9,7 @@ const navItems = [
   { href: "/admin", label: "总览" },
   { href: "/admin/import", label: "AI 导入" },
   { href: "/admin/knowledge-items", label: "知识项" },
+  { href: "/admin/dedupe", label: "知识去重" },
 ];
 
 export default async function AdminLayout({

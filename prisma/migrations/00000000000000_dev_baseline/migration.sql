@@ -25,6 +25,12 @@ CREATE TYPE "AdminImportStatus" AS ENUM ('validation_failed', 'saved', 'ai_faile
 -- CreateEnum
 CREATE TYPE "KnowledgeItemVisibility" AS ENUM ('public', 'private');
 
+-- CreateEnum
+CREATE TYPE "KnowledgeDedupeRunStatus" AS ENUM ('running', 'completed', 'failed');
+
+-- CreateEnum
+CREATE TYPE "KnowledgeDedupeCandidateStatus" AS ENUM ('pending', 'merged', 'ignored', 'stale');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" TEXT NOT NULL,
@@ -124,6 +130,47 @@ CREATE TABLE "knowledge_items" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "knowledge_items_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "knowledge_dedupe_runs" (
+    "id" TEXT NOT NULL,
+    "adminUserId" TEXT NOT NULL,
+    "domain" TEXT NOT NULL,
+    "subdomain" TEXT,
+    "threshold" DOUBLE PRECISION NOT NULL,
+    "usedAiReview" BOOLEAN NOT NULL DEFAULT false,
+    "status" "KnowledgeDedupeRunStatus" NOT NULL DEFAULT 'running',
+    "candidateCount" INTEGER NOT NULL DEFAULT 0,
+    "warningMessage" TEXT,
+    "errorMessage" TEXT,
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "knowledge_dedupe_runs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "knowledge_dedupe_candidates" (
+    "id" TEXT NOT NULL,
+    "runId" TEXT NOT NULL,
+    "knowledgeItemIds" TEXT[],
+    "localScore" DOUBLE PRECISION NOT NULL,
+    "localReasons" JSONB NOT NULL,
+    "aiScore" DOUBLE PRECISION,
+    "aiRecommendation" JSONB,
+    "warningMessage" TEXT,
+    "suggestedCanonicalItemId" TEXT,
+    "status" "KnowledgeDedupeCandidateStatus" NOT NULL DEFAULT 'pending',
+    "mergedIntoKnowledgeItemId" TEXT,
+    "mergedKnowledgeItemIds" TEXT[],
+    "ignoredReason" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "knowledge_dedupe_candidates_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -310,6 +357,15 @@ CREATE INDEX "knowledge_items_contentType_idx" ON "knowledge_items"("contentType
 CREATE INDEX "knowledge_items_visibility_createdByUserId_idx" ON "knowledge_items"("visibility", "createdByUserId");
 
 -- CreateIndex
+CREATE INDEX "knowledge_dedupe_runs_domain_subdomain_idx" ON "knowledge_dedupe_runs"("domain", "subdomain");
+
+-- CreateIndex
+CREATE INDEX "knowledge_dedupe_runs_adminUserId_createdAt_idx" ON "knowledge_dedupe_runs"("adminUserId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "knowledge_dedupe_candidates_runId_status_idx" ON "knowledge_dedupe_candidates"("runId", "status");
+
+-- CreateIndex
 CREATE INDEX "knowledge_item_variables_knowledgeItemId_idx" ON "knowledge_item_variables"("knowledgeItemId");
 
 -- CreateIndex
@@ -365,6 +421,12 @@ ALTER TABLE "knowledge_item_variables" ADD CONSTRAINT "knowledge_item_variables_
 
 -- AddForeignKey
 ALTER TABLE "knowledge_items" ADD CONSTRAINT "knowledge_items_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "knowledge_dedupe_runs" ADD CONSTRAINT "knowledge_dedupe_runs_adminUserId_fkey" FOREIGN KEY ("adminUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "knowledge_dedupe_candidates" ADD CONSTRAINT "knowledge_dedupe_candidates_runId_fkey" FOREIGN KEY ("runId") REFERENCES "knowledge_dedupe_runs"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "knowledge_item_relations" ADD CONSTRAINT "knowledge_item_relations_fromKnowledgeItemId_fkey" FOREIGN KEY ("fromKnowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -25,7 +25,13 @@ export type AdminKnowledgeItemListParams = {
   contentType?: KnowledgeItemType;
   difficulties?: number[];
   tag?: string;
+  page?: number;
+  pageSize?: number;
 };
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 20;
+const MAX_PAGE_SIZE = 100;
 
 export function normalizeAdminKnowledgeItemSearchParams(
   searchParams: URLSearchParams,
@@ -35,6 +41,11 @@ export function normalizeAdminKnowledgeItemSearchParams(
   const contentType = normalizeContentType(searchParams.get("contentType"));
   const difficulties = normalizeDifficulties(searchParams.getAll("difficulty"));
   const tag = trimmedParam(searchParams, "tag");
+  const page = normalizePositiveInteger(
+    searchParams.get("page"),
+    DEFAULT_PAGE,
+  );
+  const pageSize = normalizePageSize(searchParams.get("pageSize"));
 
   return {
     ...(query ? { query } : {}),
@@ -42,14 +53,23 @@ export function normalizeAdminKnowledgeItemSearchParams(
     ...(contentType ? { contentType } : {}),
     ...(difficulties.length > 0 ? { difficulties } : {}),
     ...(tag ? { tag } : {}),
+    page,
+    pageSize,
   };
 }
 
 export async function listAdminKnowledgeItems(
   params: AdminKnowledgeItemListParams,
 ) {
-  return prisma.knowledgeItem.findMany({
-    where: buildKnowledgeItemWhere(params),
+  const page = params.page ?? DEFAULT_PAGE;
+  const pageSize = params.pageSize ?? DEFAULT_PAGE_SIZE;
+  const where = buildKnowledgeItemWhere(params);
+  const total = await prisma.knowledgeItem.count({ where });
+  const items = await prisma.knowledgeItem.findMany({
+    where,
+    skip: (page - 1) * pageSize,
+    take: pageSize,
+    orderBy: { updatedAt: "desc" },
     include: {
       createdByUser: {
         select: {
@@ -69,8 +89,15 @@ export async function listAdminKnowledgeItems(
         },
       },
     },
-    orderBy: { updatedAt: "desc" },
   });
+
+  return {
+    items,
+    total,
+    page,
+    pageSize,
+    pageCount: Math.max(1, Math.ceil(total / pageSize)),
+  };
 }
 
 export async function listAdminKnowledgeItemDomains() {
@@ -87,12 +114,64 @@ export async function listAdminKnowledgeItemDomains() {
   return rows.map((row) => row.domain);
 }
 
+export async function listAdminKnowledgeItemDomainOptions() {
+  const rows = await prisma.knowledgeItem.findMany({
+    select: {
+      domain: true,
+      subdomain: true,
+    },
+    orderBy: [{ domain: "asc" }, { subdomain: "asc" }],
+  });
+  const domains: string[] = [];
+  const seenDomains = new Set<string>();
+  const subdomainsByDomain: Record<string, string[]> = {};
+  const seenSubdomainsByDomain = new Map<string, Set<string>>();
+
+  for (const row of rows) {
+    const domain = text(row.domain);
+    const subdomain = text(row.subdomain);
+
+    if (!domain) {
+      continue;
+    }
+
+    if (!seenDomains.has(domain)) {
+      seenDomains.add(domain);
+      domains.push(domain);
+      subdomainsByDomain[domain] = [];
+      seenSubdomainsByDomain.set(domain, new Set());
+    }
+
+    if (!subdomain) {
+      continue;
+    }
+
+    const seenSubdomains = seenSubdomainsByDomain.get(domain);
+
+    if (seenSubdomains && !seenSubdomains.has(subdomain)) {
+      seenSubdomains.add(subdomain);
+      subdomainsByDomain[domain]?.push(subdomain);
+    }
+  }
+
+  return {
+    domains,
+    subdomainsByDomain,
+  };
+}
+
 export async function getAdminKnowledgeItem(idOrSlug: string) {
   return prisma.knowledgeItem.findFirst({
     where: {
       OR: [{ id: idOrSlug }, { slug: idOrSlug }],
     },
     include: {
+      createdByUser: {
+        select: {
+          displayName: true,
+          email: true,
+        },
+      },
       variables: {
         orderBy: { sortOrder: "asc" },
       },
@@ -122,6 +201,40 @@ export async function deleteAdminKnowledgeItem(id: string) {
   return prisma.knowledgeItem.delete({
     where: { id },
   });
+}
+
+export async function bulkUpdateAdminKnowledgeItemDomain(input: unknown) {
+  const record = isRecord(input) ? input : {};
+  const ids = Array.isArray(record.ids)
+    ? unique(record.ids.map(text).filter(Boolean))
+    : [];
+  const domain = text(record.domain);
+  const subdomain = text(record.subdomain);
+  const clearSubdomain = record.clearSubdomain === true;
+
+  if (ids.length === 0) {
+    return { ok: false as const, error: "请选择要修改的知识项。" };
+  }
+
+  if (!domain) {
+    return { ok: false as const, error: "领域不能为空。" };
+  }
+
+  const data: Prisma.KnowledgeItemUpdateManyMutationInput = {
+    domain,
+    ...(clearSubdomain
+      ? { subdomain: null }
+      : subdomain
+        ? { subdomain }
+        : {}),
+  };
+
+  const result = await prisma.knowledgeItem.updateMany({
+    where: { id: { in: ids } },
+    data,
+  });
+
+  return { ok: true as const, count: result.count };
 }
 
 export function normalizeAdminKnowledgeItemFormInput(
@@ -239,6 +352,26 @@ function normalizeDifficulties(values: string[]) {
 
 function trimmedParam(searchParams: URLSearchParams, key: string) {
   return searchParams.get(key)?.trim() ?? "";
+}
+
+function normalizePositiveInteger(value: string | null, fallback: number) {
+  const normalized = Number(value);
+
+  if (!Number.isInteger(normalized) || normalized < 1) {
+    return fallback;
+  }
+
+  return normalized;
+}
+
+function normalizePageSize(value: string | null) {
+  const normalized = normalizePositiveInteger(value, DEFAULT_PAGE_SIZE);
+
+  if (normalized > MAX_PAGE_SIZE) {
+    return DEFAULT_PAGE_SIZE;
+  }
+
+  return normalized;
 }
 
 function text(value: unknown) {

@@ -24,6 +24,21 @@ export type ReviewItemReplacementPlan = {
   archiveIds: string[];
 };
 
+export type AdminImportDedupeExistingItem = {
+  id: string;
+  slug: string;
+  title: string;
+  contentType: string;
+  domain: string;
+  subdomain: string | null;
+  summary: string;
+  body: string;
+  useConditions: string[];
+  typicalProblems: string[];
+  examples: string[];
+  tags: string[];
+};
+
 export function buildAdminImportWritePlan(
   batch: AdminImportBatch,
   existingSlugToId: ExistingSlugToId,
@@ -105,6 +120,35 @@ export async function listExistingKnowledgeItemIdsBySlug(slugs: string[]) {
   return listExistingKnowledgeItemIdsBySlugWithClient(prisma, slugs);
 }
 
+export async function listPublicKnowledgeItemsForImportDedupe(domains: string[]) {
+  const uniqueDomains = unique(domains).filter(Boolean);
+
+  if (uniqueDomains.length === 0) {
+    return [];
+  }
+
+  return prisma.knowledgeItem.findMany({
+    where: {
+      visibility: "public",
+      domain: { in: uniqueDomains },
+    },
+    select: {
+      id: true,
+      slug: true,
+      title: true,
+      contentType: true,
+      domain: true,
+      subdomain: true,
+      summary: true,
+      body: true,
+      useConditions: true,
+      typicalProblems: true,
+      examples: true,
+      tags: true,
+    },
+  });
+}
+
 export async function createAdminImportRun({
   adminUserId,
   sourceTitle,
@@ -159,9 +203,11 @@ export async function getAdminImportRunForAdmin({
 export async function markAdminImportRunValidationFailed({
   id,
   validationErrors,
+  aiOutput,
 }: {
   id: string;
   validationErrors: AdminImportValidationError[];
+  aiOutput?: unknown;
 }) {
   return prisma.adminImportRun.update({
     where: { id },
@@ -169,6 +215,7 @@ export async function markAdminImportRunValidationFailed({
       status: "validation_failed",
       savedCount: 0,
       validationErrors: toNullableJsonInput(validationErrors),
+      ...(aiOutput === undefined ? {} : { aiOutput: toNullableJsonInput(aiOutput) }),
     },
   });
 }

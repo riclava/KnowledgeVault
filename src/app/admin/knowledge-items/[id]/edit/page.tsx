@@ -37,7 +37,7 @@ export default async function EditAdminKnowledgeItemPage({
             返回知识项
           </Link>
           <Link
-            href={`/knowledge-items/${item.id}`}
+            href={`/admin/knowledge-items/${item.id}`}
             className={buttonVariants({ variant: "secondary", size: "sm" })}
           >
             查看详情

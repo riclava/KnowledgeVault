@@ -71,6 +71,7 @@ export function AdminKnowledgeItemFilterForm({
     queryApplyTimer.current = window.setTimeout(() => {
       const params = new URLSearchParams(latestSearchParams);
       setOptionalParam(params, "query", query);
+      params.delete("page");
       router.replace(buildFilterHref(pathname, params), { scroll: false });
     }, 500);
 
@@ -119,6 +120,7 @@ export function AdminKnowledgeItemFilterForm({
       params.append("difficulty", String(difficulty));
     }
 
+    params.delete("page");
     router.replace(buildFilterHref(pathname, params), { scroll: false });
   }
 

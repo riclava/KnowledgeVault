@@ -283,7 +283,6 @@ export function createAdminImportJsonSchema(): AdminImportJsonSchemaFormat {
             "steps",
             "nodes",
             "edges",
-            "mermaid",
           ],
           properties: {
             mode: {
@@ -304,7 +303,6 @@ export function createAdminImportJsonSchema(): AdminImportJsonSchemaFormat {
               type: "array",
               items: { $ref: "#/$defs/procedureEdge" },
             },
-            mermaid: stringSchema,
           },
         },
         procedureStep: {
@@ -609,7 +607,7 @@ async function generateCompatibleAdminImportBatch(
           "JSON 必须符合以下 schema：",
           JSON.stringify(createAdminImportJsonSchema().schema),
           "主要内容必须使用中文，包括 title、summary、body、intuition、deepDive、useConditions、nonUseConditions、antiPatterns、typicalProblems、examples、tags、reviewItems 和 relation.note。",
-          "外语词汇、专有名词、代码、公式、LaTeX、Mermaid、英文原文引用可以保留原文，但解释、定义、题目和答案仍应以中文为主。",
+          "外语词汇、专有名词、代码、公式、LaTeX、英文原文引用可以保留原文，但解释、定义、题目和答案仍应以中文为主。",
           "defaultDomain、domain 和 subdomain 必须使用中文；如果管理员提供了英文领域或子领域，请翻译或重新推断为中文，不要原样复制英文值。",
           "当管理员留空来源标题、默认领域或子领域时，请根据来源材料自行推断。",
           "从来源材料中选择最具体的领域和子领域；例如：数学/概率、数学/代数、语言/词汇、计算机科学/算法、产品/策略。",
@@ -619,7 +617,7 @@ async function generateCompatibleAdminImportBatch(
           "当长期要记住的是词语、定义、发音、词性和用法例句时，使用 vocabulary。",
           "当内容适合定义、直觉、关键点、例子和误区时，使用 concept_card。",
           "当来源材料要求学习者对比或区分相关、易混概念时，使用 comparison_table；除非来源本身就是表格，否则优先使用 matrix 模式。",
-          "当来源材料描述有顺序的操作、算法、决策流程或解题过程时，使用 procedure；Mermaid 的节点和边必须一致。",
+          "当来源材料描述有顺序的操作、算法、决策流程或解题过程时，使用 procedure；只输出结构化 steps、nodes 和 edges，不要输出 Mermaid 图代码，系统会自动生成。",
           "只有在没有更合适的结构化类型时，才使用 plain_text。",
           "如果来源材料中不同部分最适合不同 contentType，请拆成多个知识项；为前置、应用和易混关系创建 relations。",
         ].join("\n"),

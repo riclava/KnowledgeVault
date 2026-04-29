@@ -22,10 +22,27 @@ describe("admin UI files", () => {
     assert.match(importForm, /重新生成/);
     assert.match(importForm, /mode: "preview"/);
     assert.match(importForm, /mode: "save"/);
-    assert.match(importForm, /importRunId: summary\.importRunId/);
+    assert.match(importForm, /importRunId: previewSummary\.importRunId/);
     assert.match(importForm, /KnowledgeItemRenderer/);
     assert.match(importForm, /结构化预览/);
     assert.match(importForm, /getImportPreviewItems/);
+    assert.match(importForm, /editableBatch/);
+    assert.match(importForm, /updatePreviewItemField/);
+    assert.match(importForm, /updatePreviewRelationField/);
+    assert.match(importForm, /domainOptions/);
+    assert.match(importForm, /subdomainsByDomain/);
+    assert.match(importForm, /selectLabel="选择已有领域"/);
+    assert.match(importForm, /selectLabel="选择已有子领域"/);
+    assert.match(importForm, /从存量选择/);
+    assert.match(importForm, /暂无存量可选/);
+    assert.match(importForm, /options=\{domainOptions\.domains\}/);
+    assert.match(importForm, /options=\{subdomainSelectOptions\}/);
+    assert.match(importForm, /name="domain"/);
+    assert.match(importForm, /name="subdomain"/);
+    assert.match(importForm, /batch: editableBatch/);
+    assert.match(importForm, /allowDedupeOverride/);
+    assert.match(importForm, /疑似重复/);
+    assert.match(importForm, /仍然导入/);
     assert.doesNotMatch(importForm, /JSON\.stringify\(result/);
     assert.match(importForm, /sourceMaterial/);
     assert.match(importForm, /className="min-h-44 resize-y text-sm leading-6"/);
@@ -50,6 +67,10 @@ describe("admin UI files", () => {
       "src/app/admin/knowledge-items/page.tsx",
       "utf8",
     );
+    const bulkEditor = readFileSync(
+      "src/components/admin/knowledge-item-bulk-domain-editor.tsx",
+      "utf8",
+    );
     const service = readFileSync(
       "src/server/admin/admin-knowledge-item-service.ts",
       "utf8",
@@ -57,11 +78,42 @@ describe("admin UI files", () => {
 
     assert.match(service, /createdByUser/);
     assert.match(service, /displayName/);
-    assert.match(page, /可见性/);
-    assert.match(page, /item\.visibility === "private"/);
-    assert.match(page, /私有/);
-    assert.match(page, /公共/);
-    assert.match(page, /createdByUser/);
+    assert.match(page, /AdminKnowledgeItemBulkDomainEditor/);
+    assert.match(bulkEditor, /可见性/);
+    assert.match(bulkEditor, /item\.visibility === "private"/);
+    assert.match(bulkEditor, /私有/);
+    assert.match(bulkEditor, /公共/);
+    assert.match(bulkEditor, /createdByUser/);
+  });
+
+  it("exposes a backstage knowledge item detail view from the admin list", () => {
+    const page = readFileSync(
+      "src/app/admin/knowledge-items/page.tsx",
+      "utf8",
+    );
+    const bulkEditor = readFileSync(
+      "src/components/admin/knowledge-item-bulk-domain-editor.tsx",
+      "utf8",
+    );
+    const detailPage = readFileSync(
+      "src/app/admin/knowledge-items/[id]/page.tsx",
+      "utf8",
+    );
+    const editPage = readFileSync(
+      "src/app/admin/knowledge-items/[id]/edit/page.tsx",
+      "utf8",
+    );
+
+    assert.match(page, /AdminKnowledgeItemBulkDomainEditor/);
+    assert.match(bulkEditor, /href=\{`\/admin\/knowledge-items\/\$\{item\.id\}`\}/);
+    assert.match(bulkEditor, /查看/);
+    assert.match(detailPage, /知识项详情/);
+    assert.match(detailPage, /KnowledgeItemRenderer/);
+    assert.match(detailPage, /复习题/);
+    assert.match(detailPage, /变量/);
+    assert.match(detailPage, /关联知识项/);
+    assert.match(editPage, /href=\{`\/admin\/knowledge-items\/\$\{item\.id\}`\}/);
+    assert.doesNotMatch(editPage, /href=\{`\/knowledge-items\/\$\{item\.id\}`\}/);
   });
 
   it("exposes learner private AI import without admin permissions", () => {
@@ -97,7 +149,7 @@ describe("admin UI files", () => {
     );
 
     assert.match(page, /listAdminKnowledgeItemDomains/);
-    assert.match(page, /const \[items, domains\] = await Promise\.all/);
+    assert.match(page, /const \[result, domains\] = await Promise\.all/);
     assert.match(page, /AdminKnowledgeItemFilterForm/);
     assert.match(filterForm, /<select[\s\S]*id="admin-domain"[\s\S]*name="domain"/);
     assert.match(filterForm, /<option value="">全部领域<\/option>/);
@@ -143,5 +195,48 @@ describe("admin UI files", () => {
     assert.match(filterForm, /router\.replace\(buildFilterHref\(pathname, params\), \{ scroll: false \}\)/);
     assert.doesNotMatch(filterForm, /type="submit"/);
     assert.doesNotMatch(filterForm, />\s*筛选\s*</);
+  });
+
+  it("exposes pagination and bulk domain editing on the admin knowledge item list", () => {
+    const page = readFileSync(
+      "src/app/admin/knowledge-items/page.tsx",
+      "utf8",
+    );
+    const bulkEditor = readFileSync(
+      "src/components/admin/knowledge-item-bulk-domain-editor.tsx",
+      "utf8",
+    );
+    const route = readFileSync(
+      "src/app/api/admin/knowledge-items/route.ts",
+      "utf8",
+    );
+
+    assert.match(page, /AdminKnowledgeItemBulkDomainEditor/);
+    assert.match(page, /buildPageHref/);
+    assert.match(page, /上一页/);
+    assert.match(page, /下一页/);
+    assert.match(page, /共 \{result\.total\} 项/);
+    assert.match(bulkEditor, /selectedIds\.length > 0/);
+    assert.match(bulkEditor, /已选 \{selectedIds\.length\} 项/);
+    assert.match(bulkEditor, /Sheet/);
+    assert.match(bulkEditor, /修改领域\/子领域/);
+    assert.match(bulkEditor, /selectedIds/);
+    assert.match(bulkEditor, /name="domain"/);
+    assert.match(bulkEditor, /name="subdomain"/);
+    assert.match(bulkEditor, /name="clearSubdomain"/);
+    assert.match(bulkEditor, /清空子领域/);
+    assert.match(bulkEditor, /确认修改/);
+    assert.doesNotMatch(bulkEditor, /留空清空/);
+    assert.match(bulkEditor, /method: "PATCH"/);
+    assert.match(route, /export async function PATCH/);
+    assert.match(route, /bulkUpdateAdminKnowledgeItemDomain/);
+  });
+
+  it("feeds existing domain options into the admin import form", () => {
+    const page = readFileSync("src/app/admin/import/page.tsx", "utf8");
+
+    assert.match(page, /listAdminKnowledgeItemDomainOptions/);
+    assert.match(page, /await listAdminKnowledgeItemDomainOptions\(\)/);
+    assert.match(page, /domainOptions=\{domainOptions\}/);
   });
 });

@@ -29,6 +29,18 @@ describe("admin import AI provider", () => {
     assert.ok(schema.schema.$defs?.conceptCardPayload);
     assert.ok(schema.schema.$defs?.comparisonTablePayload);
     assert.ok(schema.schema.$defs?.procedurePayload);
+    assert.deepEqual(schema.schema.$defs?.procedurePayload.required, [
+      "mode",
+      "title",
+      "overview",
+      "steps",
+      "nodes",
+      "edges",
+    ]);
+    assert.equal(
+      schema.schema.$defs?.procedurePayload.properties?.mermaid,
+      undefined,
+    );
     assert.deepEqual(
       renderPayloadSchema?.anyOf?.map((entry) => entry.$ref),
       [
@@ -213,6 +225,61 @@ describe("admin import AI provider", () => {
       assert.match(
         JSON.stringify(requests[0].body.messages),
         /当管理员留空来源标题、默认领域或子领域时，请根据来源材料自行推断/,
+      );
+    } finally {
+      restoreEnv("ADMIN_IMPORT_PROVIDER", originalAdminProvider);
+      restoreEnv("AI_PROVIDER", originalAiProvider);
+      restoreEnv("AI_API_KEY", originalAiApiKey);
+      restoreEnv("AI_MODEL", originalAiModel);
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("does not ask the AI to write Mermaid diagram code", async () => {
+    const originalAdminProvider = process.env.ADMIN_IMPORT_PROVIDER;
+    const originalAiProvider = process.env.AI_PROVIDER;
+    const originalAiApiKey = process.env.AI_API_KEY;
+    const originalAiModel = process.env.AI_MODEL;
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ body: Record<string, unknown> }> = [];
+
+    process.env.ADMIN_IMPORT_PROVIDER = "ai";
+    process.env.AI_PROVIDER = "deepseek";
+    process.env.AI_API_KEY = "deepseek-key";
+    process.env.AI_MODEL = "deepseek-chat";
+    globalThis.fetch = (async (_url, init) => {
+      requests.push({
+        body: JSON.parse(String(init?.body)),
+      });
+
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  sourceTitle: "流程",
+                  defaultDomain: "计算机科学",
+                  items: [],
+                  relations: [],
+                }),
+              },
+            },
+          ],
+        }),
+        { status: 200 },
+      );
+    }) as typeof fetch;
+
+    try {
+      await generateAdminImportBatch({
+        sourceMaterial: "描述一个决策流程。",
+      });
+
+      assert.equal(requests.length, 1);
+      assert.match(
+        JSON.stringify(requests[0].body.messages),
+        /不要输出 Mermaid 图代码/,
       );
     } finally {
       restoreEnv("ADMIN_IMPORT_PROVIDER", originalAdminProvider);

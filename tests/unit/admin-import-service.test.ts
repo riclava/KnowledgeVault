@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
+  buildAdminImportDedupeWarnings,
   collectGeneratedImportSlugs,
   normalizeAdminImportActionRequest,
   normalizeAdminImportRequest,
@@ -102,12 +103,58 @@ describe("admin import service", () => {
       normalizeAdminImportActionRequest({
         mode: "save",
         importRunId: " import_123 ",
+        allowDedupeOverride: true,
       }),
       {
         mode: "save",
         importRunId: "import_123",
+        allowDedupeOverride: true,
       },
     );
+  });
+
+  it("keeps an edited preview batch on save actions", () => {
+    const action = normalizeAdminImportActionRequest({
+      mode: "save",
+      importRunId: " import_123 ",
+      batch: {
+        defaultDomain: "数学",
+        items: [
+          {
+            slug: "new-item",
+            title: "New Item",
+            contentType: "plain_text",
+            renderPayload: { text: "New" },
+            domain: " 几何 ",
+            subdomain: " 三角形 ",
+            summary: "Summary",
+            body: "Body",
+            useConditions: [],
+            nonUseConditions: [],
+            antiPatterns: [],
+            typicalProblems: [],
+            examples: [],
+            tags: [" angle "],
+            difficulty: 2,
+            variables: [],
+            reviewItems: [
+              {
+                type: "recall",
+                prompt: "Q",
+                answer: "A",
+                difficulty: 2,
+              },
+            ],
+          },
+        ],
+        relations: [],
+      },
+    });
+
+    assert.equal(action.mode, "save");
+    assert.equal(action.importRunId, "import_123");
+    assert.equal(action.batch?.items[0]?.domain, "几何");
+    assert.equal(action.batch?.items[0]?.subdomain, "三角形");
   });
 
   it("requires a preview import run id before saving", () => {
@@ -125,6 +172,96 @@ describe("admin import service", () => {
     assert.match(service, /status: "validation_failed"/);
     assert.doesNotMatch(repository, /"previewed" \|/);
     assert.doesNotMatch(repository, /status: "previewed"/);
+  });
+
+  it("stores normalized AI output for preview rendering", () => {
+    const service = readText("src/server/admin/admin-import-service.ts");
+
+    assert.match(service, /aiOutput: validation\.batch/);
+  });
+
+  it("builds dedupe warnings against public knowledge without flagging same-slug updates", () => {
+    const warnings = buildAdminImportDedupeWarnings({
+      batch: {
+        defaultDomain: "数学",
+        items: [
+          {
+            slug: "quadratic-formula-import",
+            title: "一元二次方程求根公式",
+            contentType: "plain_text",
+            renderPayload: { text: "一元二次方程求根公式" },
+            domain: "数学",
+            subdomain: "代数",
+            summary: "用判别式和求根公式解一元二次方程。",
+            body: "一元二次方程 ax^2+bx+c=0 可以用求根公式和判别式求解。",
+            useConditions: ["一元二次方程"],
+            nonUseConditions: [],
+            antiPatterns: [],
+            typicalProblems: ["求根公式"],
+            examples: ["x^2-5x+6=0"],
+            tags: ["方程", "判别式"],
+            difficulty: 2,
+            variables: [],
+            reviewItems: [],
+          },
+          {
+            slug: "linear-equation",
+            title: "一次方程",
+            contentType: "plain_text",
+            renderPayload: { text: "一次方程" },
+            domain: "数学",
+            subdomain: "代数",
+            summary: "一次方程的移项求解。",
+            body: "一次方程可以通过移项和合并同类项求解。",
+            useConditions: [],
+            nonUseConditions: [],
+            antiPatterns: [],
+            typicalProblems: [],
+            examples: [],
+            tags: [],
+            difficulty: 1,
+            variables: [],
+            reviewItems: [],
+          },
+        ],
+        relations: [],
+      },
+      existingItems: [
+        {
+          id: "existing-1",
+          slug: "quadratic-formula",
+          title: "一元二次方程求根公式",
+          contentType: "plain_text",
+          domain: "数学",
+          subdomain: "代数",
+          summary: "用判别式和求根公式解一元二次方程。",
+          body: "一元二次方程 ax^2+bx+c=0 可以用求根公式和判别式求解。",
+          useConditions: ["一元二次方程"],
+          typicalProblems: ["求根公式"],
+          examples: ["x^2-5x+6=0"],
+          tags: ["方程", "判别式"],
+        },
+        {
+          id: "existing-2",
+          slug: "linear-equation",
+          title: "一次方程",
+          contentType: "plain_text",
+          domain: "数学",
+          subdomain: "代数",
+          summary: "一次方程的移项求解。",
+          body: "一次方程可以通过移项和合并同类项求解。",
+          useConditions: [],
+          typicalProblems: [],
+          examples: [],
+          tags: [],
+        },
+      ],
+    });
+
+    assert.equal(warnings.length, 1);
+    assert.equal(warnings[0]?.generatedSlug, "quadratic-formula-import");
+    assert.equal(warnings[0]?.existingItem.slug, "quadratic-formula");
+    assert.ok((warnings[0]?.score ?? 0) >= 0.55);
   });
 });
 

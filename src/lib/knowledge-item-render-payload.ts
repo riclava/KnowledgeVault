@@ -254,14 +254,9 @@ function normalizeProcedurePayload(record: Record<string, unknown>) {
   }
 
   const title = toText(record.title);
-  const mermaid = toText(record.mermaid);
 
   if (!title) {
     throw new Error("procedure payload requires title");
-  }
-
-  if (!mermaid) {
-    throw new Error("procedure payload requires mermaid");
   }
 
   const steps = toRecordList(record.steps).map((step) => {
@@ -337,8 +332,73 @@ function normalizeProcedurePayload(record: Record<string, unknown>) {
     steps,
     nodes,
     edges,
-    mermaid,
+    mermaid: buildProcedureMermaid(nodes, edges),
   };
+}
+
+type NormalizedProcedureNode = {
+  id: string;
+  label: string;
+  kind: "start" | "step" | "decision" | "end";
+};
+
+type NormalizedProcedureEdge = {
+  from: string;
+  to: string;
+  label: string | null;
+};
+
+function buildProcedureMermaid(
+  nodes: NormalizedProcedureNode[],
+  edges: NormalizedProcedureEdge[],
+) {
+  const lines = [
+    "flowchart TD",
+    ...nodes.map((node) => `  ${safeMermaidNodeId(node.id)}${nodeShape(node)}`),
+    ...edges.map((edge) => {
+      const from = safeMermaidNodeId(edge.from);
+      const to = safeMermaidNodeId(edge.to);
+
+      if (edge.label) {
+        return `  ${from} -->|"${escapeMermaidText(edge.label)}"| ${to}`;
+      }
+
+      return `  ${from} --> ${to}`;
+    }),
+  ];
+
+  return lines.join("\n");
+}
+
+function safeMermaidNodeId(id: string) {
+  const normalized = id
+    .trim()
+    .replace(/[^a-zA-Z0-9_]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+  return `node_${normalized || "item"}`;
+}
+
+function nodeShape(node: NormalizedProcedureNode) {
+  const label = escapeMermaidText(node.label);
+
+  if (node.kind === "decision") {
+    return `{"${label}"}`;
+  }
+
+  if (node.kind === "start" || node.kind === "end") {
+    return `(["${label}"])`;
+  }
+
+  return `["${label}"]`;
+}
+
+function escapeMermaidText(value: string) {
+  return value
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\r?\n/g, " ");
 }
 
 function normalizeCells(values: string[], length: number) {

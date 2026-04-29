@@ -154,8 +154,50 @@ describe("knowledge item render payloads", () => {
           { id: "isolate", label: "Isolate x", kind: "step" },
         ],
         edges: [{ from: "start", to: "isolate", label: null }],
-        mermaid: "flowchart TD\n  start([Start]) --> isolate[Isolate x]",
+        mermaid: [
+          "flowchart TD",
+          '  node_start(["Start"])',
+          '  node_isolate["Isolate x"]',
+          "  node_start --> node_isolate",
+        ].join("\n"),
       },
+    );
+  });
+
+  it("builds safe procedure mermaid from nodes and edges", () => {
+    assert.deepEqual(
+      normalizeKnowledgeItemRenderPayload("procedure", {
+        mode: "flowchart",
+        title: "Distance vector update",
+        overview: "",
+        steps: [
+          {
+            id: "step2",
+            title: "Add entry",
+            description: "Add a new route.",
+            tips: [],
+            pitfalls: [],
+          },
+        ],
+        nodes: [
+          { id: "start", label: "开始", kind: "start" },
+          { id: "decision1", label: "新距离 < 原距离？", kind: "decision" },
+          { id: "end", label: '结束 "done"', kind: "end" },
+        ],
+        edges: [
+          { from: "start", to: "decision1", label: null },
+          { from: "decision1", to: "end", label: "否" },
+        ],
+        mermaid: "graph TD\n  start --> decision1\n  decision1 --> end[结束]",
+      }).mermaid,
+      [
+        "flowchart TD",
+        '  node_start(["开始"])',
+        '  node_decision1{"新距离 < 原距离？"}',
+        '  node_end(["结束 \\"done\\""])',
+        "  node_start --> node_decision1",
+        '  node_decision1 -->|"否"| node_end',
+      ].join("\n"),
     );
   });
 

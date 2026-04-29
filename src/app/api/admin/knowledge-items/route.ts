@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
+  bulkUpdateAdminKnowledgeItemDomain,
   listAdminKnowledgeItems,
   normalizeAdminKnowledgeItemSearchParams,
   saveAdminKnowledgeItemAggregate,
@@ -33,5 +34,19 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ data: result.importRun });
+  });
+}
+
+export async function PATCH(request: Request) {
+  return withAdminApi(async () => {
+    const result = await bulkUpdateAdminKnowledgeItemDomain(
+      await request.json().catch(() => null),
+    );
+
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+
+    return NextResponse.json({ data: { updated: result.count } });
   });
 }

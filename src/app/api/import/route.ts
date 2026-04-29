@@ -33,6 +33,7 @@ export async function POST(request: Request) {
         : await savePreviewedLearnerImport({
             userId: current.learner.id,
             importRunId: action.importRunId,
+            batch: action.batch,
           });
     } catch (error) {
       return NextResponse.json(

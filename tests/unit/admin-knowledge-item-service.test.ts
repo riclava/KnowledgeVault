@@ -3,7 +3,9 @@ import { describe, it } from "node:test";
 
 import { prisma } from "@/lib/db/prisma";
 import {
+  bulkUpdateAdminKnowledgeItemDomain,
   getAdminKnowledgeItem,
+  listAdminKnowledgeItemDomainOptions,
   listAdminKnowledgeItemDomains,
   listAdminKnowledgeItems,
   normalizeAdminKnowledgeItemSearchParams,
@@ -13,7 +15,7 @@ describe("admin knowledge item service", () => {
   it("normalizes list query params", () => {
     const params = normalizeAdminKnowledgeItemSearchParams(
       new URLSearchParams(
-        "query=  algebra  &domain= Math &contentType=concept_card&difficulty=2&tag=core",
+        "query=  algebra  &domain= Math &contentType=concept_card&difficulty=2&tag=core&page=3&pageSize=50",
       ),
     );
 
@@ -23,7 +25,25 @@ describe("admin knowledge item service", () => {
       contentType: "concept_card",
       difficulties: [2],
       tag: "core",
+      page: 3,
+      pageSize: 50,
     });
+  });
+
+  it("falls back to safe pagination defaults", () => {
+    assert.deepEqual(
+      normalizeAdminKnowledgeItemSearchParams(
+        new URLSearchParams("page=0&pageSize=1000"),
+      ),
+      { page: 1, pageSize: 20 },
+    );
+
+    assert.deepEqual(
+      normalizeAdminKnowledgeItemSearchParams(
+        new URLSearchParams("page=nope&pageSize=-1"),
+      ),
+      { page: 1, pageSize: 20 },
+    );
   });
 
   it("normalizes repeated difficulty filters", () => {
@@ -31,7 +51,7 @@ describe("admin knowledge item service", () => {
       normalizeAdminKnowledgeItemSearchParams(
         new URLSearchParams("difficulty=1&difficulty=3&difficulty=5"),
       ),
-      { difficulties: [1, 3, 5] },
+      { difficulties: [1, 3, 5], page: 1, pageSize: 20 },
     );
   });
 
@@ -40,49 +60,71 @@ describe("admin knowledge item service", () => {
       normalizeAdminKnowledgeItemSearchParams(
         new URLSearchParams("difficulty=nope"),
       ),
-      {},
+      { page: 1, pageSize: 20 },
     );
 
     assert.deepEqual(
       normalizeAdminKnowledgeItemSearchParams(
         new URLSearchParams("difficulty=2.5"),
       ),
-      {},
+      { page: 1, pageSize: 20 },
     );
   });
 
   it("keeps integer difficulty filters outside the review scale", () => {
     assert.deepEqual(
       normalizeAdminKnowledgeItemSearchParams(new URLSearchParams("difficulty=6")),
-      { difficulties: [6] },
+      { difficulties: [6], page: 1, pageSize: 20 },
     );
 
     assert.deepEqual(
       normalizeAdminKnowledgeItemSearchParams(new URLSearchParams("difficulty=0")),
-      { difficulties: [0] },
+      { difficulties: [0], page: 1, pageSize: 20 },
     );
   });
 
-  it("passes zero difficulty filters into the Prisma where input", async () => {
+  it("passes filters and pagination into Prisma list queries", async () => {
     const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
       findMany: (args: unknown) => Promise<unknown>;
+      count: (args: unknown) => Promise<number>;
     };
     const originalFindMany = knowledgeItemDelegate.findMany;
-    let capturedArgs: unknown;
+    const originalCount = knowledgeItemDelegate.count;
+    let capturedFindManyArgs: unknown;
+    let capturedCountArgs: unknown;
 
     knowledgeItemDelegate.findMany = async (args: unknown) => {
-      capturedArgs = args;
+      capturedFindManyArgs = args;
 
       return [];
     };
+    knowledgeItemDelegate.count = async (args: unknown) => {
+      capturedCountArgs = args;
+
+      return 42;
+    };
 
     try {
-      await listAdminKnowledgeItems({ difficulties: [0, 2] });
+      assert.deepEqual(
+        await listAdminKnowledgeItems({
+          difficulties: [0, 2],
+          page: 3,
+          pageSize: 10,
+        }),
+        {
+          items: [],
+          total: 42,
+          page: 3,
+          pageSize: 10,
+          pageCount: 5,
+        },
+      );
     } finally {
       knowledgeItemDelegate.findMany = originalFindMany;
+      knowledgeItemDelegate.count = originalCount;
     }
 
-    assert.deepEqual(capturedArgs, {
+    assert.deepEqual(capturedFindManyArgs, {
       where: { difficulty: { in: [0, 2] } },
       include: {
         createdByUser: {
@@ -104,6 +146,139 @@ describe("admin knowledge item service", () => {
         },
       },
       orderBy: { updatedAt: "desc" },
+      skip: 20,
+      take: 10,
+    });
+    assert.deepEqual(capturedCountArgs, {
+      where: { difficulty: { in: [0, 2] } },
+    });
+  });
+
+  it("bulk updates the domain and subdomain for selected knowledge items", async () => {
+    const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
+      updateMany: (args: unknown) => Promise<{ count: number }>;
+    };
+    const originalUpdateMany = knowledgeItemDelegate.updateMany;
+    let capturedArgs: unknown;
+
+    knowledgeItemDelegate.updateMany = async (args: unknown) => {
+      capturedArgs = args;
+
+      return { count: 2 };
+    };
+
+    try {
+      assert.deepEqual(
+        await bulkUpdateAdminKnowledgeItemDomain({
+          ids: [" first ", "second", "first", ""],
+          domain: " 数学 ",
+          subdomain: " 代数 ",
+        }),
+        { ok: true, count: 2 },
+      );
+    } finally {
+      knowledgeItemDelegate.updateMany = originalUpdateMany;
+    }
+
+    assert.deepEqual(capturedArgs, {
+      where: { id: { in: ["first", "second"] } },
+      data: { domain: "数学", subdomain: "代数" },
+    });
+  });
+
+  it("rejects incomplete bulk domain updates before touching Prisma", async () => {
+    const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
+      updateMany: (args: unknown) => Promise<{ count: number }>;
+    };
+    const originalUpdateMany = knowledgeItemDelegate.updateMany;
+    let didUpdate = false;
+
+    knowledgeItemDelegate.updateMany = async () => {
+      didUpdate = true;
+
+      return { count: 0 };
+    };
+
+    try {
+      assert.deepEqual(
+        await bulkUpdateAdminKnowledgeItemDomain({
+          ids: [],
+          domain: "数学",
+          subdomain: "",
+        }),
+        { ok: false, error: "请选择要修改的知识项。" },
+      );
+      assert.deepEqual(
+        await bulkUpdateAdminKnowledgeItemDomain({
+          ids: ["item-id"],
+          domain: " ",
+          subdomain: "",
+        }),
+        { ok: false, error: "领域不能为空。" },
+      );
+    } finally {
+      knowledgeItemDelegate.updateMany = originalUpdateMany;
+    }
+
+    assert.equal(didUpdate, false);
+  });
+
+  it("keeps existing subdomains when bulk update receives a blank subdomain", async () => {
+    const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
+      updateMany: (args: unknown) => Promise<{ count: number }>;
+    };
+    const originalUpdateMany = knowledgeItemDelegate.updateMany;
+    let capturedArgs: unknown;
+
+    knowledgeItemDelegate.updateMany = async (args: unknown) => {
+      capturedArgs = args;
+
+      return { count: 1 };
+    };
+
+    try {
+      await bulkUpdateAdminKnowledgeItemDomain({
+        ids: ["item-id"],
+        domain: "数学",
+        subdomain: " ",
+      });
+    } finally {
+      knowledgeItemDelegate.updateMany = originalUpdateMany;
+    }
+
+    assert.deepEqual(capturedArgs, {
+      where: { id: { in: ["item-id"] } },
+      data: { domain: "数学" },
+    });
+  });
+
+  it("clears subdomain when a bulk update explicitly asks to clear it", async () => {
+    const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
+      updateMany: (args: unknown) => Promise<{ count: number }>;
+    };
+    const originalUpdateMany = knowledgeItemDelegate.updateMany;
+    let capturedArgs: unknown;
+
+    knowledgeItemDelegate.updateMany = async (args: unknown) => {
+      capturedArgs = args;
+
+      return { count: 1 };
+    };
+
+    try {
+      await bulkUpdateAdminKnowledgeItemDomain({
+        ids: ["item-id"],
+        domain: "数学",
+        subdomain: " ",
+        clearSubdomain: true,
+      });
+    } finally {
+      knowledgeItemDelegate.updateMany = originalUpdateMany;
+    }
+
+    assert.deepEqual(capturedArgs, {
+      where: { id: { in: ["item-id"] } },
+      data: { domain: "数学", subdomain: null },
     });
   });
 
@@ -140,6 +315,48 @@ describe("admin knowledge item service", () => {
     });
   });
 
+  it("lists existing domain and subdomain options for admin import editing", async () => {
+    const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
+      findMany: (args: unknown) => Promise<Array<{
+        domain: string;
+        subdomain: string | null;
+      }>>;
+    };
+    const originalFindMany = knowledgeItemDelegate.findMany;
+    let capturedArgs: unknown;
+
+    knowledgeItemDelegate.findMany = async (args: unknown) => {
+      capturedArgs = args;
+
+      return [
+        { domain: "数学", subdomain: "几何" },
+        { domain: "数学", subdomain: "代数" },
+        { domain: "写作", subdomain: null },
+        { domain: "数学", subdomain: "几何" },
+      ];
+    };
+
+    try {
+      assert.deepEqual(await listAdminKnowledgeItemDomainOptions(), {
+        domains: ["数学", "写作"],
+        subdomainsByDomain: {
+          数学: ["几何", "代数"],
+          写作: [],
+        },
+      });
+    } finally {
+      knowledgeItemDelegate.findMany = originalFindMany;
+    }
+
+    assert.deepEqual(capturedArgs, {
+      select: {
+        domain: true,
+        subdomain: true,
+      },
+      orderBy: [{ domain: "asc" }, { subdomain: "asc" }],
+    });
+  });
+
   it("loads only active review items for the admin edit form", async () => {
     const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
       findFirst: (args: unknown) => Promise<unknown>;
@@ -164,6 +381,12 @@ describe("admin knowledge item service", () => {
         OR: [{ id: "item-id" }, { slug: "item-id" }],
       },
       include: {
+        createdByUser: {
+          select: {
+            displayName: true,
+            email: true,
+          },
+        },
         variables: {
           orderBy: { sortOrder: "asc" },
         },

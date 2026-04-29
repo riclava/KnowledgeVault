@@ -1,6 +1,9 @@
 import { AdminImportForm } from "@/components/admin/admin-import-form";
+import { listAdminKnowledgeItemDomainOptions } from "@/server/admin/admin-knowledge-item-service";
 
-export default function AdminImportPage() {
+export default async function AdminImportPage() {
+  const domainOptions = await listAdminKnowledgeItemDomainOptions();
+
   return (
     <div className="grid max-w-4xl gap-5">
       <header className="border-b pb-4">
@@ -10,7 +13,7 @@ export default function AdminImportPage() {
         </p>
       </header>
 
-      <AdminImportForm />
+      <AdminImportForm domainOptions={domainOptions} />
     </div>
   );
 }

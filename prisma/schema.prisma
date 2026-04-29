@@ -58,6 +58,19 @@ enum KnowledgeItemVisibility {
   private
 }
 
+enum KnowledgeDedupeRunStatus {
+  running
+  completed
+  failed
+}
+
+enum KnowledgeDedupeCandidateStatus {
+  pending
+  merged
+  ignored
+  stale
+}
+
 model User {
   id                 String   @id @default(cuid())
   email              String?  @unique
@@ -73,6 +86,7 @@ model User {
   diagnosticAttempts  DiagnosticAttempt[]
   studySessions       StudySession[]
   adminImportRuns     AdminImportRun[]
+  knowledgeDedupeRuns KnowledgeDedupeRun[]
   createdKnowledgeItems KnowledgeItem[] @relation("KnowledgeItemCreator")
   authIdentity        AuthUser?
 
@@ -186,6 +200,53 @@ model KnowledgeItem {
   @@index([contentType])
   @@index([visibility, createdByUserId])
   @@map("knowledge_items")
+}
+
+model KnowledgeDedupeRun {
+  id             String                   @id @default(cuid())
+  adminUserId    String
+  domain         String
+  subdomain      String?
+  threshold      Float
+  usedAiReview   Boolean                  @default(false)
+  status         KnowledgeDedupeRunStatus @default(running)
+  candidateCount Int                      @default(0)
+  warningMessage String?
+  errorMessage   String?
+  startedAt      DateTime                 @default(now())
+  completedAt    DateTime?
+  createdAt      DateTime                 @default(now())
+  updatedAt      DateTime                 @updatedAt
+
+  adminUser  User                       @relation(fields: [adminUserId], references: [id], onDelete: Cascade)
+  candidates KnowledgeDedupeCandidate[]
+
+  @@index([domain, subdomain])
+  @@index([adminUserId, createdAt])
+  @@map("knowledge_dedupe_runs")
+}
+
+model KnowledgeDedupeCandidate {
+  id                        String                         @id @default(cuid())
+  runId                     String
+  knowledgeItemIds          String[]
+  localScore                Float
+  localReasons              Json
+  aiScore                   Float?
+  aiRecommendation          Json?
+  warningMessage            String?
+  suggestedCanonicalItemId  String?
+  status                    KnowledgeDedupeCandidateStatus @default(pending)
+  mergedIntoKnowledgeItemId String?
+  mergedKnowledgeItemIds    String[]
+  ignoredReason             String?
+  createdAt                 DateTime                       @default(now())
+  updatedAt                 DateTime                       @updatedAt
+
+  run KnowledgeDedupeRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+
+  @@index([runId, status])
+  @@map("knowledge_dedupe_candidates")
 }
 
 model KnowledgeItemVariable {

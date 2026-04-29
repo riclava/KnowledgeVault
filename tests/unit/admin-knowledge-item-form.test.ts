@@ -42,6 +42,10 @@ describe("admin knowledge item form", () => {
       "src/app/admin/knowledge-items/page.tsx",
       "utf8",
     );
+    const bulkEditor = readFileSync(
+      "src/components/admin/knowledge-item-bulk-domain-editor.tsx",
+      "utf8",
+    );
     const editPage = readFileSync(
       "src/app/admin/knowledge-items/[id]/edit/page.tsx",
       "utf8",
@@ -59,8 +63,9 @@ describe("admin knowledge item form", () => {
       "utf8",
     );
 
-    assert.match(listPage, /KnowledgeItemDeleteButton/);
-    assert.match(listPage, /endpoint=\{`\/api\/admin\/knowledge-items\/\$\{item\.id\}`\}/);
+    assert.match(listPage, /AdminKnowledgeItemBulkDomainEditor/);
+    assert.match(bulkEditor, /KnowledgeItemDeleteButton/);
+    assert.match(bulkEditor, /endpoint=\{`\/api\/admin\/knowledge-items\/\$\{item\.id\}`\}/);
     assert.match(editPage, /deleteEndpoint=\{`\/api\/admin\/knowledge-items\/\$\{item\.id\}`\}/);
     assert.match(form, /deleteEndpoint/);
     assert.match(form, /删除知识项/);

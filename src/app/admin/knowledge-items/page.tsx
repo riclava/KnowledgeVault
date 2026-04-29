@@ -1,8 +1,7 @@
 import Link from "next/link";
 
-import { KnowledgeItemDeleteButton } from "@/components/admin/knowledge-item-delete-button";
+import { AdminKnowledgeItemBulkDomainEditor } from "@/components/admin/knowledge-item-bulk-domain-editor";
 import { AdminKnowledgeItemFilterForm } from "@/components/admin/knowledge-item-filter-form";
-import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import {
   listAdminKnowledgeItemDomains,
@@ -21,8 +20,10 @@ export default async function AdminKnowledgeItemsPage({
 }: KnowledgeItemsPageProps) {
   const params = toURLSearchParams(await searchParams);
   const filters = normalizeAdminKnowledgeItemSearchParams(params);
-  const hasFilters = Array.from(params.keys()).length > 0;
-  const [items, domains] = await Promise.all([
+  const hasFilters = Array.from(params.keys()).some(
+    (key) => key !== "page" && key !== "pageSize",
+  );
+  const [result, domains] = await Promise.all([
     listAdminKnowledgeItems(filters),
     listAdminKnowledgeItemDomains(),
   ]);
@@ -51,97 +52,46 @@ export default async function AdminKnowledgeItemsPage({
         hasFilters={hasFilters}
       />
 
-      <div className="overflow-x-auto rounded-lg border bg-background">
-        <table className="min-w-[52rem] w-full text-left text-sm">
-          <thead className="border-b bg-muted/50 text-xs text-muted-foreground">
-            <tr>
-              <th className="px-3 py-2 font-medium">标题</th>
-              <th className="px-3 py-2 font-medium">类型</th>
-              <th className="px-3 py-2 font-medium">领域</th>
-              <th className="px-3 py-2 font-medium">可见性</th>
-              <th className="px-3 py-2 font-medium">难度</th>
-              <th className="px-3 py-2 font-medium">内容</th>
-              <th className="px-3 py-2 text-right font-medium">操作</th>
-            </tr>
-          </thead>
-          <tbody>
-            {items.length > 0 ? (
-              items.map((item) => (
-                <tr key={item.id} className="border-b last:border-b-0">
-                  <td className="max-w-64 px-3 py-2">
-                    <p className="truncate font-medium">{item.title}</p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      {item.slug}
-                    </p>
-                  </td>
-                  <td className="px-3 py-2 text-muted-foreground">
-                    {item.contentType}
-                  </td>
-                  <td className="px-3 py-2">
-                    <p>{item.domain}</p>
-                    {item.subdomain ? (
-                      <p className="text-xs text-muted-foreground">
-                        {item.subdomain}
-                      </p>
-                    ) : null}
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="grid gap-1">
-                      <Badge
-                        variant={item.visibility === "private" ? "secondary" : "outline"}
-                        className="w-fit"
-                      >
-                        {item.visibility === "private" ? "私有" : "公共"}
-                      </Badge>
-                      {item.visibility === "private" ? (
-                        <p className="max-w-36 truncate text-xs text-muted-foreground">
-                          {item.createdByUser?.displayName ||
-                            item.createdByUser?.email ||
-                            item.createdByUserId ||
-                            "未知创建者"}
-                        </p>
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-3 py-2 tabular-nums">
-                    {item.difficulty}
-                  </td>
-                  <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {item._count.reviewItems} 题 · {item._count.variables} 变量 ·{" "}
-                    {item._count.outgoingRelations} 关系
-                  </td>
-                  <td className="px-3 py-2">
-                    <div className="flex justify-end gap-2">
-                      <Link
-                        href={`/admin/knowledge-items/${item.id}/edit`}
-                        className={buttonVariants({
-                          variant: "outline",
-                          size: "xs",
-                        })}
-                      >
-                        编辑
-                      </Link>
-                      <KnowledgeItemDeleteButton
-                        endpoint={`/api/admin/knowledge-items/${item.id}`}
-                        title={item.title}
-                      />
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={7}
-                  className="px-3 py-8 text-center text-sm text-muted-foreground"
-                >
-                  {hasFilters ? "没有匹配的知识项，可清除筛选后再试。" : "还没有知识项。"}
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <AdminKnowledgeItemBulkDomainEditor
+        items={result.items}
+        hasFilters={hasFilters}
+      />
+
+      <nav
+        aria-label="知识项分页"
+        className="flex flex-col gap-3 border-t pt-4 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between"
+      >
+        <p>
+          第 {result.page} / {result.pageCount} 页 · 共 {result.total} 项
+        </p>
+        <div className="flex gap-2">
+          <Link
+            href={buildPageHref(params, result.page - 1)}
+            aria-disabled={result.page <= 1}
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              className: result.page <= 1 ? "pointer-events-none opacity-50" : "",
+            })}
+          >
+            上一页
+          </Link>
+          <Link
+            href={buildPageHref(params, result.page + 1)}
+            aria-disabled={result.page >= result.pageCount}
+            className={buttonVariants({
+              variant: "outline",
+              size: "sm",
+              className:
+                result.page >= result.pageCount
+                  ? "pointer-events-none opacity-50"
+                  : "",
+            })}
+          >
+            下一页
+          </Link>
+        </div>
+      </nav>
     </div>
   );
 }
@@ -165,4 +115,11 @@ function toURLSearchParams(
   }
 
   return params;
+}
+
+function buildPageHref(currentParams: URLSearchParams, page: number) {
+  const params = new URLSearchParams(currentParams);
+  params.set("page", String(Math.max(1, page)));
+
+  return `/admin/knowledge-items?${params.toString()}`;
 }
