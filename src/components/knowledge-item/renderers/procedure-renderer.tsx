@@ -1,39 +1,30 @@
-import { MermaidDiagram } from "@/components/knowledge-item/renderers/mermaid-diagram";
 import type { KnowledgeItemRendererPlugin } from "@/components/knowledge-item/renderers/types";
 
 export const procedureRenderer: KnowledgeItemRendererPlugin<"procedure"> = {
   type: "procedure",
   label: "流程",
   renderInline(payload) {
-    return <span>{payload.title}</span>;
+    return <span>{payload.steps.map((step) => step.title).join(" -> ")}</span>;
   },
   renderBlock(payload) {
     return (
       <div className="grid gap-4">
-        <section className="grid gap-2">
-          <h3 className="text-base font-semibold">{payload.title}</h3>
-          {payload.overview ? (
-            <p className="text-sm leading-7 text-muted-foreground">
-              {payload.overview}
-            </p>
-          ) : null}
-        </section>
         <ol className="grid gap-3">
           {payload.steps.map((step, index) => (
-            <li key={step.id} className="grid gap-2 rounded border bg-muted/20 p-3">
+            <li key={`${step.title}-${index}`} className="grid gap-2 rounded border bg-muted/20 p-3">
               <div className="flex items-baseline gap-2">
                 <span className="text-xs font-medium text-muted-foreground">
                   {index + 1}
                 </span>
                 <strong className="text-sm">{step.title}</strong>
               </div>
-              <p className="text-sm leading-6">{step.description}</p>
-              <StepList title="提示" items={step.tips} />
-              <StepList title="易错点" items={step.pitfalls} />
+              {step.detail ? (
+                <p className="text-sm leading-6">{step.detail}</p>
+              ) : null}
             </li>
           ))}
         </ol>
-        <MermaidDiagram chart={payload.mermaid} />
+        <StepList title="易错点" items={payload.pitfalls} />
       </div>
     );
   },

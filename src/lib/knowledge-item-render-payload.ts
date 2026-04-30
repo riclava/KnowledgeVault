@@ -36,7 +36,24 @@ export function normalizeKnowledgeItemRenderPayload<TType extends KnowledgeItemT
       throw new Error("math formula payload requires latex");
     }
 
-    return { latex } as KnowledgeItemRenderPayloadByType[TType];
+    return {
+      latex,
+      explanation: toText(record.explanation),
+      variables: toRecordList(record.variables).flatMap((variable) => {
+        const symbol = toText(variable.symbol);
+        const name = toText(variable.name);
+
+        if (!symbol || !name) {
+          return [];
+        }
+
+        return {
+          symbol,
+          name,
+          meaning: toText(variable.meaning ?? variable.description),
+        };
+      }),
+    } as KnowledgeItemRenderPayloadByType[TType];
   }
 
   if (contentType === "vocabulary") {
@@ -54,8 +71,6 @@ export function normalizeKnowledgeItemRenderPayload<TType extends KnowledgeItemT
     return {
       term,
       definition,
-      phonetic: toText(record.phonetic),
-      partOfSpeech: toText(record.partOfSpeech),
       examples: toTextList(record.examples),
     } as KnowledgeItemRenderPayloadByType[TType];
   }
@@ -69,9 +84,7 @@ export function normalizeKnowledgeItemRenderPayload<TType extends KnowledgeItemT
 
     return {
       definition,
-      intuition: toText(record.intuition),
       keyPoints: toTextList(record.keyPoints),
-      examples: toTextList(record.examples),
       misconceptions: toTextList(record.misconceptions),
     } as KnowledgeItemRenderPayloadByType[TType];
   }
@@ -115,49 +128,25 @@ export function knowledgeItemRenderPayloadToText(
     return payload.text;
   }
 
-  if (contentType === "concept_card" && "intuition" in payload) {
+  if (contentType === "concept_card" && "keyPoints" in payload) {
+    return [payload.definition, ...payload.keyPoints, ...payload.misconceptions]
+      .filter(Boolean)
+      .join("\n");
+  }
+
+  if (contentType === "comparison_table" && "subjects" in payload) {
     return [
-      payload.definition,
-      payload.intuition,
-      ...payload.keyPoints,
-      ...payload.examples,
-      ...payload.misconceptions,
+      ...payload.subjects,
+      ...payload.aspects.flatMap((aspect) => [aspect.label, ...aspect.values]),
     ]
       .filter(Boolean)
       .join("\n");
   }
 
-  if (contentType === "comparison_table" && "mode" in payload) {
-    if (payload.mode === "matrix") {
-      return [
-        ...payload.subjects,
-        ...payload.aspects.flatMap((aspect) => [aspect.label, ...aspect.values]),
-      ]
-        .filter(Boolean)
-        .join("\n");
-    }
-
-    if ("columns" in payload) {
-      return [payload.columns, ...payload.rows]
-        .flat()
-        .filter(Boolean)
-        .join("\n");
-    }
-  }
-
   if (contentType === "procedure" && "steps" in payload) {
     return [
-      payload.title,
-      payload.overview,
-      ...payload.steps.flatMap((step) => [
-        step.title,
-        step.description,
-        ...step.tips,
-        ...step.pitfalls,
-      ]),
-      ...payload.nodes.map((node) => node.label),
-      ...payload.edges.map((edge) => edge.label ?? ""),
-      payload.mermaid,
+      ...payload.steps.flatMap((step) => [step.title, step.detail]),
+      ...payload.pitfalls,
     ]
       .filter(Boolean)
       .join("\n");
@@ -188,217 +177,57 @@ function toTextList(value: unknown) {
 }
 
 function normalizeComparisonTablePayload(record: Record<string, unknown>) {
-  const mode = toText(record.mode);
+  const subjects = toTextList(record.subjects);
 
-  if (mode === "matrix") {
-    const subjects = toTextList(record.subjects);
+  if (subjects.length < 2) {
+    throw new Error("comparison table requires at least two subjects");
+  }
 
-    if (subjects.length < 2) {
-      throw new Error("comparison table matrix requires at least two subjects");
-    }
+  const aspects = toRecordList(record.aspects).map((aspect) => {
+    const label = toText(aspect.label);
 
-    const aspects = toRecordList(record.aspects).map((aspect) => {
-      const label = toText(aspect.label);
-
-      if (!label) {
-        throw new Error("comparison table matrix aspect requires label");
-      }
-
-      return {
-        label,
-        values: normalizeCells(toTextList(aspect.values), subjects.length),
-      };
-    });
-
-    if (aspects.length === 0) {
-      throw new Error("comparison table matrix requires at least one aspect");
+    if (!label) {
+      throw new Error("comparison table aspect requires label");
     }
 
     return {
-      mode,
-      subjects,
-      aspects,
+      label,
+      values: normalizeCells(toTextList(aspect.values), subjects.length),
     };
+  });
+
+  if (aspects.length === 0) {
+    throw new Error("comparison table requires at least one aspect");
   }
 
-  if (mode === "table") {
-    const columns = toTextList(record.columns);
-
-    if (columns.length === 0) {
-      throw new Error("comparison table requires at least one column");
-    }
-
-    const rows = toRowList(record.rows).map((row) =>
-      normalizeCells(row.map(toText), columns.length),
-    );
-
-    if (rows.length === 0) {
-      throw new Error("comparison table requires at least one row");
-    }
-
-    return {
-      mode,
-      columns,
-      rows,
-    };
-  }
-
-  throw new Error("comparison table payload requires matrix or table mode");
+  return {
+    subjects,
+    aspects,
+  };
 }
 
 function normalizeProcedurePayload(record: Record<string, unknown>) {
-  const mode = toText(record.mode);
-
-  if (mode !== "flowchart") {
-    throw new Error("procedure payload requires flowchart mode");
-  }
-
-  const title = toText(record.title);
-
-  if (!title) {
-    throw new Error("procedure payload requires title");
-  }
-
   const steps = toRecordList(record.steps).map((step) => {
-    const id = toText(step.id);
     const stepTitle = toText(step.title);
-    const description = toText(step.description);
 
-    if (!id || !stepTitle || !description) {
-      throw new Error("procedure step requires id, title, and description");
+    if (!stepTitle) {
+      throw new Error("procedure step requires title");
     }
 
     return {
-      id,
       title: stepTitle,
-      description,
-      tips: toTextList(step.tips),
-      pitfalls: toTextList(step.pitfalls),
+      detail: toText(step.detail ?? step.description),
     };
   });
 
   if (steps.length === 0) {
-    throw new Error("procedure payload requires at least one step");
+    throw new Error("procedure payload requires at least one steps entry");
   }
-
-  const nodes = toRecordList(record.nodes).map((node) => {
-    const id = toText(node.id);
-    const label = toText(node.label);
-    const kind = toText(node.kind);
-
-    if (!id || !label) {
-      throw new Error("procedure node requires id and label");
-    }
-
-    if (!isProcedureNodeKind(kind)) {
-      throw new Error("procedure node kind must be start, step, decision, or end");
-    }
-
-    return {
-      id,
-      label,
-      kind,
-    };
-  });
-
-  if (nodes.length < 2) {
-    throw new Error("procedure payload requires at least two nodes");
-  }
-
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  const edges = toRecordList(record.edges).map((edge) => {
-    const from = toText(edge.from);
-    const to = toText(edge.to);
-
-    if (!from || !to) {
-      throw new Error("procedure edge requires from and to");
-    }
-
-    if (!nodeIds.has(from) || !nodeIds.has(to)) {
-      throw new Error("unknown procedure node referenced by edge");
-    }
-
-    return {
-      from,
-      to,
-      label: toText(edge.label) || null,
-    };
-  });
 
   return {
-    mode,
-    title,
-    overview: toText(record.overview),
     steps,
-    nodes,
-    edges,
-    mermaid: buildProcedureMermaid(nodes, edges),
+    pitfalls: toTextList(record.pitfalls),
   };
-}
-
-type NormalizedProcedureNode = {
-  id: string;
-  label: string;
-  kind: "start" | "step" | "decision" | "end";
-};
-
-type NormalizedProcedureEdge = {
-  from: string;
-  to: string;
-  label: string | null;
-};
-
-function buildProcedureMermaid(
-  nodes: NormalizedProcedureNode[],
-  edges: NormalizedProcedureEdge[],
-) {
-  const lines = [
-    "flowchart TD",
-    ...nodes.map((node) => `  ${safeMermaidNodeId(node.id)}${nodeShape(node)}`),
-    ...edges.map((edge) => {
-      const from = safeMermaidNodeId(edge.from);
-      const to = safeMermaidNodeId(edge.to);
-
-      if (edge.label) {
-        return `  ${from} -->|"${escapeMermaidText(edge.label)}"| ${to}`;
-      }
-
-      return `  ${from} --> ${to}`;
-    }),
-  ];
-
-  return lines.join("\n");
-}
-
-function safeMermaidNodeId(id: string) {
-  const normalized = id
-    .trim()
-    .replace(/[^a-zA-Z0-9_]/g, "_")
-    .replace(/_+/g, "_")
-    .replace(/^_+|_+$/g, "");
-
-  return `node_${normalized || "item"}`;
-}
-
-function nodeShape(node: NormalizedProcedureNode) {
-  const label = escapeMermaidText(node.label);
-
-  if (node.kind === "decision") {
-    return `{"${label}"}`;
-  }
-
-  if (node.kind === "start" || node.kind === "end") {
-    return `(["${label}"])`;
-  }
-
-  return `["${label}"]`;
-}
-
-function escapeMermaidText(value: string) {
-  return value
-    .replace(/\\/g, "\\\\")
-    .replace(/"/g, '\\"')
-    .replace(/\r?\n/g, " ");
 }
 
 function normalizeCells(values: string[], length: number) {
@@ -409,20 +238,6 @@ function toRecordList(value: unknown) {
   return Array.isArray(value) ? value.filter(isRecord) : [];
 }
 
-function toRowList(value: unknown) {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.filter((row): row is unknown[] => Array.isArray(row));
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
-}
-
-function isProcedureNodeKind(
-  value: string,
-): value is "start" | "step" | "decision" | "end" {
-  return value === "start" || value === "step" || value === "decision" || value === "end";
 }
