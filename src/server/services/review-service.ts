@@ -369,7 +369,7 @@ function selectReviewQueueItem({
       summary: state.knowledgeItem.summary,
       difficulty: state.knowledgeItem.difficulty,
       tags: state.knowledgeItem.tags,
-      reviewItemCount: state.knowledgeItem.questionBindings.length,
+      questionCount: state.knowledgeItem.questionBindings.length,
       memoryHookCount: state.knowledgeItem.memoryHooks.length,
       trainingStatus,
       trainingStatusLabel:

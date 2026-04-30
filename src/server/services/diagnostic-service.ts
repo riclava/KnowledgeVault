@@ -117,6 +117,7 @@ export async function submitDiagnostic({
   });
 
   const weakKnowledgeItems = await getWeakKnowledgeItemSummaries({
+    domain: submission.domain,
     knowledgeItemIds: weakKnowledgeItemIds,
     userId,
   });
@@ -134,9 +135,11 @@ export async function submitDiagnostic({
 }
 
 async function getWeakKnowledgeItemSummaries({
+  domain,
   knowledgeItemIds,
   userId,
 }: {
+  domain: string;
   knowledgeItemIds: string[];
   userId: string;
 }) {
@@ -144,7 +147,7 @@ async function getWeakKnowledgeItemSummaries({
     return [];
   }
 
-  const summaries = await getKnowledgeItemSummaries({ userId });
+  const summaries = await getKnowledgeItemSummaries({ domain, userId });
   const knowledgeItemIdSet = new Set(knowledgeItemIds);
 
   return summaries.filter((knowledgeItem) =>
@@ -182,7 +185,7 @@ function toKnowledgeItemSummary(knowledgeItem: {
     summary: knowledgeItem.summary,
     difficulty: knowledgeItem.difficulty,
     tags: knowledgeItem.tags,
-    reviewItemCount: knowledgeItem._count.questionBindings,
+    questionCount: knowledgeItem._count.questionBindings,
     memoryHookCount: knowledgeItem._count.memoryHooks,
     trainingStatus: "not_started",
     trainingStatusLabel: "尚未进入训练",

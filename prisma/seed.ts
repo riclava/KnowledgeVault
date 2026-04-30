@@ -21,27 +21,14 @@ type SeedKnowledgeItem = {
   slug: string;
   title: string;
   contentType: KnowledgeItemType;
-  renderPayload: string | Record<string, unknown>;
+  renderPayload: Record<string, unknown>;
   domain: string;
   subdomain: string | null;
   summary: string;
   body: string;
-  intuition: string | null;
-  deepDive: string | null;
-  useConditions: string[];
-  nonUseConditions: string[];
-  antiPatterns: string[];
-  typicalProblems: string[];
-  examples: string[];
   difficulty: number;
   tags: string[];
-  variables: Array<{
-    symbol: string;
-    name: string;
-    description: string;
-    unit?: string | null;
-  }>;
-  reviewItems: Array<{
+  questions: Array<{
     type: QuestionType;
     prompt: string;
     answer: string;
@@ -55,59 +42,40 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     slug: "bayes-theorem",
     title: "贝叶斯定理",
     contentType: KnowledgeItemType.math_formula,
-    renderPayload: "P(A \\mid B)=\\frac{P(B \\mid A)P(A)}{P(B)}",
+    renderPayload: {
+      latex: "P(A \\mid B)=\\frac{P(B \\mid A)P(A)}{P(B)}",
+      explanation: "已知结果发生，反推导致该结果的某个原因的概率。",
+      variables: [
+        {
+          symbol: "P(A \\mid B)",
+          name: "后验概率",
+          meaning: "已知 B 发生后，A 发生的概率。",
+        },
+        {
+          symbol: "P(B \\mid A)",
+          name: "似然",
+          meaning: "假设 A 发生时，B 发生的概率。",
+        },
+        {
+          symbol: "P(A)",
+          name: "先验概率",
+          meaning: "没有观察到 B 之前，A 发生的概率。",
+        },
+        {
+          symbol: "P(B)",
+          name: "证据概率",
+          meaning: "B 发生的总概率，常用全概率公式计算。",
+        },
+      ],
+    },
     domain: "概率统计",
     subdomain: "条件概率",
     summary: "已知结果发生，反推导致该结果的某个原因的概率。",
     body:
       "贝叶斯定理把先验概率和观测到的证据结合起来，更新某个原因或假设成立的概率。",
-    intuition:
-      "它像一次证据更新：先有一个初始判断，再用新看到的结果重新调整判断。",
-    deepDive:
-      "由条件概率定义 P(A|B)=P(A∩B)/P(B) 与 P(B|A)=P(A∩B)/P(A) 联立得到。",
-    useConditions: [
-      "题目要求从结果 B 反推原因 A 的概率。",
-      "题目给出了 P(B|A) 这类正向条件概率，但要求 P(A|B)。",
-      "分母 P(B) 可以直接给出，或能用全概率公式展开。",
-    ],
-    nonUseConditions: [
-      "题目只要求结果 B 的总概率，而不是从结果反推原因。",
-      "A 与 B 明确独立且直接有 P(A|B)=P(A)，无需额外反推。",
-    ],
-    antiPatterns: [
-      "把 P(A|B) 和 P(B|A) 当成同一个概率。",
-      "忘记用全概率公式展开 P(B)，只计算了分子。",
-      "忽略先验概率 P(A)，导致罕见事件被高估。",
-    ],
-    typicalProblems: ["医疗检测", "质量检测", "垃圾邮件判断", "原因反推"],
-    examples: [
-      "某疾病发病率为 1%，检测对患病者阳性的概率为 99%，对未患病者误报阳性的概率为 5%。若检测阳性，求真正患病的概率。",
-    ],
     difficulty: 3,
     tags: ["bayes", "conditional-probability", "inverse-inference"],
-    variables: [
-      {
-        symbol: "P(A \\mid B)",
-        name: "后验概率",
-        description: "已知 B 发生后，A 发生的概率。",
-      },
-      {
-        symbol: "P(B \\mid A)",
-        name: "似然",
-        description: "假设 A 发生时，B 发生的概率。",
-      },
-      {
-        symbol: "P(A)",
-        name: "先验概率",
-        description: "没有观察到 B 之前，A 发生的概率。",
-      },
-      {
-        symbol: "P(B)",
-        name: "证据概率",
-        description: "B 发生的总概率，常用全概率公式计算。",
-      },
-    ],
-    reviewItems: [
+    questions: [
       {
         type: QuestionType.fill_blank,
         prompt: "写出贝叶斯定理的核心表达式。",
@@ -138,52 +106,35 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     slug: "law-of-total-probability",
     title: "全概率公式",
     contentType: KnowledgeItemType.math_formula,
-    renderPayload: "P(B)=\\sum_i P(B \\mid A_i)P(A_i)",
+    renderPayload: {
+      latex: "P(B)=\\sum_i P(B \\mid A_i)P(A_i)",
+      explanation: "把一个结果的总概率拆成多个互斥原因路径再相加。",
+      variables: [
+        {
+          symbol: "A_i",
+          name: "原因划分",
+          meaning: "一组互斥且完备的事件。",
+        },
+        {
+          symbol: "P(B \\mid A_i)",
+          name: "路径条件概率",
+          meaning: "在原因 A_i 发生时，结果 B 发生的概率。",
+        },
+        {
+          symbol: "P(A_i)",
+          name: "路径权重",
+          meaning: "原因 A_i 本身发生的概率。",
+        },
+      ],
+    },
     domain: "概率统计",
     subdomain: "条件概率",
     summary: "把一个结果的总概率拆成多个互斥原因路径再相加。",
     body:
       "当样本空间被一组互斥且完备的事件划分时，某个结果 B 的概率可以按每条路径加权求和。",
-    intuition: "像树状图上每条通往 B 的路径概率相加。",
-    deepDive: "由 B=(B∩A1)∪...∪(B∩An) 且各部分互斥可得。",
-    useConditions: [
-      "原因集合 A_i 两两互斥且覆盖全部可能。",
-      "题目要求某个结果 B 的总概率。",
-      "每条路径的条件概率 P(B|A_i) 和权重 P(A_i) 可知。",
-    ],
-    nonUseConditions: [
-      "题目要求的是 P(A|B) 这类反向条件概率时，不能只停在全概率公式。",
-      "原因路径不是互斥且完备划分时，不能直接套用。",
-    ],
-    antiPatterns: [
-      "原因集合没有覆盖全部情况。",
-      "把不同路径概率直接相加但漏乘路径权重。",
-      "和贝叶斯公式混淆，没有看清要求的是总概率还是反推原因。",
-    ],
-    typicalProblems: ["抽样来源混合", "生产线次品率", "分层人群事件率"],
-    examples: [
-      "A 线生产 60% 零件且次品率 1%，B 线生产 40% 零件且次品率 2%，随机抽到次品的总概率是多少？",
-    ],
     difficulty: 2,
     tags: ["total-probability", "conditional-probability", "partition"],
-    variables: [
-      {
-        symbol: "A_i",
-        name: "原因划分",
-        description: "一组互斥且完备的事件。",
-      },
-      {
-        symbol: "P(B \\mid A_i)",
-        name: "路径条件概率",
-        description: "在原因 A_i 发生时，结果 B 发生的概率。",
-      },
-      {
-        symbol: "P(A_i)",
-        name: "路径权重",
-        description: "原因 A_i 本身发生的概率。",
-      },
-    ],
-    reviewItems: [
+    questions: [
       {
         type: QuestionType.fill_blank,
         prompt: "写出离散划分下的全概率公式。",
@@ -212,47 +163,30 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     slug: "expectation-linearity",
     title: "期望的线性性质",
     contentType: KnowledgeItemType.math_formula,
-    renderPayload: "E(aX+bY)=aE(X)+bE(Y)",
+    renderPayload: {
+      latex: "E(aX+bY)=aE(X)+bE(Y)",
+      explanation: "把复杂随机变量的平均值拆成多个简单部分的平均值。",
+      variables: [
+        {
+          symbol: "E(X)",
+          name: "X 的期望",
+          meaning: "随机变量 X 的长期平均值。",
+        },
+        {
+          symbol: "a,b",
+          name: "常数系数",
+          meaning: "线性组合中的固定倍数。",
+        },
+      ],
+    },
     domain: "概率统计",
     subdomain: "随机变量",
     summary: "把复杂随机变量的平均值拆成多个简单部分的平均值。",
     body:
       "无论随机变量是否独立，期望都满足线性加法和数乘规则。",
-    intuition: "平均值可以先拆账再合账，不需要每个部分互不影响。",
-    deepDive: "由期望定义和求和/积分的线性性质得到。",
-    useConditions: [
-      "需要计算多个随机变量线性组合的期望。",
-      "只涉及加法、减法和常数倍。",
-      "不需要随机变量相互独立。",
-    ],
-    nonUseConditions: [
-      "题目涉及乘积期望 E(XY) 时，不能直接把线性性套到乘法上。",
-      "题目要求的是方差、协方差，而不是期望时，需要换公式。",
-    ],
-    antiPatterns: [
-      "误以为必须独立才能使用期望线性性。",
-      "把 E(XY)=E(X)E(Y) 也当成无条件成立。",
-      "遗漏常数项的期望。",
-    ],
-    typicalProblems: ["总收益期望", "指示变量法", "抽奖平均收益"],
-    examples: [
-      "掷 10 次硬币，令 X 为正面次数，可把 X 拆成 10 个指示变量求期望。",
-    ],
     difficulty: 2,
     tags: ["expectation", "linearity", "random-variable"],
-    variables: [
-      {
-        symbol: "E(X)",
-        name: "X 的期望",
-        description: "随机变量 X 的长期平均值。",
-      },
-      {
-        symbol: "a,b",
-        name: "常数系数",
-        description: "线性组合中的固定倍数。",
-      },
-    ],
-    reviewItems: [
+    questions: [
       {
         type: QuestionType.fill_blank,
         prompt: "写出两个随机变量线性组合的期望公式。",
@@ -280,53 +214,35 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     slug: "variance-shift-scale",
     title: "方差的平移与缩放",
     contentType: KnowledgeItemType.math_formula,
-    renderPayload: "\\operatorname{Var}(aX+b)=a^2\\operatorname{Var}(X)",
+    renderPayload: {
+      latex: "\\operatorname{Var}(aX+b)=a^2\\operatorname{Var}(X)",
+      explanation: "判断随机变量线性变换后离散程度如何变化。",
+      variables: [
+        {
+          symbol: "\\operatorname{Var}(X)",
+          name: "X 的方差",
+          meaning: "随机变量 X 相对其均值的平均平方偏离。",
+        },
+        {
+          symbol: "a",
+          name: "缩放系数",
+          meaning: "会以平方倍数影响方差。",
+        },
+        {
+          symbol: "b",
+          name: "平移常数",
+          meaning: "只移动位置，不改变方差。",
+        },
+      ],
+    },
     domain: "概率统计",
     subdomain: "随机变量",
     summary: "判断随机变量线性变换后离散程度如何变化。",
     body:
       "加常数只移动中心，不改变离散程度；乘常数会让方差按常数平方缩放。",
-    intuition: "整体平移不改变散开程度，拉伸两倍会让平方距离变成四倍。",
-    deepDive:
-      "由 Var(X)=E[(X-E(X))^2] 代入 aX+b 后，b 与均值平移相互抵消，a 被平方提出。",
-    useConditions: [
-      "随机变量发生线性变换 aX+b。",
-      "需要比较或计算方差。",
-      "只讨论离散程度，不讨论均值本身。",
-    ],
-    nonUseConditions: [
-      "题目要求期望线性变换时，不能把方差公式直接拿来用。",
-      "线性变换之外的非线性函数（如 X²）不能直接套 Var(aX+b)。",
-    ],
-    antiPatterns: [
-      "误以为加常数 b 会增加方差。",
-      "忘记缩放系数 a 要平方。",
-      "把方差变换和期望线性变换混在一起。",
-    ],
-    typicalProblems: ["标准化", "单位换算", "线性变换后的波动"],
-    examples: [
-      "若 Var(X)=9，求 Var(2X+10)。答案是 4*9=36。",
-    ],
     difficulty: 2,
     tags: ["variance", "random-variable", "scale-shift"],
-    variables: [
-      {
-        symbol: "\\operatorname{Var}(X)",
-        name: "X 的方差",
-        description: "随机变量 X 相对其均值的平均平方偏离。",
-      },
-      {
-        symbol: "a",
-        name: "缩放系数",
-        description: "会以平方倍数影响方差。",
-      },
-      {
-        symbol: "b",
-        name: "平移常数",
-        description: "只移动位置，不改变方差。",
-      },
-    ],
-    reviewItems: [
+    questions: [
       {
         type: QuestionType.fill_blank,
         prompt: "写出 Var(aX+b) 的公式。",
@@ -357,8 +273,6 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     contentType: KnowledgeItemType.vocabulary,
     renderPayload: {
       term: "aberration",
-      phonetic: "/ab-er-ay-shun/",
-      partOfSpeech: "noun",
       definition: "偏离常态的事物或异常情况。",
       examples: ["The sudden spike was an aberration, not a trend."],
     },
@@ -366,17 +280,9 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     subdomain: "学术词汇",
     summary: "表示异常、偏离常态的情况。",
     body: "aberration 常用于描述与正常模式不一致、不能代表长期趋势的异常点。",
-    intuition: "把它记成数据图上突然偏出去的一个点。",
-    deepDive: null,
-    useConditions: ["描述异常现象、异常数据点或偏离常规的行为。"],
-    nonUseConditions: ["描述普通变化或长期趋势时，不要用 aberration。"],
-    antiPatterns: ["把 aberration 当成普通 mistake 使用，忽略它的“异常偏离”含义。"],
-    typicalProblems: ["阅读理解中的异常点判断", "学术写作中的趋势排除"],
-    examples: ["The result was an aberration caused by a temporary sensor error."],
     difficulty: 2,
     tags: ["vocabulary", "academic"],
-    variables: [],
-    reviewItems: [
+    questions: [
       {
         type: QuestionType.fill_blank,
         prompt: "回忆 aberration 的核心释义。",
@@ -411,17 +317,9 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     subdomain: "复习流程",
     summary: "每日复习按到期、补弱、提示三步推进。",
     body: "这条清单用于防止复习时只刷题不修复记忆线索。每天结束前至少为一个薄弱知识项写下自己的提示。",
-    intuition: "先清队列，再修最弱点，最后留下下次能接住自己的线索。",
-    deepDive: null,
-    useConditions: ["开始每日复习或复盘一次训练结果时。"],
-    nonUseConditions: ["只是在快速浏览资料、没有进入训练闭环时。"],
-    antiPatterns: ["只完成题目数量，不处理 Again/Hard 暴露的问题。"],
-    typicalProblems: ["训练后复盘", "补弱入口选择", "下次提示整理"],
-    examples: ["今天先做 due now，再打开补弱列表，最后给最弱的一条写 memory hook。"],
     difficulty: 1,
     tags: ["process", "review"],
-    variables: [],
-    reviewItems: [
+    questions: [
       {
         type: QuestionType.fill_blank,
         prompt: "每日复习检查清单的三步是什么？",
@@ -498,7 +396,7 @@ async function main() {
         slug: knowledgeItem.slug,
         title: knowledgeItem.title,
         contentType: knowledgeItem.contentType,
-        renderPayload: normalizeSeedRenderPayload(knowledgeItem) as Prisma.InputJsonValue,
+        renderPayload: knowledgeItem.renderPayload as Prisma.InputJsonValue,
         domain: knowledgeItem.domain,
         subdomain: knowledgeItem.subdomain,
         summary: knowledgeItem.summary,
@@ -510,19 +408,19 @@ async function main() {
 
     created.set(knowledgeItem.slug, item.id);
 
-    for (const reviewItem of knowledgeItem.reviewItems) {
+    for (const question of knowledgeItem.questions) {
       await prisma.question.create({
         data: {
-          type: reviewItem.type,
-          prompt: reviewItem.prompt,
-          options: questionOptionsForSeedReviewItem(reviewItem),
-          answer: questionAnswerForSeedReviewItem(reviewItem) as Prisma.InputJsonValue,
-          answerAliases: [reviewItem.answer],
-          explanation: reviewItem.explanation,
-          difficulty: reviewItem.difficulty,
+          type: question.type,
+          prompt: question.prompt,
+          options: questionOptionsForSeedQuestion(question),
+          answer: questionAnswerForSeedQuestion(question) as Prisma.InputJsonValue,
+          answerAliases: [question.answer],
+          explanation: question.explanation,
+          difficulty: question.difficulty,
           tags: knowledgeItem.tags,
           gradingMode:
-            reviewItem.type === QuestionType.short_answer
+            question.type === QuestionType.short_answer
               ? QuestionGradingMode.ai
               : QuestionGradingMode.rule,
           knowledgeItems: {
@@ -554,48 +452,24 @@ async function main() {
   }
 }
 
-function normalizeSeedRenderPayload(knowledgeItem: SeedKnowledgeItem) {
-  if (typeof knowledgeItem.renderPayload !== "string") {
-    return knowledgeItem.renderPayload;
-  }
-
-  if (knowledgeItem.contentType === KnowledgeItemType.plain_text) {
-    return { text: knowledgeItem.renderPayload };
-  }
-
-  if (knowledgeItem.contentType === KnowledgeItemType.math_formula) {
-    return {
-      latex: knowledgeItem.renderPayload,
-      explanation: knowledgeItem.summary,
-      variables: knowledgeItem.variables.map((variable) => ({
-        symbol: variable.symbol,
-        name: variable.name,
-        meaning: variable.description,
-      })),
-    };
-  }
-
-  return { text: knowledgeItem.renderPayload };
-}
-
-function questionOptionsForSeedReviewItem(reviewItem: SeedKnowledgeItem["reviewItems"][number]) {
-  if (reviewItem.type !== QuestionType.single_choice) {
+function questionOptionsForSeedQuestion(question: SeedKnowledgeItem["questions"][number]) {
+  if (question.type !== QuestionType.single_choice) {
     return undefined;
   }
 
   return [
-    { id: "a", text: reviewItem.answer },
+    { id: "a", text: question.answer },
     { id: "b", text: "以上都不适合" },
     { id: "c", text: "需要先补充题目条件" },
   ] satisfies Prisma.InputJsonValue;
 }
 
-function questionAnswerForSeedReviewItem(reviewItem: SeedKnowledgeItem["reviewItems"][number]) {
-  if (reviewItem.type === QuestionType.single_choice) {
+function questionAnswerForSeedQuestion(question: SeedKnowledgeItem["questions"][number]) {
+  if (question.type === QuestionType.single_choice) {
     return { optionId: "a" };
   }
 
-  return { text: reviewItem.answer };
+  return { text: question.answer };
 }
 
 main()

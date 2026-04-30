@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 const stats = [
   { key: "knowledgeItemCount", label: "知识项" },
-  { key: "reviewItemCount", label: "复习题" },
+  { key: "questionCount", label: "复习题" },
   { key: "relationCount", label: "知识关系" },
   { key: "variableCount", label: "变量" },
 ] as const;

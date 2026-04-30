@@ -105,6 +105,7 @@ describe("knowledge item render payloads", () => {
           },
           {
             title: "Plan",
+            detail: "Choose an approach.",
           },
         ],
         pitfalls: "Skip constraints\nAssume sorted input",
@@ -117,7 +118,7 @@ describe("knowledge item render payloads", () => {
           },
           {
             title: "Plan",
-            detail: "",
+            detail: "Choose an approach.",
           },
         ],
         pitfalls: ["Skip constraints", "Assume sorted input"],
@@ -153,16 +154,15 @@ describe("knowledge item render payloads", () => {
           columns: ["Step"],
           rows: [["Read"]],
         }),
-      /subjects/i,
+      /unsupported field/i,
     );
     assert.throws(
       () =>
         normalizeKnowledgeItemRenderPayload("procedure", {
-          mode: "flowchart",
-          nodes: [],
-          edges: [],
+          steps: [{ title: "Read", description: "Legacy field" }],
+          pitfalls: [],
         }),
-      /steps/i,
+      /unsupported field/i,
     );
     assert.equal(parseKnowledgeItemType("formula"), null);
     assert.equal(parseKnowledgeItemType("concept_card"), "concept_card");

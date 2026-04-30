@@ -41,7 +41,7 @@ const CONTENT_TYPE_OPTIONS = [
   {
     value: "procedure",
     label: "流程",
-    description: "适合步骤、决策节点和 Mermaid 流程图。",
+    description: "适合步骤和常见易错点。",
   },
   {
     value: "comparison_table",
@@ -56,7 +56,7 @@ const CONTENT_TYPE_OPTIONS = [
   {
     value: "vocabulary",
     label: "词汇",
-    description: "适合术语、定义、音标和词性。",
+    description: "适合术语、定义和例句。",
   },
 ] as const;
 
@@ -89,16 +89,8 @@ export function KnowledgeItemAdminForm({
       renderPayload: buildRenderPayload(contentType, formData),
       summary: field(formData, "summary"),
       body: field(formData, "body"),
-      intuition: field(formData, "intuition"),
-      deepDive: field(formData, "deepDive"),
-      useConditions: lines(field(formData, "useConditions")),
-      nonUseConditions: lines(field(formData, "nonUseConditions")),
-      antiPatterns: lines(field(formData, "antiPatterns")),
-      typicalProblems: lines(field(formData, "typicalProblems")),
-      examples: lines(field(formData, "examples")),
       tags: lines(field(formData, "tags")),
-      variables: parseVariables(field(formData, "variables")),
-      reviewItems: parseReviewItems(field(formData, "reviewItems")),
+      questions: parseQuestions(field(formData, "questions")),
       relations: parseRelations(field(formData, "relations"), slug),
     };
 
@@ -230,21 +222,6 @@ export function KnowledgeItemAdminForm({
               placeholder="写清定义、背景、关键推理或使用方式。"
               required
             />
-            <div className="grid gap-3 md:grid-cols-2">
-              <TextareaField
-                name="intuition"
-                label="直觉解释"
-                initialValue={initialValue}
-                placeholder="用更口语的方式解释它为什么成立。"
-              />
-              <TextareaField
-                name="deepDive"
-                label="深入说明"
-                initialValue={initialValue}
-                placeholder="可选：补充推导、边界或更深入的解释。"
-              />
-            </div>
-
             <RenderPayloadFields
               contentType={contentType}
               renderPayload={renderPayload}
@@ -252,40 +229,10 @@ export function KnowledgeItemAdminForm({
           </FormSection>
 
           <FormSection
-            title="训练语境"
-            description="每行一条。这里会直接影响学习者在详情页和补弱时看到的结构。"
+            title="训练资料"
+            description="每行一条。用于题目和标签检索。"
           >
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              <ArrayTextarea
-                name="useConditions"
-                label="使用条件"
-                value={initialValue}
-                placeholder="题目要求反推条件概率&#10;已知 P(B|A)、P(A)、P(B)"
-              />
-              <ArrayTextarea
-                name="nonUseConditions"
-                label="不使用条件"
-                value={initialValue}
-                placeholder="只需要正向条件概率&#10;缺少总体概率信息"
-              />
-              <ArrayTextarea
-                name="antiPatterns"
-                label="反模式"
-                value={initialValue}
-                placeholder="把 P(A|B) 和 P(B|A) 混用"
-              />
-              <ArrayTextarea
-                name="typicalProblems"
-                label="典型问题"
-                value={initialValue}
-                placeholder="医学检测阳性后的真实患病概率"
-              />
-              <ArrayTextarea
-                name="examples"
-                label="示例"
-                value={initialValue}
-                placeholder="如果检测准确率为..."
-              />
+            <div className="grid gap-3 md:grid-cols-2">
               <ArrayTextarea
                 name="tags"
                 label="标签"
@@ -299,37 +246,19 @@ export function KnowledgeItemAdminForm({
             title="复习题"
             description="至少准备 1 道题。每行格式：type | prompt | answer | explanation | difficulty。"
           >
-            <Label htmlFor="reviewItems" className="text-xs">
+            <Label htmlFor="questions" className="text-xs">
               复习题明细
             </Label>
             <Textarea
-              id="reviewItems"
-              name="reviewItems"
-              defaultValue={reviewItemsText(initialValue.reviewItems)}
+              id="questions"
+              name="questions"
+              defaultValue={questionsText(initialValue.questions)}
               className="min-h-36 resize-y rounded-md bg-background font-mono text-sm leading-5"
               placeholder="recall | 贝叶斯公式解决什么问题？ | 用结果反推原因概率 | 注意和正向条件概率区分 | 3"
             />
           </FormSection>
 
-          <div className="grid gap-3 lg:grid-cols-2">
-            <FormSection
-              title="变量"
-              description="公式或流程需要变量时再填。每行格式：symbol | name | description | unit。"
-              advanced
-              defaultOpen={!isCreate}
-            >
-              <Label htmlFor="variables" className="text-xs">
-                变量明细
-              </Label>
-              <Textarea
-                id="variables"
-                name="variables"
-                defaultValue={variablesText(initialValue.variables)}
-                className="min-h-28 resize-y rounded-md bg-background font-mono text-sm leading-5"
-                placeholder="P(A|B) | 后验概率 | 已知 B 发生后 A 发生的概率 |"
-              />
-            </FormSection>
-
+          <div className="grid gap-3">
             <FormSection
               title="知识关系"
               description="可选。每行格式：toSlug | relationType | note。"
@@ -494,7 +423,7 @@ function RenderPayloadFields({
 
   if (contentType === "vocabulary") {
     return (
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3">
         <Field name="term" label="词条" initialValue={renderPayload} required />
         <Field
           name="definition"
@@ -502,8 +431,12 @@ function RenderPayloadFields({
           initialValue={renderPayload}
           required
         />
-        <Field name="phonetic" label="音标" initialValue={renderPayload} />
-        <Field name="partOfSpeech" label="词性" initialValue={renderPayload} />
+        <TextareaField
+          name="vocabularyExamples"
+          label="例句"
+          initialValue={{ vocabularyExamples: arrayText(renderPayload.examples) }}
+          className="min-h-24"
+        />
       </div>
     );
   }
@@ -517,22 +450,11 @@ function RenderPayloadFields({
           initialValue={renderPayload}
           required
         />
-        <TextareaField
-          name="conceptIntuition"
-          label="概念直觉"
-          initialValue={{ conceptIntuition: getString(renderPayload, "intuition") }}
-        />
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2">
           <TextareaField
             name="keyPoints"
             label="关键点"
             initialValue={{ keyPoints: arrayText(renderPayload.keyPoints) }}
-            className="min-h-24"
-          />
-          <TextareaField
-            name="conceptExamples"
-            label="概念示例"
-            initialValue={{ conceptExamples: arrayText(renderPayload.examples) }}
             className="min-h-24"
           />
           <TextareaField
@@ -547,58 +469,22 @@ function RenderPayloadFields({
   }
 
   if (contentType === "comparison_table") {
-    const comparisonMode = getString(renderPayload, "mode") || "matrix";
-
     return (
       <div className="grid gap-3">
-        <div className="grid gap-1.5">
-          <Label htmlFor="comparisonMode" className="text-xs">
-            对比表模式
-          </Label>
-          <Select
-            id="comparisonMode"
-            name="comparisonMode"
-            defaultValue={comparisonMode}
-          >
-            <SelectTrigger className="h-9 w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectGroup>
-                <SelectItem value="matrix">matrix</SelectItem>
-                <SelectItem value="table">table</SelectItem>
-              </SelectGroup>
-            </SelectContent>
-          </Select>
-        </div>
         <div className="grid gap-3 md:grid-cols-2">
           <TextareaField
             name="matrixSubjects"
-            label="Matrix subjects"
+            label="对比对象"
             initialValue={{ matrixSubjects: arrayText(renderPayload.subjects) }}
             className="min-h-24"
-            placeholder="Bayes&#10;Total probability"
+            placeholder="贝叶斯定理&#10;全概率公式"
           />
           <TextareaField
             name="matrixAspects"
-            label="Matrix aspects"
+            label="对比维度"
             initialValue={{ matrixAspects: matrixAspectsText(renderPayload.aspects) }}
             className="min-h-24 font-mono text-sm"
-            placeholder="Use | Reverse conditional | Marginalize cases"
-          />
-          <TextareaField
-            name="tableColumns"
-            label="Table columns"
-            initialValue={{ tableColumns: arrayText(renderPayload.columns) }}
-            className="min-h-24"
-            placeholder="Step&#10;Action"
-          />
-          <TextareaField
-            name="tableRows"
-            label="Table rows"
-            initialValue={{ tableRows: tableRowsText(renderPayload.rows) }}
-            className="min-h-24 font-mono text-sm"
-            placeholder="1 | Read source&#10;2 | Extract concepts"
+            placeholder="用途 | 由结果反推原因 | 分情况求总概率"
           />
         </div>
       </div>
@@ -608,46 +494,19 @@ function RenderPayloadFields({
   if (contentType === "procedure") {
     return (
       <div className="grid gap-3">
-        <div className="grid gap-3 md:grid-cols-2">
-          <Field
-            name="procedureTitle"
-            label="流程标题"
-            initialValue={{ procedureTitle: getString(renderPayload, "title") }}
-            required
-          />
-          <TextareaField
-            name="procedureOverview"
-            label="流程概览"
-            initialValue={{ procedureOverview: getString(renderPayload, "overview") }}
-          />
-        </div>
         <TextareaField
           name="procedureSteps"
           label="流程步骤"
           initialValue={{ procedureSteps: procedureStepsText(renderPayload.steps) }}
           className="min-h-28 font-mono text-sm"
-          placeholder="id | title | description | tip 1, tip 2 | pitfall 1"
+          placeholder="整理方程 | 合并同类项，把方程整理成 ax + b = c 的形式"
         />
         <TextareaField
-          name="procedureNodes"
-          label="流程节点"
-          initialValue={{ procedureNodes: procedureNodesText(renderPayload.nodes) }}
+          name="procedurePitfalls"
+          label="易错点"
+          initialValue={{ procedurePitfalls: arrayText(renderPayload.pitfalls) }}
           className="min-h-28 font-mono text-sm"
-          placeholder="id | label | start|step|decision|end"
-        />
-        <TextareaField
-          name="procedureEdges"
-          label="流程边"
-          initialValue={{ procedureEdges: procedureEdgesText(renderPayload.edges) }}
-          className="min-h-28 font-mono text-sm"
-          placeholder="from | to | label"
-        />
-        <TextareaField
-          name="mermaid"
-          label="Mermaid"
-          initialValue={renderPayload}
-          className="min-h-32 font-mono text-sm"
-          required
+          placeholder="漏乘括号内每一项&#10;移项忘记变号"
         />
       </div>
     );
@@ -789,34 +648,20 @@ function buildRenderPayload(contentType: string, formData: FormData) {
     return {
       term: field(formData, "term"),
       definition: field(formData, "definition"),
-      phonetic: field(formData, "phonetic"),
-      partOfSpeech: field(formData, "partOfSpeech"),
+      examples: lines(field(formData, "vocabularyExamples")),
     };
   }
 
   if (contentType === "concept_card") {
     return {
       definition: field(formData, "definition"),
-      intuition: field(formData, "conceptIntuition"),
       keyPoints: lines(field(formData, "keyPoints")),
-      examples: lines(field(formData, "conceptExamples")),
       misconceptions: lines(field(formData, "misconceptions")),
     };
   }
 
   if (contentType === "comparison_table") {
-    const mode = field(formData, "comparisonMode") || "matrix";
-
-    if (mode === "table") {
-      return {
-        mode,
-        columns: lines(field(formData, "tableColumns")),
-        rows: parsePipeRows(field(formData, "tableRows")),
-      };
-    }
-
     return {
-      mode: "matrix",
       subjects: lines(field(formData, "matrixSubjects")),
       aspects: parseMatrixAspects(field(formData, "matrixAspects")),
     };
@@ -824,13 +669,8 @@ function buildRenderPayload(contentType: string, formData: FormData) {
 
   if (contentType === "procedure") {
     return {
-      mode: "flowchart",
-      title: field(formData, "procedureTitle"),
-      overview: field(formData, "procedureOverview"),
       steps: parseProcedureSteps(field(formData, "procedureSteps")),
-      nodes: parseProcedureNodes(field(formData, "procedureNodes")),
-      edges: parseProcedureEdges(field(formData, "procedureEdges")),
-      mermaid: field(formData, "mermaid"),
+      pitfalls: lines(field(formData, "procedurePitfalls")),
     };
   }
 
@@ -848,69 +688,18 @@ function parseMatrixAspects(value: string) {
   });
 }
 
-function parsePipeRows(value: string) {
-  return lines(value).map(splitLine);
-}
-
 function parseProcedureSteps(value: string) {
   return lines(value).map((line) => {
-    const [
-      id = "",
-      title = "",
-      description = "",
-      tips = "",
-      pitfalls = "",
-    ] = splitLine(line);
+    const [title = "", detail = ""] = splitLine(line);
 
     return {
-      id,
       title,
-      description,
-      tips: splitCellList(tips),
-      pitfalls: splitCellList(pitfalls),
+      detail,
     };
   });
 }
 
-function parseProcedureNodes(value: string) {
-  return lines(value).map((line) => {
-    const [id = "", label = "", kind = "step"] = splitLine(line);
-
-    return {
-      id,
-      label,
-      kind,
-    };
-  });
-}
-
-function parseProcedureEdges(value: string) {
-  return lines(value).map((line) => {
-    const [from = "", to = "", label = ""] = splitLine(line);
-
-    return {
-      from,
-      to,
-      label,
-    };
-  });
-}
-
-function parseVariables(value: string) {
-  return lines(value).map((line, index) => {
-    const [symbol = "", name = "", description = "", unit = ""] = splitLine(line);
-
-    return {
-      symbol,
-      name,
-      description,
-      unit,
-      sortOrder: index,
-    };
-  });
-}
-
-function parseReviewItems(value: string) {
+function parseQuestions(value: string) {
   return lines(value).map((line) => {
     const [
       type = "",
@@ -943,38 +732,20 @@ function parseRelations(value: string, fromSlug: string) {
   });
 }
 
-function variablesText(value: unknown) {
+function questionsText(value: unknown) {
   if (!Array.isArray(value)) {
     return "";
   }
 
   return value
     .filter(isRecord)
-    .map((variable) =>
+    .map((question) =>
       [
-        getString(variable, "symbol"),
-        getString(variable, "name"),
-        getString(variable, "description"),
-        getString(variable, "unit"),
-      ].join(" | "),
-    )
-    .join("\n");
-}
-
-function reviewItemsText(value: unknown) {
-  if (!Array.isArray(value)) {
-    return "";
-  }
-
-  return value
-    .filter(isRecord)
-    .map((reviewItem) =>
-      [
-        getString(reviewItem, "type"),
-        getString(reviewItem, "prompt"),
-        getString(reviewItem, "answer"),
-        getString(reviewItem, "explanation"),
-        getString(reviewItem, "difficulty"),
+        getString(question, "type"),
+        getString(question, "prompt"),
+        getString(question, "answer"),
+        getString(question, "explanation"),
+        getString(question, "difficulty"),
       ].join(" | "),
     )
     .join("\n");
@@ -1013,17 +784,6 @@ function matrixAspectsText(value: unknown) {
     .join("\n");
 }
 
-function tableRowsText(value: unknown) {
-  if (!Array.isArray(value)) {
-    return "";
-  }
-
-  return value
-    .filter((row): row is unknown[] => Array.isArray(row))
-    .map((row) => row.map(String).join(" | "))
-    .join("\n");
-}
-
 function procedureStepsText(value: unknown) {
   if (!Array.isArray(value)) {
     return "";
@@ -1033,45 +793,8 @@ function procedureStepsText(value: unknown) {
     .filter(isRecord)
     .map((step) =>
       [
-        getString(step, "id"),
         getString(step, "title"),
-        getString(step, "description"),
-        arrayStrings(step.tips).join(", "),
-        arrayStrings(step.pitfalls).join(", "),
-      ].join(" | "),
-    )
-    .join("\n");
-}
-
-function procedureNodesText(value: unknown) {
-  if (!Array.isArray(value)) {
-    return "";
-  }
-
-  return value
-    .filter(isRecord)
-    .map((node) =>
-      [
-        getString(node, "id"),
-        getString(node, "label"),
-        getString(node, "kind"),
-      ].join(" | "),
-    )
-    .join("\n");
-}
-
-function procedureEdgesText(value: unknown) {
-  if (!Array.isArray(value)) {
-    return "";
-  }
-
-  return value
-    .filter(isRecord)
-    .map((edge) =>
-      [
-        getString(edge, "from"),
-        getString(edge, "to"),
-        getString(edge, "label"),
+        getString(step, "detail"),
       ].join(" | "),
     )
     .join("\n");
@@ -1096,13 +819,6 @@ function lines(value: string) {
 
 function splitLine(value: string) {
   return value.split("|").map((part) => part.trim());
-}
-
-function splitCellList(value: string) {
-  return value
-    .split(",")
-    .map((entry) => entry.trim())
-    .filter(Boolean);
 }
 
 function numberField(formData: FormData, name: string, fallback: number) {

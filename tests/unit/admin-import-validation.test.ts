@@ -20,17 +20,9 @@ const validBatch: AdminImportBatch = {
       subdomain: "代数",
       summary: "一次方程是未知数最高次数为一的方程。",
       body: "一次方程可以通过等式两边同做逆运算求解。",
-      intuition: "把未知数隔离出来。",
-      deepDive: "",
-      useConditions: ["未知数最高次数为一"],
-      nonUseConditions: ["含有二次项"],
-      antiPatterns: ["移项后忘记变号"],
-      typicalProblems: ["Solve 2x + 3 = 7"],
-      examples: ["2x + 3 = 7 -> x = 2"],
       difficulty: 1,
       tags: [" algebra ", "equation", "algebra"],
-      variables: [],
-      reviewItems: [
+      questions: [
         {
           type: "fill_blank",
           prompt: "什么是一次方程？",
@@ -98,9 +90,7 @@ describe("admin import validation", () => {
             contentType: "concept_card",
             renderPayload: {
               definition: "A limit is the value a function approaches.",
-              intuition: "Getting close matters more than arriving.",
               keyPoints: ["approach", "neighborhood"],
-              examples: ["lim x->0 sin(x)/x = 1"],
               misconceptions: ["The function must be defined at the point."],
             },
           },
@@ -110,7 +100,6 @@ describe("admin import validation", () => {
             title: "Conditional Probability Comparison",
             contentType: "comparison_table",
             renderPayload: {
-              mode: "matrix",
               subjects: ["Bayes", "Total probability"],
               aspects: [
                 {
@@ -126,24 +115,13 @@ describe("admin import validation", () => {
             title: "Solve Linear Equation",
             contentType: "procedure",
             renderPayload: {
-              mode: "flowchart",
-              title: "Solve linear equation",
-              overview: "Isolate the unknown.",
               steps: [
                 {
-                  id: "isolate",
                   title: "Isolate",
-                  description: "Move constants away.",
-                  tips: ["Keep both sides balanced."],
-                  pitfalls: ["Forgetting sign changes."],
+                  detail: "Move constants away.",
                 },
               ],
-              nodes: [
-                { id: "start", label: "Start", kind: "start" },
-                { id: "isolate", label: "Isolate x", kind: "step" },
-              ],
-              edges: [{ from: "start", to: "isolate", label: null }],
-              mermaid: "flowchart TD\n  start([Start]) --> isolate[Isolate x]",
+              pitfalls: ["Forgetting sign changes."],
             },
           },
         ],
@@ -155,7 +133,7 @@ describe("admin import validation", () => {
     assert.equal(result.ok ? result.batch.items.length : 0, 3);
   });
 
-  it("accepts simplified procedure payloads without flowchart edges", () => {
+  it("rejects procedure steps that use legacy description fields", () => {
     const result = validateAdminImportBatch(
       {
         ...validBatch,
@@ -167,7 +145,7 @@ describe("admin import validation", () => {
               steps: [
                 {
                   title: "Step",
-                  detail: "Do it.",
+                  description: "Do it.",
                 },
               ],
               pitfalls: ["Skip nothing."],
@@ -178,32 +156,10 @@ describe("admin import validation", () => {
       new Set(),
     );
 
-    assert.equal(result.ok, true);
-  });
-
-  it("rejects variables with blank symbol or name", () => {
-    const invalid: AdminImportBatch = {
-      ...validBatch,
-      items: [
-        {
-          ...validBatch.items[0],
-          variables: [
-            {
-              symbol: " ",
-              name: "",
-              description: "coefficient",
-            },
-          ],
-        },
-      ],
-    };
-
-    const result = validateAdminImportBatch(invalid, new Set());
-
     assert.equal(result.ok, false);
     assert.deepEqual(
-      result.ok ? [] : result.errors.map((error) => error.code),
-      ["missing_item_field", "missing_item_field"],
+      result.ok ? [] : result.errors.map((error) => error.path),
+      ["items.0.renderPayload"],
     );
   });
 
@@ -248,37 +204,13 @@ describe("admin import validation", () => {
     );
   });
 
-  it("rejects malformed item variables without throwing", () => {
+  it("rejects malformed item questions without throwing", () => {
     const invalid = {
       ...validBatch,
       items: [
         {
           ...validBatch.items[0],
-          variables: null,
-        },
-      ],
-    } as unknown as AdminImportBatch;
-    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
-
-    assert.doesNotThrow(() => {
-      result = validateAdminImportBatch(invalid, new Set());
-    });
-    assert.equal(result?.ok, false);
-    assert.equal(
-      result?.ok
-        ? false
-        : result?.errors.some((error) => error.code === "invalid_array_field"),
-      true,
-    );
-  });
-
-  it("rejects malformed item review items without throwing", () => {
-    const invalid = {
-      ...validBatch,
-      items: [
-        {
-          ...validBatch.items[0],
-          reviewItems: "not array",
+          questions: "not array",
         },
       ],
     } as unknown as AdminImportBatch;
@@ -334,37 +266,13 @@ describe("admin import validation", () => {
     );
   });
 
-  it("rejects null variable elements without throwing", () => {
+  it("rejects null question elements without throwing", () => {
     const invalid = {
       ...validBatch,
       items: [
         {
           ...validBatch.items[0],
-          variables: [null],
-        },
-      ],
-    } as unknown as AdminImportBatch;
-    let result: ReturnType<typeof validateAdminImportBatch> | undefined;
-
-    assert.doesNotThrow(() => {
-      result = validateAdminImportBatch(invalid, new Set());
-    });
-    assert.equal(result?.ok, false);
-    assert.equal(
-      result?.ok
-        ? false
-        : result?.errors.some((error) => error.code === "invalid_array_field"),
-      true,
-    );
-  });
-
-  it("rejects null review item elements without throwing", () => {
-    const invalid = {
-      ...validBatch,
-      items: [
-        {
-          ...validBatch.items[0],
-          reviewItems: [null],
+          questions: [null],
         },
       ],
     } as unknown as AdminImportBatch;

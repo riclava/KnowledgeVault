@@ -16,9 +16,6 @@ const algebraA: KnowledgeDedupeScoredItem = {
   body: "当判别式 b^2 - 4ac 大于等于 0 时，可以用求根公式得到两个实数根。",
   contentType: "math_formula",
   tags: ["代数", "方程", "求根公式"],
-  useConditions: ["二次方程"],
-  typicalProblems: ["求方程的实数根"],
-  examples: ["x^2 - 5x + 6 = 0"],
 };
 
 const algebraB: KnowledgeDedupeScoredItem = {
@@ -29,9 +26,6 @@ const algebraB: KnowledgeDedupeScoredItem = {
   body: "对于 ax^2 + bx + c = 0，可根据 b^2 - 4ac 判断根并使用求根公式。",
   contentType: "math_formula",
   tags: ["代数", "二次方程", "求根公式"],
-  useConditions: ["一元二次方程"],
-  typicalProblems: ["求方程根"],
-  examples: ["2x^2 + 3x + 1 = 0"],
 };
 
 const geometry: KnowledgeDedupeScoredItem = {
@@ -42,9 +36,6 @@ const geometry: KnowledgeDedupeScoredItem = {
   body: "三角形内角和定理常用于几何角度计算。",
   contentType: "concept_card",
   tags: ["几何", "三角形"],
-  useConditions: ["角度计算"],
-  typicalProblems: ["求未知角"],
-  examples: ["已知两个角求第三个角"],
 };
 
 describe("knowledge dedupe similarity", () => {

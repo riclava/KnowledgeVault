@@ -6,13 +6,12 @@ import type {
   AdminImportBatch,
   AdminImportedKnowledgeItem,
   AdminImportedRelation,
-  AdminImportedReviewItem,
-  AdminImportedVariable,
+  AdminImportedQuestion,
   AdminImportValidationError,
 } from "@/server/admin/admin-import-types";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const REVIEW_ITEM_TYPES = [
+const QUESTION_TYPES = [
   "single_choice",
   "multiple_choice",
   "true_false",
@@ -25,14 +24,7 @@ const RELATION_TYPES = [
   "confusable",
   "application_of",
 ] as const;
-const STRING_ARRAY_FIELDS = [
-  "useConditions",
-  "nonUseConditions",
-  "antiPatterns",
-  "typicalProblems",
-  "examples",
-  "tags",
-] as const;
+const STRING_ARRAY_FIELDS = ["tags"] as const;
 const HAN_CHARACTER_PATTERN = /\p{Script=Han}/u;
 
 export type AdminImportValidationResult =
@@ -114,8 +106,7 @@ export function validateAdminImportBatch(
     validateChineseDomain(item.subdomain, `${path}.subdomain`, errors);
     validateContentTypeAndPayload(item, path, errors);
     validateDifficulty(item.difficulty, `${path}.difficulty`, errors);
-    validateReviewItems(item.reviewItems, `${path}.reviewItems`, errors);
-    validateVariables(item.variables, `${path}.variables`, errors);
+    validateQuestions(item.questions, `${path}.questions`, errors);
   });
 
   validateRelations(normalized.relations, generatedSlugs, existingSlugs, errors);
@@ -132,11 +123,8 @@ function normalizeImportedItem(
   defaultDomain: string | undefined,
 ): AdminImportedKnowledgeItem {
   const record = item as unknown as Record<string, unknown>;
-  const variables = Array.isArray(record.variables)
-    ? item.variables.filter(isRecord)
-    : [];
-  const reviewItems = Array.isArray(record.reviewItems)
-    ? item.reviewItems.filter(isRecord)
+  const questions = Array.isArray(record.questions)
+    ? item.questions.filter(isRecord)
     : [];
 
   return {
@@ -147,47 +135,19 @@ function normalizeImportedItem(
     subdomain: optionalString(item.subdomain),
     summary: text(item.summary),
     body: text(item.body),
-    intuition: optionalString(item.intuition),
-    deepDive: optionalString(item.deepDive),
-    useConditions: stringList(item.useConditions),
-    nonUseConditions: stringList(item.nonUseConditions),
-    antiPatterns: stringList(item.antiPatterns),
-    typicalProblems: stringList(item.typicalProblems),
-    examples: stringList(item.examples),
     tags: stringList(item.tags),
-    variables: variables.map(normalizeImportedVariable),
-    reviewItems: reviewItems.map(normalizeImportedReviewItem),
+    questions: questions.map(normalizeImportedQuestion),
   };
 }
 
-function normalizeImportedVariable(
-  variable: AdminImportedVariable,
-  index: number,
-): AdminImportedVariable {
-  const sortOrder = variable.sortOrder;
-
+function normalizeImportedQuestion(
+  question: AdminImportedQuestion,
+): AdminImportedQuestion {
   return {
-    symbol: text(variable.symbol),
-    name: text(variable.name),
-    description: text(variable.description),
-    unit: optionalString(variable.unit),
-    sortOrder:
-      typeof sortOrder === "number" &&
-      Number.isInteger(sortOrder) &&
-      sortOrder >= 0
-        ? sortOrder
-        : index,
-  };
-}
-
-function normalizeImportedReviewItem(
-  reviewItem: AdminImportedReviewItem,
-): AdminImportedReviewItem {
-  return {
-    ...reviewItem,
-    prompt: text(reviewItem.prompt),
-    answer: text(reviewItem.answer),
-    explanation: optionalString(reviewItem.explanation),
+    ...question,
+    prompt: text(question.prompt),
+    answer: text(question.answer),
+    explanation: optionalString(question.explanation),
   };
 }
 
@@ -297,13 +257,8 @@ function validateItemArrayFields(
     });
 
     validateItemCollectionField(
-      record.variables,
-      `items.${itemIndex}.variables`,
-      errors,
-    );
-    validateItemCollectionField(
-      record.reviewItems,
-      `items.${itemIndex}.reviewItems`,
+      record.questions,
+      `items.${itemIndex}.questions`,
       errors,
     );
   });
@@ -397,82 +352,48 @@ function validateDifficulty(
   }
 }
 
-function validateReviewItems(
-  reviewItems: AdminImportedReviewItem[],
+function validateQuestions(
+  questions: AdminImportedQuestion[],
   path: string,
   errors: AdminImportValidationError[],
 ) {
-  if (reviewItems.length === 0) {
+  if (questions.length === 0) {
     errors.push({
-      code: "missing_review_item",
+      code: "missing_question",
       path,
-      message: "Each item must include at least one review item.",
+      message: "Each item must include at least one question.",
     });
     return;
   }
 
-  reviewItems.forEach((reviewItem, reviewIndex) => {
+  questions.forEach((question, reviewIndex) => {
     const reviewPath = `${path}.${reviewIndex}`;
 
-    if (!REVIEW_ITEM_TYPES.includes(reviewItem.type)) {
+    if (!QUESTION_TYPES.includes(question.type)) {
       errors.push({
-        code: "invalid_review_item",
+        code: "invalid_question",
         path: `${reviewPath}.type`,
-        message: "Review item type is not supported.",
+        message: "Question type is not supported.",
       });
     }
 
-    if (!reviewItem.prompt) {
+    if (!question.prompt) {
       errors.push({
-        code: "invalid_review_item",
+        code: "invalid_question",
         path: `${reviewPath}.prompt`,
-        message: "Review item prompt is required.",
+        message: "Question prompt is required.",
       });
     }
 
-    if (!reviewItem.answer) {
+    if (!question.answer) {
       errors.push({
-        code: "invalid_review_item",
+        code: "invalid_question",
         path: `${reviewPath}.answer`,
-        message: "Review item answer is required.",
+        message: "Question answer is required.",
       });
     }
 
-    validateDifficulty(reviewItem.difficulty, `${reviewPath}.difficulty`, errors);
-  });
-}
-
-function validateVariables(
-  variables: AdminImportedVariable[],
-  path: string,
-  errors: AdminImportValidationError[],
-) {
-  const symbols = new Set<string>();
-
-  variables.forEach((variable, variableIndex) => {
-    if (!variable.symbol) {
-      errors.push({
-        code: "missing_item_field",
-        path: `${path}.${variableIndex}.symbol`,
-        message: "Variable symbol is required.",
-      });
-    } else if (symbols.has(variable.symbol)) {
-      errors.push({
-        code: "duplicate_variable",
-        path: `${path}.${variableIndex}.symbol`,
-        message: `Duplicate variable symbol: ${variable.symbol}.`,
-      });
-    } else {
-      symbols.add(variable.symbol);
-    }
-
-    if (!variable.name) {
-      errors.push({
-        code: "missing_item_field",
-        path: `${path}.${variableIndex}.name`,
-        message: "Variable name is required.",
-      });
-    }
+    validateDifficulty(question.difficulty, `${reviewPath}.difficulty`, errors);
   });
 }
 

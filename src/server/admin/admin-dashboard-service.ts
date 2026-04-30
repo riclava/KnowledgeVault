@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db/prisma";
 export async function getAdminDashboard() {
   const [
     knowledgeItemCount,
-    reviewItemCount,
+    questionCount,
     relationCount,
     variableCount,
     recentImportRuns,
@@ -24,7 +24,7 @@ export async function getAdminDashboard() {
 
   return {
     knowledgeItemCount,
-    reviewItemCount,
+    questionCount,
     relationCount,
     variableCount,
     recentImportRuns,

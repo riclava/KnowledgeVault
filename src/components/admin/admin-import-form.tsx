@@ -30,7 +30,7 @@ type ImportSummary = {
   statusLabel: string;
   generatedCount: number;
   savedCount: number;
-  reviewItemCount: number;
+  questionCount: number;
   relationCount: number;
   errorMessages: string[];
   sourceTitle: string;
@@ -38,14 +38,7 @@ type ImportSummary = {
   importRunId: string;
 };
 
-type PreviewVariable = {
-  symbol: string;
-  name: string;
-  description: string;
-  unit: string;
-};
-
-type PreviewReviewItem = {
+type PreviewQuestion = {
   type: string;
   prompt: string;
   answer: string;
@@ -62,18 +55,10 @@ type PreviewKnowledgeItem = {
   subdomain: string;
   summary: string;
   body: string;
-  intuition: string;
-  deepDive: string;
-  useConditions: string[];
-  nonUseConditions: string[];
-  antiPatterns: string[];
-  typicalProblems: string[];
-  examples: string[];
   tags: string[];
   tagsInput?: string;
   difficulty: number;
-  variables: PreviewVariable[];
-  reviewItems: PreviewReviewItem[];
+  questions: PreviewQuestion[];
 };
 
 type PreviewRelation = {
@@ -176,9 +161,9 @@ export function AdminImportForm({
   const previewSummary = {
     ...summary,
     generatedCount: editableBatch?.items.length ?? summary.generatedCount,
-    reviewItemCount: editableBatch
-      ? countReviewItems(editableBatch.items)
-      : summary.reviewItemCount,
+    questionCount: editableBatch
+      ? countQuestions(editableBatch.items)
+      : summary.questionCount,
     relationCount: editableBatch?.relations.length ?? summary.relationCount,
     sourceTitle: editableBatch?.sourceTitle || summary.sourceTitle,
     defaultDomain: editableBatch?.defaultDomain || summary.defaultDomain,
@@ -450,7 +435,7 @@ export function AdminImportForm({
               label="知识项"
               value={previewSummary.status === "saved" ? previewSummary.savedCount : previewSummary.generatedCount}
             />
-            <ResultMetric label="复习题" value={previewSummary.reviewItemCount} />
+            <ResultMetric label="复习题" value={previewSummary.questionCount} />
             <ResultMetric label="关系" value={previewSummary.relationCount} />
           </div>
 
@@ -713,50 +698,26 @@ function PreviewKnowledgeItemCard({
         <p className="text-sm leading-6 text-muted-foreground">{item.body}</p>
       ) : null}
 
-      <PreviewTextList title="使用条件" values={item.useConditions} />
-      <PreviewTextList title="易错点" values={item.antiPatterns} />
-
-      {item.variables.length > 0 ? (
-        <section className="grid gap-2">
-          <h4 className="text-sm font-medium">变量</h4>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {item.variables.map((variable) => (
-              <div
-                key={`${variable.symbol}-${variable.name}`}
-                className="rounded-md border bg-muted/30 px-3 py-2 text-sm"
-              >
-                <span className="font-medium">{variable.symbol}</span>
-                <span className="text-muted-foreground"> · {variable.name}</span>
-                <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                  {variable.description}
-                  {variable.unit ? `（${variable.unit}）` : ""}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {item.reviewItems.length > 0 ? (
+      {item.questions.length > 0 ? (
         <section className="grid gap-2">
           <h4 className="text-sm font-medium">复习题</h4>
           <div className="grid gap-2">
-            {item.reviewItems.map((reviewItem, index) => (
+            {item.questions.map((question, index) => (
               <div
-                key={`${reviewItem.type}-${reviewItem.prompt}-${index}`}
+                key={`${question.type}-${question.prompt}-${index}`}
                 className="rounded-md border bg-muted/30 px-3 py-2 text-sm"
               >
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="outline">{reviewItem.type}</Badge>
+                  <Badge variant="outline">{question.type}</Badge>
                   <span className="text-xs text-muted-foreground">
-                    难度 {reviewItem.difficulty || 1}
+                    难度 {question.difficulty || 1}
                   </span>
                 </div>
-                <p className="mt-2 font-medium">{reviewItem.prompt}</p>
-                <p className="mt-1 text-muted-foreground">{reviewItem.answer}</p>
-                {reviewItem.explanation ? (
+                <p className="mt-2 font-medium">{question.prompt}</p>
+                <p className="mt-1 text-muted-foreground">{question.answer}</p>
+                {question.explanation ? (
                   <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                    {reviewItem.explanation}
+                    {question.explanation}
                   </p>
                 ) : null}
               </div>
@@ -985,31 +946,6 @@ function RenderPayloadPreview({
   );
 }
 
-function PreviewTextList({
-  title,
-  values,
-}: {
-  title: string;
-  values: string[];
-}) {
-  if (values.length === 0) {
-    return null;
-  }
-
-  return (
-    <section className="grid gap-2">
-      <h4 className="text-sm font-medium">{title}</h4>
-      <ul className="grid gap-1 text-sm leading-6 text-muted-foreground">
-        {values.map((value) => (
-          <li key={value} className="rounded-md bg-muted/30 px-3 py-1.5">
-            {value}
-          </li>
-        ))}
-      </ul>
-    </section>
-  );
-}
-
 function buildPreviewPayload(formData: FormData) {
   const preferredContentTypes = formData
     .getAll("preferredContentTypes")
@@ -1065,18 +1001,10 @@ function getImportPreviewItems(result: unknown): PreviewKnowledgeItem[] {
       subdomain: textValue(record.subdomain),
       summary: textValue(record.summary),
       body: textValue(record.body),
-      intuition: textValue(record.intuition),
-      deepDive: textValue(record.deepDive),
-      useConditions: arrayStrings(record.useConditions),
-      nonUseConditions: arrayStrings(record.nonUseConditions),
-      antiPatterns: arrayStrings(record.antiPatterns),
-      typicalProblems: arrayStrings(record.typicalProblems),
-      examples: arrayStrings(record.examples),
       tags: arrayStrings(record.tags),
       tagsInput: arrayStrings(record.tags).join("\n"),
       difficulty: numberValue(record.difficulty) || 1,
-      variables: getPreviewVariables(record.variables),
-      reviewItems: getPreviewReviewItems(record.reviewItems),
+      questions: getPreviewQuestions(record.questions),
     }];
   });
 }
@@ -1152,34 +1080,13 @@ function getImportPreviewRelations(result: unknown): PreviewRelation[] {
   });
 }
 
-function getPreviewVariables(value: unknown): PreviewVariable[] {
+function getPreviewQuestions(value: unknown): PreviewQuestion[] {
   if (!Array.isArray(value)) {
     return [];
   }
 
-  return value.flatMap((variable) => {
-    const record = getRecord(variable);
-
-    if (!record) {
-      return [];
-    }
-
-    return [{
-      symbol: textValue(record.symbol),
-      name: textValue(record.name),
-      description: textValue(record.description),
-      unit: textValue(record.unit),
-    }];
-  });
-}
-
-function getPreviewReviewItems(value: unknown): PreviewReviewItem[] {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return value.flatMap((reviewItem) => {
-    const record = getRecord(reviewItem);
+  return value.flatMap((question) => {
+    const record = getRecord(question);
 
     if (!record) {
       return [];
@@ -1238,7 +1145,7 @@ function getImportSummary(result: unknown): ImportSummary {
     statusLabel: statusLabel(status),
     generatedCount,
     savedCount,
-    reviewItemCount: countReviewItems(items),
+    questionCount: countQuestions(items),
     relationCount: relations.length,
     errorMessages: errors.map(formatValidationError).slice(0, 5),
     sourceTitle:
@@ -1253,16 +1160,16 @@ function getImportSummary(result: unknown): ImportSummary {
   };
 }
 
-function countReviewItems(items: unknown[]): number {
+function countQuestions(items: unknown[]): number {
   let count = 0;
 
   for (const item of items) {
     const record = getRecord(item);
-    const reviewItems = Array.isArray(record?.reviewItems)
-      ? record.reviewItems
+    const questions = Array.isArray(record?.questions)
+      ? record.questions
       : [];
 
-    count += reviewItems.length;
+    count += questions.length;
   }
 
   return count;

@@ -4,15 +4,7 @@ import type {
   QuestionType,
 } from "@/generated/prisma/client";
 
-export type AdminImportedVariable = {
-  symbol: string;
-  name: string;
-  description: string;
-  unit?: string;
-  sortOrder?: number;
-};
-
-export type AdminImportedReviewItem = {
+export type AdminImportedQuestion = {
   type: QuestionType;
   prompt: string;
   answer: string;
@@ -29,17 +21,9 @@ export type AdminImportedKnowledgeItem = {
   subdomain?: string;
   summary: string;
   body: string;
-  intuition?: string;
-  deepDive?: string;
-  useConditions: string[];
-  nonUseConditions: string[];
-  antiPatterns: string[];
-  typicalProblems: string[];
-  examples: string[];
   tags: string[];
   difficulty: number;
-  variables: AdminImportedVariable[];
-  reviewItems: AdminImportedReviewItem[];
+  questions: AdminImportedQuestion[];
 };
 
 export type AdminImportedRelation = {
@@ -85,9 +69,8 @@ export type AdminImportValidationErrorCode =
   | "non_chinese_domain"
   | "invalid_difficulty"
   | "invalid_array_field"
-  | "missing_review_item"
-  | "invalid_review_item"
-  | "duplicate_variable"
+  | "missing_question"
+  | "invalid_question"
   | "unknown_relation_source"
   | "unknown_relation_target"
   | "self_relation"

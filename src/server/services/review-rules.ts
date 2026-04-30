@@ -1,5 +1,5 @@
-import type { ReviewGrade, ReviewItemKind } from "@/types/review";
-import type { QuestionAttemptResult } from "@/types/question";
+import type { QuestionAttemptResult, QuestionType } from "@/types/question";
+import type { ReviewGrade } from "@/types/review";
 
 export const REVIEW_INTERVAL_MS: Record<ReviewGrade, number> = {
   again: 10 * 60 * 1000,
@@ -8,7 +8,7 @@ export const REVIEW_INTERVAL_MS: Record<ReviewGrade, number> = {
   easy: 7 * 24 * 60 * 60 * 1000,
 };
 
-export const REVIEW_TYPE_CYCLE: ReviewItemKind[] = [
+export const REVIEW_TYPE_CYCLE: QuestionType[] = [
   "single_choice",
   "fill_blank",
   "true_false",
@@ -84,12 +84,12 @@ export function calculateNextReviewState({
   };
 }
 
-export function chooseReviewItemType({
+export function chooseQuestionType({
   availableTypes,
   preferredType,
 }: {
-  availableTypes: ReviewItemKind[];
-  preferredType: ReviewItemKind;
+  availableTypes: QuestionType[];
+  preferredType: QuestionType;
 }) {
   return availableTypes.includes(preferredType)
     ? preferredType

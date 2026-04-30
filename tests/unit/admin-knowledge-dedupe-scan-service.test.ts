@@ -16,9 +16,6 @@ const duplicateItems = [
     body: "通过判别式和求根公式求解 ax^2 + bx + c = 0。",
     contentType: "math_formula",
     tags: ["代数", "求根公式"],
-    useConditions: ["二次方程"],
-    typicalProblems: ["求实数根"],
-    examples: ["x^2 - 5x + 6 = 0"],
   },
   {
     id: "item_b",
@@ -28,9 +25,6 @@ const duplicateItems = [
     body: "使用 b^2 - 4ac 和求根公式判断并求出方程根。",
     contentType: "math_formula",
     tags: ["代数", "求根公式"],
-    useConditions: ["一元二次方程"],
-    typicalProblems: ["求方程根"],
-    examples: ["2x^2 + 3x + 1 = 0"],
   },
 ];
 

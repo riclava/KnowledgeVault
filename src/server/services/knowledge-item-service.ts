@@ -281,7 +281,7 @@ function toKnowledgeItemSummary(
     summary: knowledgeItem.summary,
     difficulty: knowledgeItem.difficulty,
     tags: knowledgeItem.tags,
-    reviewItemCount: knowledgeItem._count.questionBindings,
+    questionCount: knowledgeItem._count.questionBindings,
     memoryHookCount: knowledgeItem.memoryHooks.length,
     trainingStatus,
     trainingStatusLabel: getTrainingStatusLabel(trainingStatus),

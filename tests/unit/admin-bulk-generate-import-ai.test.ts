@@ -22,7 +22,7 @@ describe("admin bulk generate import AI", () => {
     assert.equal(batch.items[0].domain, "数学");
     assert.equal(batch.items[0].subdomain, "函数");
     assert.match(batch.items[0].title, /一次函数/);
-    assert.equal(batch.items[0].reviewItems.length > 0, true);
+    assert.equal(batch.items[0].questions.length > 0, true);
   });
 
   it("asks the AI to generate exactly one item with the selected type and domain", async () => {

@@ -30,17 +30,12 @@ describe("admin import AI provider", () => {
     assert.ok(schema.schema.$defs?.comparisonTablePayload);
     assert.ok(schema.schema.$defs?.procedurePayload);
     assert.deepEqual(schema.schema.$defs?.procedurePayload.required, [
-      "mode",
-      "title",
-      "overview",
       "steps",
-      "nodes",
-      "edges",
+      "pitfalls",
     ]);
-    assert.equal(
-      schema.schema.$defs?.procedurePayload.properties?.mermaid,
-      undefined,
-    );
+    assert.equal(schema.schema.$defs?.procedurePayload.properties?.mode, undefined);
+    assert.equal(schema.schema.$defs?.procedurePayload.properties?.nodes, undefined);
+    assert.equal(schema.schema.$defs?.comparisonTablePayload.properties?.mode, undefined);
     assert.deepEqual(
       renderPayloadSchema?.anyOf?.map((entry) => entry.$ref),
       [
@@ -71,7 +66,7 @@ describe("admin import AI provider", () => {
     assert.equal(batch.defaultDomain, "数学");
     assert.ok(batch.items.length >= 3);
     assert.equal(batch.items[0].slug, "mock-linear-equation");
-    assert.equal(batch.items[0].reviewItems.length, 3);
+    assert.equal(batch.items[0].questions.length, 3);
     assert.equal(
       batch.items.some((item) => item.contentType === "concept_card"),
       true,
@@ -235,7 +230,7 @@ describe("admin import AI provider", () => {
     }
   });
 
-  it("does not ask the AI to write Mermaid diagram code", async () => {
+  it("asks the AI to keep procedure payloads to steps and pitfalls", async () => {
     const originalAdminProvider = process.env.ADMIN_IMPORT_PROVIDER;
     const originalAiProvider = process.env.AI_PROVIDER;
     const originalAiApiKey = process.env.AI_API_KEY;
@@ -279,7 +274,7 @@ describe("admin import AI provider", () => {
       assert.equal(requests.length, 1);
       assert.match(
         JSON.stringify(requests[0].body.messages),
-        /不要输出 Mermaid 图代码/,
+        /只输出结构化 steps 和 pitfalls/,
       );
     } finally {
       restoreEnv("ADMIN_IMPORT_PROVIDER", originalAdminProvider);

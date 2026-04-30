@@ -30,6 +30,7 @@ export function normalizeKnowledgeItemRenderPayload<TType extends KnowledgeItemT
   const record = payload as Record<string, unknown>;
 
   if (contentType === "math_formula") {
+    assertOnlyKeys(record, ["latex", "explanation", "variables"], "math formula payload");
     const latex = toText(record.latex);
 
     if (!latex) {
@@ -50,13 +51,14 @@ export function normalizeKnowledgeItemRenderPayload<TType extends KnowledgeItemT
         return {
           symbol,
           name,
-          meaning: toText(variable.meaning ?? variable.description),
+          meaning: toText(variable.meaning),
         };
       }),
     } as KnowledgeItemRenderPayloadByType[TType];
   }
 
   if (contentType === "vocabulary") {
+    assertOnlyKeys(record, ["term", "definition", "examples"], "vocabulary payload");
     const term = toText(record.term);
     const definition = toText(record.definition);
 
@@ -76,6 +78,7 @@ export function normalizeKnowledgeItemRenderPayload<TType extends KnowledgeItemT
   }
 
   if (contentType === "concept_card") {
+    assertOnlyKeys(record, ["definition", "keyPoints", "misconceptions"], "concept card payload");
     const definition = toText(record.definition);
 
     if (!definition) {
@@ -177,6 +180,7 @@ function toTextList(value: unknown) {
 }
 
 function normalizeComparisonTablePayload(record: Record<string, unknown>) {
+  assertOnlyKeys(record, ["subjects", "aspects"], "comparison table payload");
   const subjects = toTextList(record.subjects);
 
   if (subjects.length < 2) {
@@ -207,16 +211,23 @@ function normalizeComparisonTablePayload(record: Record<string, unknown>) {
 }
 
 function normalizeProcedurePayload(record: Record<string, unknown>) {
+  assertOnlyKeys(record, ["steps", "pitfalls"], "procedure payload");
   const steps = toRecordList(record.steps).map((step) => {
+    assertOnlyKeys(step, ["title", "detail"], "procedure step");
     const stepTitle = toText(step.title);
+    const detail = toText(step.detail);
 
     if (!stepTitle) {
       throw new Error("procedure step requires title");
     }
 
+    if (!detail) {
+      throw new Error("procedure step requires detail");
+    }
+
     return {
       title: stepTitle,
-      detail: toText(step.detail ?? step.description),
+      detail,
     };
   });
 
@@ -228,6 +239,19 @@ function normalizeProcedurePayload(record: Record<string, unknown>) {
     steps,
     pitfalls: toTextList(record.pitfalls),
   };
+}
+
+function assertOnlyKeys(
+  record: Record<string, unknown>,
+  allowedKeys: string[],
+  label: string,
+) {
+  const allowed = new Set(allowedKeys);
+  const unsupported = Object.keys(record).filter((key) => !allowed.has(key));
+
+  if (unsupported.length > 0) {
+    throw new Error(`${label} contains unsupported field: ${unsupported[0]}`);
+  }
 }
 
 function normalizeCells(values: string[], length: number) {

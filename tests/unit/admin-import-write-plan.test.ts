@@ -1,10 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import {
-  buildAdminImportWritePlan,
-  partitionReviewItemIdsForReplacement,
-} from "@/server/admin/admin-import-repository";
+import { buildAdminImportWritePlan } from "@/server/admin/admin-import-repository";
 import type { AdminImportBatch } from "@/server/admin/admin-import-types";
 
 const batch: AdminImportBatch = {
@@ -18,15 +15,9 @@ const batch: AdminImportBatch = {
       domain: "数学",
       summary: "Updated summary",
       body: "Updated body",
-      useConditions: [],
-      nonUseConditions: [],
-      antiPatterns: [],
-      typicalProblems: [],
-      examples: [],
       difficulty: 2,
       tags: ["update"],
-      variables: [],
-      reviewItems: [{ type: "fill_blank", prompt: "Q", answer: "A", difficulty: 2 }],
+      questions: [{ type: "fill_blank", prompt: "Q", answer: "A", difficulty: 2 }],
     },
     {
       slug: "new-item",
@@ -36,15 +27,9 @@ const batch: AdminImportBatch = {
       domain: "数学",
       summary: "New summary",
       body: "New body",
-      useConditions: [],
-      nonUseConditions: [],
-      antiPatterns: [],
-      typicalProblems: [],
-      examples: [],
       difficulty: 1,
       tags: ["new"],
-      variables: [],
-      reviewItems: [{ type: "fill_blank", prompt: "Q", answer: "A", difficulty: 1 }],
+      questions: [{ type: "fill_blank", prompt: "Q", answer: "A", difficulty: 1 }],
     },
   ],
   relations: [
@@ -63,16 +48,5 @@ describe("admin import write plan", () => {
     assert.deepEqual(plan.createSlugs, ["new-item"]);
     assert.deepEqual(plan.updateSlugs, ["existing-item"]);
     assert.deepEqual(plan.relationSourceSlugs, ["existing-item"]);
-  });
-
-  it("archives reviewed items and deletes unreviewed review items", () => {
-    const plan = partitionReviewItemIdsForReplacement([
-      { id: "reviewed", _count: { reviewLogs: 2 } },
-      { id: "unreviewed", _count: { reviewLogs: 0 } },
-      { id: "also-reviewed", _count: { reviewLogs: 1 } },
-    ]);
-
-    assert.deepEqual(plan.deleteIds, ["unreviewed"]);
-    assert.deepEqual(plan.archiveIds, ["reviewed", "also-reviewed"]);
   });
 });

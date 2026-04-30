@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   calculateNextReviewState,
-  chooseReviewItemType,
+  chooseQuestionType,
   getReviewMultiplier,
   mapQuestionAttemptToReviewGrade,
   REVIEW_INTERVAL_MS,
@@ -60,7 +60,7 @@ describe("review scheduling rules", () => {
 describe("review queue item selection", () => {
   it("uses preferred type when available", () => {
     assert.equal(
-      chooseReviewItemType({
+      chooseQuestionType({
         availableTypes: ["single_choice", "fill_blank"],
         preferredType: "fill_blank",
       }),
@@ -70,7 +70,7 @@ describe("review queue item selection", () => {
 
   it("falls back to the first available type", () => {
     assert.equal(
-      chooseReviewItemType({
+      chooseQuestionType({
         availableTypes: ["single_choice", "fill_blank"],
         preferredType: "short_answer",
       }),

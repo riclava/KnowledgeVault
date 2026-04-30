@@ -19,11 +19,6 @@ export type AdminImportWritePlan = {
   relationSourceSlugs: string[];
 };
 
-export type ReviewItemReplacementPlan = {
-  deleteIds: string[];
-  archiveIds: string[];
-};
-
 export type AdminImportDedupeExistingItem = {
   id: string;
   slug: string;
@@ -49,28 +44,6 @@ export function buildAdminImportWritePlan(
       .map((item) => item.slug),
     relationSourceSlugs: unique(batch.relations.map((relation) => relation.fromSlug)),
   };
-}
-
-export function partitionReviewItemIdsForReplacement(
-  reviewItems: Array<{
-    id: string;
-    _count: {
-      reviewLogs: number;
-    };
-  }>,
-): ReviewItemReplacementPlan {
-  return reviewItems.reduce<ReviewItemReplacementPlan>(
-    (plan, reviewItem) => {
-      if (reviewItem._count.reviewLogs > 0) {
-        plan.archiveIds.push(reviewItem.id);
-      } else {
-        plan.deleteIds.push(reviewItem.id);
-      }
-
-      return plan;
-    },
-    { deleteIds: [], archiveIds: [] },
-  );
 }
 
 export function buildPrivateImportSlugMap({
@@ -292,29 +265,29 @@ export async function saveAdminImportBatch({
         });
       }
 
-      if (item.reviewItems.length > 0) {
-        for (const reviewItem of item.reviewItems) {
+      if (item.questions.length > 0) {
+        for (const question of item.questions) {
           await tx.question.create({
             data: {
-            type: reviewItem.type,
-            prompt: reviewItem.prompt,
+              type: question.type,
+              prompt: question.prompt,
               options:
-                reviewItem.type === "single_choice"
+                question.type === "single_choice"
                   ? [
-                      { id: "a", text: reviewItem.answer },
+                      { id: "a", text: question.answer },
                       { id: "b", text: "以上都不适合" },
                     ]
                   : undefined,
               answer:
-                reviewItem.type === "single_choice"
+                question.type === "single_choice"
                   ? { optionId: "a" }
-                  : { text: reviewItem.answer },
-              answerAliases: [reviewItem.answer],
-            explanation: reviewItem.explanation ?? null,
-            difficulty: reviewItem.difficulty,
+                  : { text: question.answer },
+              answerAliases: [question.answer],
+              explanation: question.explanation ?? null,
+              difficulty: question.difficulty,
               tags: item.tags,
               gradingMode:
-                reviewItem.type === "short_answer" ? "ai" : "rule",
+                question.type === "short_answer" ? "ai" : "rule",
               knowledgeItems: {
                 create: {
                   knowledgeItemId: savedItem.id,

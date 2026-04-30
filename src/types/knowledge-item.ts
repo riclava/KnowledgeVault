@@ -87,7 +87,7 @@ export type KnowledgeItemSummary = {
   summary: string;
   difficulty: number;
   tags: string[];
-  reviewItemCount: number;
+  questionCount: number;
   memoryHookCount: number;
   trainingStatus: KnowledgeItemTrainingStatus;
   trainingStatusLabel: string;

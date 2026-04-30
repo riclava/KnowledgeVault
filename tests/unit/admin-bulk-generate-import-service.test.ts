@@ -532,15 +532,9 @@ function makeBatch(title: string): AdminImportBatch {
         domain: "数学",
         summary: `${title}摘要`,
         body: `${title}正文`,
-        useConditions: [],
-        nonUseConditions: [],
-        antiPatterns: [],
-        typicalProblems: [],
-        examples: [],
         tags: [],
         difficulty: 2,
-        variables: [],
-        reviewItems: [
+        questions: [
           {
             type: "fill_blank",
             prompt: `${title}是什么？`,

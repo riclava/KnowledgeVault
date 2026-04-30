@@ -84,8 +84,7 @@ describe("admin knowledge item form", () => {
       "utf8",
     );
 
-    assert.match(form, /htmlFor="variables"/);
-    assert.match(form, /htmlFor="reviewItems"/);
+    assert.match(form, /htmlFor="questions"/);
     assert.match(form, /htmlFor="relations"/);
   });
 
@@ -99,13 +98,8 @@ describe("admin knowledge item form", () => {
     assert.match(form, /"comparison_table"/);
     assert.match(form, /"procedure"/);
     assert.match(form, /name="definition"/);
-    assert.match(form, /name="comparisonMode"/);
     assert.match(form, /name="matrixSubjects"/);
-    assert.match(form, /name="tableColumns"/);
     assert.match(form, /name="procedureSteps"/);
-    assert.match(form, /name="procedureNodes"/);
-    assert.match(form, /name="procedureEdges"/);
-    assert.match(form, /name="mermaid"/);
     assert.match(form, /contentType === "concept_card"/);
     assert.match(form, /contentType === "comparison_table"/);
     assert.match(form, /contentType === "procedure"/);
