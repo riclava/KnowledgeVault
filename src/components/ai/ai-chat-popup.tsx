@@ -1,6 +1,12 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import {
+  FormEvent,
+  KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import {
   Bot,
   Loader2,
@@ -10,6 +16,7 @@ import {
   X,
 } from "lucide-react";
 
+import { MarkdownMessage } from "@/components/ai/markdown-message";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -112,6 +119,19 @@ export function AiChatPopup() {
     }
   }
 
+  function handleDraftKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (
+      event.key !== "Enter" ||
+      event.shiftKey ||
+      event.nativeEvent.isComposing
+    ) {
+      return;
+    }
+
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  }
+
   if (!isOpen) {
     return (
       <div className="fixed bottom-4 right-4 z-40 md:bottom-6 md:right-6">
@@ -202,7 +222,7 @@ export function AiChatPopup() {
                     : "mr-auto border bg-background",
                 )}
               >
-                {message.content}
+                <MarkdownMessage content={message.content} />
               </article>
             ))}
           </div>
@@ -227,6 +247,7 @@ export function AiChatPopup() {
         <Textarea
           value={draft}
           onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleDraftKeyDown}
           placeholder={selectedText ? "围绕选中文本提问..." : "输入你的问题..."}
           className="max-h-32 min-h-20 resize-none bg-background text-sm"
           disabled={isPending}

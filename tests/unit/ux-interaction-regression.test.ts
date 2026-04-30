@@ -147,4 +147,28 @@ describe("learner interaction UX regressions", () => {
     assert.match(popup, /aria-label="打开 AI 学习助手"/);
     assert.match(popup, /使用选中文字/);
   });
+
+  it("sends popup AI chat messages with Enter while preserving multiline input", () => {
+    const popup = readFileSync("src/components/ai/ai-chat-popup.tsx", "utf8");
+
+    assert.match(popup, /onKeyDown=\{handleDraftKeyDown\}/);
+    assert.match(popup, /event\.key !== "Enter"/);
+    assert.match(popup, /event\.shiftKey/);
+    assert.match(popup, /event\.nativeEvent\.isComposing/);
+    assert.match(popup, /requestSubmit\(\)/);
+  });
+
+  it("renders popup AI chat messages as markdown instead of raw text", () => {
+    const popup = readFileSync("src/components/ai/ai-chat-popup.tsx", "utf8");
+    const markdownMessage = readFileSync(
+      "src/components/ai/markdown-message.tsx",
+      "utf8",
+    );
+
+    assert.match(popup, /MarkdownMessage/);
+    assert.match(popup, /<MarkdownMessage content=\{message\.content\} \/>/);
+    assert.doesNotMatch(markdownMessage, /dangerouslySetInnerHTML/);
+    assert.match(markdownMessage, /parseMarkdownBlocks/);
+    assert.match(markdownMessage, /parseMarkdownInlines/);
+  });
 });
