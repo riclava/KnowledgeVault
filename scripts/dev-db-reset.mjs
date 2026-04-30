@@ -4,6 +4,7 @@ const isWindows = process.platform === "win32";
 const npmCmd = isWindows ? "npm.cmd" : "npm";
 const npxCmd = isWindows ? "npx.cmd" : "npx";
 
+run(npxCmd, ["prisma", "generate"]);
 run(npxCmd, ["prisma", "migrate", "reset", "--force"]);
 run(npmCmd, ["run", "db:seed"]);
 
