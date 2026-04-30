@@ -5,6 +5,7 @@ import {
   calculateNextReviewState,
   chooseReviewItemType,
   getReviewMultiplier,
+  mapQuestionAttemptToReviewGrade,
   REVIEW_INTERVAL_MS,
 } from "../../src/server/services/review-rules";
 
@@ -74,6 +75,27 @@ describe("review queue item selection", () => {
         preferredType: "application",
       }),
       "recall",
+    );
+  });
+});
+
+describe("question result mapping", () => {
+  it("maps question attempt results onto review grades", () => {
+    assert.equal(
+      mapQuestionAttemptToReviewGrade({ result: "correct", score: 1 }),
+      "easy",
+    );
+    assert.equal(
+      mapQuestionAttemptToReviewGrade({ result: "correct", score: 0.8 }),
+      "good",
+    );
+    assert.equal(
+      mapQuestionAttemptToReviewGrade({ result: "partial", score: 0.6 }),
+      "hard",
+    );
+    assert.equal(
+      mapQuestionAttemptToReviewGrade({ result: "incorrect", score: 0 }),
+      "again",
     );
   });
 });

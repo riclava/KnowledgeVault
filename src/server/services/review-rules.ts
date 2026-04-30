@@ -1,4 +1,5 @@
 import type { ReviewGrade, ReviewItemKind } from "@/types/review";
+import type { QuestionAttemptResult } from "@/types/question";
 
 export const REVIEW_INTERVAL_MS: Record<ReviewGrade, number> = {
   again: 10 * 60 * 1000,
@@ -105,6 +106,24 @@ export function getReviewMultiplier(consecutiveCorrect: number) {
   }
 
   return 1;
+}
+
+export function mapQuestionAttemptToReviewGrade({
+  result,
+  score,
+}: {
+  result: QuestionAttemptResult;
+  score: number;
+}): ReviewGrade {
+  if (result === "correct") {
+    return score >= 0.95 ? "easy" : "good";
+  }
+
+  if (result === "partial") {
+    return "hard";
+  }
+
+  return "again";
 }
 
 function clamp(value: number, min: number, max: number) {
