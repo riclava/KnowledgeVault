@@ -12,6 +12,10 @@ describe("Prisma client singleton", () => {
       hasRequiredPrismaDelegates({
         user: {},
         knowledgeItem: {},
+        knowledgeDedupeRun: {},
+        knowledgeDedupeCandidate: {},
+        adminBulkGenerateImportRun: {},
+        adminBulkGenerateImportRow: {},
       }),
       false,
     );
@@ -23,6 +27,9 @@ describe("Prisma client singleton", () => {
       knowledgeDedupeCandidate: {},
       adminBulkGenerateImportRun: {},
       adminBulkGenerateImportRow: {},
+      question: {},
+      questionKnowledgeItem: {},
+      questionAttempt: {},
     };
 
     assert.equal(
