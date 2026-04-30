@@ -2,7 +2,6 @@ import type {
   NormalizedQuestion,
   QuestionAnswer,
   QuestionGradingMode,
-  QuestionOption,
   QuestionType,
 } from "@/types/question";
 

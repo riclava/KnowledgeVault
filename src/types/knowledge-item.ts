@@ -1,4 +1,5 @@
 import type { MemoryHookRecord } from "@/types/memory-hook";
+import type { QuestionAnswer, QuestionOption, QuestionType } from "@/types/question";
 
 export type KnowledgeItemType =
   | "math_formula"
@@ -100,11 +101,13 @@ export type KnowledgeItemSummary = {
 
 export type KnowledgeItemDetail = KnowledgeItemSummary & {
   body: string;
-  reviewItems: Array<{
+  questions: Array<{
     id: string;
-    type: "recall" | "recognition" | "application";
+    type: QuestionType;
     prompt: string;
-    answer: string;
+    options: QuestionOption[] | null;
+    answer: QuestionAnswer;
+    answerAliases: string[];
     explanation: string | null;
     difficulty: number;
   }>;

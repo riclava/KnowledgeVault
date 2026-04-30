@@ -9,10 +9,10 @@ export const REVIEW_INTERVAL_MS: Record<ReviewGrade, number> = {
 };
 
 export const REVIEW_TYPE_CYCLE: ReviewItemKind[] = [
-  "recall",
-  "recognition",
-  "recall",
-  "application",
+  "single_choice",
+  "fill_blank",
+  "true_false",
+  "short_answer",
 ];
 
 export type ReviewRuleState = {

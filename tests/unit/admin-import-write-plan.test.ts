@@ -26,7 +26,7 @@ const batch: AdminImportBatch = {
       difficulty: 2,
       tags: ["update"],
       variables: [],
-      reviewItems: [{ type: "recall", prompt: "Q", answer: "A", difficulty: 2 }],
+      reviewItems: [{ type: "fill_blank", prompt: "Q", answer: "A", difficulty: 2 }],
     },
     {
       slug: "new-item",
@@ -44,7 +44,7 @@ const batch: AdminImportBatch = {
       difficulty: 1,
       tags: ["new"],
       variables: [],
-      reviewItems: [{ type: "recall", prompt: "Q", answer: "A", difficulty: 1 }],
+      reviewItems: [{ type: "fill_blank", prompt: "Q", answer: "A", difficulty: 1 }],
     },
   ],
   relations: [

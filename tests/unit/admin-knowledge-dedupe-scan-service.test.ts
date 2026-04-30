@@ -148,9 +148,6 @@ describe("admin knowledge dedupe scan service", () => {
         body: true,
         contentType: true,
         tags: true,
-        useConditions: true,
-        typicalProblems: true,
-        examples: true,
       },
       orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
     });

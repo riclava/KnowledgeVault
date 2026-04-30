@@ -463,9 +463,6 @@ function toGeneratedDedupeScoredItem(
     body: item.body,
     contentType: item.contentType,
     tags: item.tags,
-    useConditions: item.useConditions,
-    typicalProblems: item.typicalProblems,
-    examples: item.examples,
   };
 }
 
@@ -480,9 +477,6 @@ function toExistingDedupeScoredItem(
     body: item.body,
     contentType: item.contentType,
     tags: item.tags,
-    useConditions: item.useConditions,
-    typicalProblems: item.typicalProblems,
-    examples: item.examples,
   };
 }
 

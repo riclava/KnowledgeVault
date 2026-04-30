@@ -35,9 +35,9 @@ describe("review AI hints", () => {
         summary: "条件概率描述在一个事件已经发生时另一个事件发生的概率。",
         body: "P(A|B)=P(A∩B)/P(B)。",
       },
-      reviewItem: {
+      question: {
         prompt: "什么时候使用条件概率？",
-        answer: "当题目给定某个条件已经发生时使用。",
+        answer: { text: "当题目给定某个条件已经发生时使用。" },
         explanation: "关键是样本空间已经被条件缩小。",
       },
     });
@@ -57,9 +57,9 @@ describe("review AI hints", () => {
         summary: "未知数最高次数为一。",
         body: "ax+b=0。",
       },
-      reviewItem: {
+      question: {
         prompt: "什么是线性方程？",
-        answer: "未知数最高次数为一的方程。",
+        answer: { text: "未知数最高次数为一的方程。" },
         explanation: null,
       },
     });
@@ -71,9 +71,9 @@ describe("review AI hints", () => {
         summary: "未知数最高次数为一。",
         body: "ax+b=0。",
       },
-      reviewItem: {
+      question: {
         prompt: "什么是线性方程？",
-        answer: "未知数最高次数为一的方程。",
+        answer: { text: "未知数最高次数为一的方程。" },
         explanation: null,
       },
     });

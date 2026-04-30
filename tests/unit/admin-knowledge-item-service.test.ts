@@ -135,10 +135,11 @@ describe("admin knowledge item service", () => {
         },
         _count: {
           select: {
-            variables: true,
-            reviewItems: {
+            questionBindings: {
               where: {
-                isActive: true,
+                question: {
+                  isActive: true,
+                },
               },
             },
             outgoingRelations: true,
@@ -357,7 +358,7 @@ describe("admin knowledge item service", () => {
     });
   });
 
-  it("loads only active review items for the admin edit form", async () => {
+  it("loads only active bound questions for the admin edit form", async () => {
     const knowledgeItemDelegate = prisma.knowledgeItem as unknown as {
       findFirst: (args: unknown) => Promise<unknown>;
     };
@@ -387,12 +388,16 @@ describe("admin knowledge item service", () => {
             email: true,
           },
         },
-        variables: {
-          orderBy: { sortOrder: "asc" },
-        },
-        reviewItems: {
-          where: { isActive: true },
-          orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
+        questionBindings: {
+          where: {
+            question: {
+              isActive: true,
+            },
+          },
+          include: {
+            question: true,
+          },
+          orderBy: { createdAt: "asc" },
         },
         outgoingRelations: {
           include: {

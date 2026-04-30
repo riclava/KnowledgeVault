@@ -7,21 +7,21 @@ import {
   getDiagnosticAssessmentPriority,
 } from "../../src/server/services/diagnostic-rules";
 
-const reviewItems = [
-  { id: "r1", knowledgeItemId: "f1" },
-  { id: "r2", knowledgeItemId: "f1" },
-  { id: "r3", knowledgeItemId: "f2" },
-  { id: "r4", knowledgeItemId: "f3" },
+const questions = [
+  { id: "q1", knowledgeItemIds: ["f1"] },
+  { id: "q2", knowledgeItemIds: ["f1"] },
+  { id: "q3", knowledgeItemIds: ["f2"] },
+  { id: "q4", knowledgeItemIds: ["f3", "f4"] },
 ];
 
 describe("diagnostic rules", () => {
   it("marks none and partial answers as weak knowledgeItems once", () => {
     const weakKnowledgeItemIds = calculateDiagnosticWeakKnowledgeItemIds({
-      reviewItems,
+      questions,
       answers: [
-        { reviewItemId: "r1", assessment: "none" },
-        { reviewItemId: "r2", assessment: "partial" },
-        { reviewItemId: "r3", assessment: "clear" },
+        { questionId: "q1", assessment: "none" },
+        { questionId: "q2", assessment: "partial" },
+        { questionId: "q3", assessment: "clear" },
       ],
     });
 
@@ -30,17 +30,18 @@ describe("diagnostic rules", () => {
 
   it("keeps the strongest assessment for each knowledgeItem", () => {
     const assessments = calculateBestDiagnosticAssessmentsByKnowledgeItem({
-      reviewItems,
+      questions,
       answers: [
-        { reviewItemId: "r1", assessment: "none" },
-        { reviewItemId: "r2", assessment: "clear" },
-        { reviewItemId: "r3", assessment: "partial" },
+        { questionId: "q1", assessment: "none" },
+        { questionId: "q2", assessment: "clear" },
+        { questionId: "q3", assessment: "partial" },
       ],
     });
 
     assert.equal(assessments.get("f1"), "clear");
     assert.equal(assessments.get("f2"), "partial");
     assert.equal(assessments.get("f3"), "none");
+    assert.equal(assessments.get("f4"), "none");
   });
 
   it("orders assessments by learning confidence", () => {

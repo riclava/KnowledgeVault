@@ -1,7 +1,7 @@
 import {
   createDiagnosticAttempt,
-  listDiagnosticReviewItems,
-  listReviewItemsByIds,
+  listDiagnosticQuestions,
+  listQuestionsByIds,
   upsertDiagnosticKnowledgeItemStates,
 } from "@/server/repositories/diagnostic-repository";
 import {
@@ -15,8 +15,14 @@ import type {
   DiagnosticStart,
   DiagnosticSubmission,
 } from "@/types/diagnostic";
-import type { KnowledgeItemSummary } from "@/types/knowledge-item";
-import type { KnowledgeItemType } from "@/types/knowledge-item";
+import type {
+  KnowledgeItemSummary,
+  KnowledgeItemType,
+} from "@/types/knowledge-item";
+import type {
+  QuestionAnswer,
+  QuestionOption,
+} from "@/types/question";
 
 const DIAGNOSTIC_QUESTION_COUNT = 5;
 
@@ -31,7 +37,7 @@ export async function startDiagnostic({
     domain ??
     (await getKnowledgeItemSummaries({ userId }))[0]?.domain ??
     "默认知识域";
-  const reviewItems = await listDiagnosticReviewItems({
+  const questions = await listDiagnosticQuestions({
     domain: currentDomain,
     userId,
     take: DIAGNOSTIC_QUESTION_COUNT,
@@ -39,16 +45,24 @@ export async function startDiagnostic({
 
   return {
     domain: currentDomain,
-    questions: reviewItems.map((item) => ({
-      id: item.id,
-      knowledgeItemId: item.knowledgeItemId,
-      type: item.type,
-      prompt: item.prompt,
-      answer: item.answer,
-      explanation: item.explanation,
-      difficulty: item.difficulty,
-      knowledgeItem: toKnowledgeItemSummary(item.knowledgeItem),
-    })),
+    questions: questions.map((question) => {
+      const primaryBinding = question.knowledgeItems[0]!;
+
+      return {
+        id: question.id,
+        knowledgeItemIds: question.knowledgeItems.map(
+          (binding) => binding.knowledgeItemId,
+        ),
+        type: question.type,
+        prompt: question.prompt,
+        options: question.options as QuestionOption[] | null,
+        answer: question.answer as QuestionAnswer,
+        answerAliases: question.answerAliases,
+        explanation: question.explanation,
+        difficulty: question.difficulty,
+        knowledgeItem: toKnowledgeItemSummary(primaryBinding.knowledgeItem),
+      };
+    }),
   };
 }
 
@@ -59,23 +73,34 @@ export async function submitDiagnostic({
   userId: string;
   submission: DiagnosticSubmission;
 }): Promise<DiagnosticResult> {
-  const reviewItemIds = submission.answers.map((answer) => answer.reviewItemId);
-  const reviewItems = await listReviewItemsByIds({
+  const questionIds = submission.answers.map((answer) => answer.questionId);
+  const questions = await listQuestionsByIds({
     domain: submission.domain,
-    reviewItemIds,
+    questionIds,
     userId,
   });
   const knowledgeItemIds = Array.from(
-    new Set(reviewItems.map((item) => item.knowledgeItemId)),
+    new Set(
+      questions.flatMap((question) =>
+        question.knowledgeItems.map((binding) => binding.knowledgeItemId),
+      ),
+    ),
   );
+  const diagnosticQuestions = questions.map((question) => ({
+    id: question.id,
+    knowledgeItemIds: question.knowledgeItems.map(
+      (binding) => binding.knowledgeItemId,
+    ),
+  }));
   const weakKnowledgeItemIds = calculateDiagnosticWeakKnowledgeItemIds({
-    reviewItems,
+    questions: diagnosticQuestions,
     answers: submission.answers,
   });
-  const assessmentsByKnowledgeItemId = calculateBestDiagnosticAssessmentsByKnowledgeItem({
-    reviewItems,
-    answers: submission.answers,
-  });
+  const assessmentsByKnowledgeItemId =
+    calculateBestDiagnosticAssessmentsByKnowledgeItem({
+      questions: diagnosticQuestions,
+      answers: submission.answers,
+    });
 
   await upsertDiagnosticKnowledgeItemStates({
     userId,
@@ -87,7 +112,7 @@ export async function submitDiagnostic({
   const attempt = await createDiagnosticAttempt({
     userId,
     domain: submission.domain,
-    reviewItemIds,
+    questionIds,
     weakKnowledgeItemIds,
   });
 
@@ -99,11 +124,12 @@ export async function submitDiagnostic({
   return {
     id: attempt.id,
     domain: attempt.domain,
-    reviewItemIds: attempt.reviewItemIds,
+    questionIds: attempt.questionIds,
     weakKnowledgeItemIds: attempt.weakKnowledgeItemIds,
     completedAt: attempt.completedAt.toISOString(),
     weakKnowledgeItems,
-    reviewQueueKnowledgeItemIds: weakKnowledgeItemIds.length > 0 ? weakKnowledgeItemIds : knowledgeItemIds,
+    reviewQueueKnowledgeItemIds:
+      weakKnowledgeItemIds.length > 0 ? weakKnowledgeItemIds : knowledgeItemIds,
   };
 }
 
@@ -121,7 +147,9 @@ async function getWeakKnowledgeItemSummaries({
   const summaries = await getKnowledgeItemSummaries({ userId });
   const knowledgeItemIdSet = new Set(knowledgeItemIds);
 
-  return summaries.filter((knowledgeItem) => knowledgeItemIdSet.has(knowledgeItem.id));
+  return summaries.filter((knowledgeItem) =>
+    knowledgeItemIdSet.has(knowledgeItem.id),
+  );
 }
 
 function toKnowledgeItemSummary(knowledgeItem: {
@@ -135,12 +163,8 @@ function toKnowledgeItemSummary(knowledgeItem: {
   summary: string;
   difficulty: number;
   tags: string[];
-  variables?: Array<{
-    symbol: string;
-    name: string;
-  }>;
   _count: {
-    reviewItems: number;
+    questionBindings: number;
     memoryHooks: number;
   };
 }): KnowledgeItemSummary {
@@ -158,8 +182,7 @@ function toKnowledgeItemSummary(knowledgeItem: {
     summary: knowledgeItem.summary,
     difficulty: knowledgeItem.difficulty,
     tags: knowledgeItem.tags,
-    variablePreview: knowledgeItem.variables ?? [],
-    reviewItemCount: knowledgeItem._count.reviewItems,
+    reviewItemCount: knowledgeItem._count.questionBindings,
     memoryHookCount: knowledgeItem._count.memoryHooks,
     trainingStatus: "not_started",
     trainingStatusLabel: "尚未进入训练",

@@ -16,13 +16,10 @@ import {
 
 function parseFocusSection(value?: string): FocusSection | undefined {
   if (
-    value === "use" ||
-    value === "non-use" ||
-    value === "anti-patterns" ||
+    value === "questions" ||
     value === "hooks" ||
     value === "relations" ||
-    value === "examples" ||
-    value === "deep-dive"
+    value === "body"
   ) {
     return value;
   }

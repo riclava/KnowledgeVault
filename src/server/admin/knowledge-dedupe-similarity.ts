@@ -6,9 +6,6 @@ export type KnowledgeDedupeScoredItem = {
   body: string;
   contentType: string;
   tags: string[];
-  useConditions: string[];
-  typicalProblems: string[];
-  examples: string[];
 };
 
 export type KnowledgeDedupeReason = {
@@ -53,7 +50,7 @@ export function scoreKnowledgeDedupePair(
     reason("title", titleScore, "标题相似度"),
     reason("slug", slugScore, "slug token 重叠"),
     reason("text", summaryScore, "摘要和正文相似度"),
-    reason("facets", facetScore, "标签、使用条件、典型题和示例重叠"),
+    reason("facets", facetScore, "标签重叠"),
     reason("contentType", contentTypeScore, "内容类型一致"),
   ].filter((entry) => entry.score > 0);
 
@@ -161,9 +158,6 @@ function facetTokens(item: KnowledgeDedupeScoredItem) {
   return tokens(
     [
       ...item.tags,
-      ...item.useConditions,
-      ...item.typicalProblems,
-      ...item.examples,
     ].join(" "),
   );
 }

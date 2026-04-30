@@ -79,10 +79,11 @@ export async function listAdminKnowledgeItems(
       },
       _count: {
         select: {
-          variables: true,
-          reviewItems: {
+          questionBindings: {
             where: {
-              isActive: true,
+              question: {
+                isActive: true,
+              },
             },
           },
           outgoingRelations: true,
@@ -172,14 +173,16 @@ export async function getAdminKnowledgeItem(idOrSlug: string) {
           email: true,
         },
       },
-      variables: {
-        orderBy: { sortOrder: "asc" },
-      },
-      reviewItems: {
+      questionBindings: {
         where: {
-          isActive: true,
+          question: {
+            isActive: true,
+          },
         },
-        orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
+        include: {
+          question: true,
+        },
+        orderBy: { createdAt: "asc" },
       },
       outgoingRelations: {
         include: {

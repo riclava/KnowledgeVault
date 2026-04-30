@@ -1,11 +1,11 @@
 import {
   completeStudySession,
   countUserKnowledgeItemStates,
-  createReviewLog,
+  createQuestionAttempt,
   createStudySession,
   deferKnowledgeItemReview,
   ensureUnstartedKnowledgeItemStatesForReview,
-  getActiveReviewItemForKnowledgeItem,
+  getActiveQuestionForKnowledgeItem,
   getReviewHintSource,
   getStudySessionById,
   getUserKnowledgeItemState,
@@ -15,11 +15,12 @@ import {
 } from "@/server/repositories/review-repository";
 import {
   calculateNextReviewState,
-  chooseReviewItemType,
-  REVIEW_TYPE_CYCLE,
+  mapQuestionAttemptToReviewGrade,
 } from "@/server/services/review-rules";
 import { normalizeKnowledgeItemRenderPayload } from "@/lib/knowledge-item-render-payload";
+import { normalizeSubmittedAnswer } from "@/lib/question-validation";
 import { chatText, type AiEnv } from "@/server/ai/openai-compatible";
+import { gradeQuestionAnswer } from "@/server/services/question-grading-service";
 import type {
   ReviewHint,
   ReviewMode,
@@ -76,7 +77,9 @@ export async function getTodayReviewSession({
     };
   }
 
-  const eligibleStates = states.filter((state) => state.knowledgeItem.reviewItems.length > 0);
+  const eligibleStates = states.filter(
+    (state) => state.knowledgeItem.questionBindings.length > 0,
+  );
 
   if (eligibleStates.length === 0) {
     return {
@@ -89,11 +92,10 @@ export async function getTodayReviewSession({
     };
   }
 
-  const items = eligibleStates.map((state, index) =>
+  const items = eligibleStates.map((state) =>
     selectReviewQueueItem({
       mode,
       state,
-      preferredType: REVIEW_TYPE_CYCLE[index % REVIEW_TYPE_CYCLE.length],
     }),
   );
   const session = await createStudySession({
@@ -118,14 +120,14 @@ export async function submitReview({
   userId: string;
   input: ReviewSubmitInput;
 }): Promise<ReviewSubmitResult> {
-  const [state, session, reviewItem] = await Promise.all([
+  const [state, session, question] = await Promise.all([
     getUserKnowledgeItemState(userId, input.knowledgeItemId),
     getStudySessionById({
       sessionId: input.sessionId,
       userId,
     }),
-    getActiveReviewItemForKnowledgeItem({
-      reviewItemId: input.reviewItemId,
+    getActiveQuestionForKnowledgeItem({
+      questionId: input.questionId,
       knowledgeItemId: input.knowledgeItemId,
       userId,
     }),
@@ -135,26 +137,42 @@ export async function submitReview({
     throw new Error("Review state or session not found");
   }
 
-  if (!reviewItem) {
-    throw new Error("Review item is not active for this knowledge item");
+  if (!question) {
+    throw new Error("Question is not active for this knowledge item");
   }
 
+  const submittedAnswer = normalizeSubmittedAnswer(
+    question.type,
+    input.submittedAnswer,
+  );
+  const questionGrade = await gradeQuestionAnswer({
+    question: {
+      type: question.type,
+      prompt: question.prompt,
+      answer: question.answer as never,
+      answerAliases: question.answerAliases,
+      explanation: question.explanation,
+    },
+    submittedAnswer,
+  });
+  const reviewGrade = mapQuestionAttemptToReviewGrade(questionGrade);
   const now = new Date();
   const nextState = calculateNextReviewState({
     state,
-    result: input.result,
+    result: reviewGrade,
     now,
   });
 
   await Promise.all([
-    createReviewLog({
+    createQuestionAttempt({
       userId,
-      knowledgeItemId: input.knowledgeItemId,
-      reviewItemId: input.reviewItemId,
+      questionId: input.questionId,
       studySessionId: input.sessionId,
-      result: input.result,
+      result: questionGrade.result,
+      score: questionGrade.score,
+      feedback: questionGrade.feedback,
+      submittedAnswer,
       responseTimeMs: input.responseTimeMs,
-      memoryHookUsedId: input.memoryHookUsedId,
     }),
     updateUserKnowledgeItemState({
       userId,
@@ -171,7 +189,7 @@ export async function submitReview({
     sessionId: input.sessionId,
     knowledgeItemId: input.knowledgeItemId,
     nextReviewAt: nextState.nextReviewAt.toISOString(),
-    result: input.result,
+    result: reviewGrade,
   };
 }
 
@@ -226,7 +244,7 @@ export async function getReviewHint({
 
   const aiHint = await generateAiReviewHint({
     knowledgeItem: state.knowledgeItem,
-    reviewItem: state.knowledgeItem.reviewItems[0] ?? null,
+    question: state.knowledgeItem.questionBindings[0]?.question ?? null,
   });
 
   if (aiHint) {
@@ -248,7 +266,7 @@ export async function getReviewHint({
 
 export async function generateAiReviewHint({
   knowledgeItem,
-  reviewItem,
+  question,
   env,
   fetcher,
 }: {
@@ -257,15 +275,15 @@ export async function generateAiReviewHint({
     summary: string;
     body: string;
   };
-  reviewItem: {
+  question: {
     prompt: string;
-    answer: string;
+    answer: unknown;
     explanation: string | null;
   } | null;
   env?: AiEnv;
   fetcher?: typeof fetch;
 }) {
-  if (!reviewItem) {
+  if (!question) {
     return null;
   }
 
@@ -287,9 +305,9 @@ export async function generateAiReviewHint({
             `知识项：${knowledgeItem.title}`,
             `摘要：${knowledgeItem.summary}`,
             `正文：${knowledgeItem.body}`,
-            `题目：${reviewItem.prompt}`,
-            `答案（仅供你避开直给答案）：${reviewItem.answer}`,
-            `解释：${reviewItem.explanation ?? ""}`,
+            `题目：${question.prompt}`,
+            `答案（仅供你避开答案）：${formatQuestionAnswer(question.answer)}`,
+            `解释：${question.explanation ?? ""}`,
             "请给一句不超过 40 个中文字符的提示。",
           ].join("\n"),
         },
@@ -305,19 +323,16 @@ export async function generateAiReviewHint({
 function selectReviewQueueItem({
   mode,
   state,
-  preferredType,
 }: {
   mode: ReviewMode;
   state: Awaited<ReturnType<typeof listDueKnowledgeItemStates>>[number];
-  preferredType: "recall" | "recognition" | "application";
 }): ReviewQueueItem {
-  const selectedType = chooseReviewItemType({
-    availableTypes: state.knowledgeItem.reviewItems.map((item) => item.type),
-    preferredType,
-  });
-  const reviewItem =
-    state.knowledgeItem.reviewItems.find((item) => item.type === selectedType) ??
-    state.knowledgeItem.reviewItems[0];
+  const questionBinding = [...state.knowledgeItem.questionBindings].sort(
+    (left, right) =>
+      left.question.difficulty - right.question.difficulty ||
+      left.question.createdAt.getTime() - right.question.createdAt.getTime(),
+  )[0];
+  const question = questionBinding.question;
   const isWeak = state.memoryStrength < 0.4 || state.lapseCount > 0;
   const isStable = state.memoryStrength >= 0.7 && state.consecutiveCorrect >= 3;
   const trainingStatus = isWeak
@@ -327,13 +342,15 @@ function selectReviewQueueItem({
       : "due_now";
 
   return {
-    reviewItemId: reviewItem.id,
+    questionId: question.id,
     knowledgeItemId: state.knowledgeItemId,
-    type: reviewItem.type,
-    prompt: reviewItem.prompt,
-    answer: reviewItem.answer,
-    explanation: reviewItem.explanation,
-    difficulty: reviewItem.difficulty,
+    type: question.type,
+    prompt: question.prompt,
+    options: question.options as never,
+    answer: question.answer as never,
+    answerAliases: question.answerAliases,
+    explanation: question.explanation,
+    difficulty: question.difficulty,
     reviewReason: buildReviewReason({
       mode,
       state,
@@ -352,8 +369,7 @@ function selectReviewQueueItem({
       summary: state.knowledgeItem.summary,
       difficulty: state.knowledgeItem.difficulty,
       tags: state.knowledgeItem.tags,
-      variablePreview: [],
-      reviewItemCount: state.knowledgeItem.reviewItems.length,
+      reviewItemCount: state.knowledgeItem.questionBindings.length,
       memoryHookCount: state.knowledgeItem.memoryHooks.length,
       trainingStatus,
       trainingStatusLabel:
@@ -445,10 +461,18 @@ function estimateReviewMinutes(
 
   const estimatedSeconds = items.reduce((total, item) => {
     const base =
-      item.type === "application" ? 70 : item.type === "recognition" ? 40 : 50;
+      item.type === "short_answer" ? 70 : item.type === "single_choice" ? 35 : 50;
 
     return total + (mode === "weak" ? base + 15 : base);
   }, 0);
 
   return Math.max(1, Math.ceil(estimatedSeconds / 60));
+}
+
+function formatQuestionAnswer(answer: unknown) {
+  if (!answer || typeof answer !== "object") {
+    return "";
+  }
+
+  return JSON.stringify(answer);
 }

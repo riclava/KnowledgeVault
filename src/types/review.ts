@@ -1,16 +1,23 @@
 import type { KnowledgeItemSummary } from "@/types/knowledge-item";
+import type {
+  QuestionAnswer,
+  QuestionOption,
+  QuestionType,
+} from "@/types/question";
 
 export type ReviewGrade = "again" | "hard" | "good" | "easy";
-export type ReviewItemKind = "recall" | "recognition" | "application";
+export type ReviewItemKind = QuestionType;
 export type ReviewHintSource = "memory_hook" | "one_line_use" | "ai";
 export type ReviewMode = "today" | "weak";
 
 export type ReviewQueueItem = {
-  reviewItemId: string;
+  questionId: string;
   knowledgeItemId: string;
-  type: ReviewItemKind;
+  type: QuestionType;
   prompt: string;
-  answer: string;
+  options: QuestionOption[] | null;
+  answer: QuestionAnswer;
+  answerAliases: string[];
   explanation: string | null;
   difficulty: number;
   reviewReason: {
@@ -37,11 +44,10 @@ export type ReviewSessionPayload = {
 
 export type ReviewSubmitInput = {
   sessionId: string;
-  reviewItemId: string;
+  questionId: string;
   knowledgeItemId: string;
-  result: ReviewGrade;
+  submittedAnswer: QuestionAnswer;
   responseTimeMs?: number;
-  memoryHookUsedId?: string;
   completed?: boolean;
 };
 

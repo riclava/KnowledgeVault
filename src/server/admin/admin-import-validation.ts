@@ -12,7 +12,13 @@ import type {
 } from "@/server/admin/admin-import-types";
 
 const SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-const REVIEW_ITEM_TYPES = ["recall", "recognition", "application"] as const;
+const REVIEW_ITEM_TYPES = [
+  "single_choice",
+  "multiple_choice",
+  "true_false",
+  "fill_blank",
+  "short_answer",
+] as const;
 const RELATION_TYPES = [
   "prerequisite",
   "related",

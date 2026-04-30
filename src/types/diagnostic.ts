@@ -1,13 +1,16 @@
 import type { KnowledgeItemSummary } from "@/types/knowledge-item";
+import type { QuestionAnswer, QuestionOption, QuestionType } from "@/types/question";
 
 export type DiagnosticAssessment = "none" | "partial" | "clear";
 
 export type DiagnosticQuestion = {
   id: string;
-  knowledgeItemId: string;
-  type: "recall" | "recognition" | "application";
+  knowledgeItemIds: string[];
+  type: QuestionType;
   prompt: string;
-  answer: string;
+  options: QuestionOption[] | null;
+  answer: QuestionAnswer;
+  answerAliases: string[];
   explanation: string | null;
   difficulty: number;
   knowledgeItem: KnowledgeItemSummary;
@@ -21,7 +24,7 @@ export type DiagnosticStart = {
 export type DiagnosticSubmission = {
   domain: string;
   answers: Array<{
-    reviewItemId: string;
+    questionId: string;
     assessment: DiagnosticAssessment;
   }>;
 };
@@ -29,7 +32,7 @@ export type DiagnosticSubmission = {
 export type DiagnosticResult = {
   id: string;
   domain: string;
-  reviewItemIds: string[];
+  questionIds: string[];
   weakKnowledgeItemIds: string[];
   completedAt: string;
   weakKnowledgeItems: KnowledgeItemSummary[];

@@ -61,20 +61,20 @@ describe("review queue item selection", () => {
   it("uses preferred type when available", () => {
     assert.equal(
       chooseReviewItemType({
-        availableTypes: ["recall", "recognition"],
-        preferredType: "recognition",
+        availableTypes: ["single_choice", "fill_blank"],
+        preferredType: "fill_blank",
       }),
-      "recognition",
+      "fill_blank",
     );
   });
 
   it("falls back to the first available type", () => {
     assert.equal(
       chooseReviewItemType({
-        availableTypes: ["recall", "recognition"],
-        preferredType: "application",
+        availableTypes: ["single_choice", "fill_blank"],
+        preferredType: "short_answer",
       }),
-      "recall",
+      "single_choice",
     );
   });
 });

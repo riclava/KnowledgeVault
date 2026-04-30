@@ -42,7 +42,7 @@ describe("critical learning path", () => {
         domain: string;
         questions: Array<{
           id: string;
-          knowledgeItemId: string;
+          knowledgeItemIds: string[];
         }>;
       };
     };
@@ -53,7 +53,7 @@ describe("critical learning path", () => {
       body: JSON.stringify({
         domain: diagnosticStartBody.data.domain,
         answers: diagnosticStartBody.data.questions.slice(0, 3).map((question) => ({
-          reviewItemId: question.id,
+          questionId: question.id,
           assessment: "none",
         })),
       }),
@@ -66,8 +66,9 @@ describe("critical learning path", () => {
       data: {
         sessionId: string | null;
         items: Array<{
-          reviewItemId: string;
+          questionId: string;
           knowledgeItemId: string;
+          answer: unknown;
         }>;
       };
     };
@@ -87,9 +88,9 @@ describe("critical learning path", () => {
       method: "POST",
       body: JSON.stringify({
         sessionId: reviewTodayBody.data.sessionId,
-        reviewItemId: firstItem.reviewItemId,
+        questionId: firstItem.questionId,
         knowledgeItemId: firstItem.knowledgeItemId,
-        result: "again",
+        submittedAnswer: firstItem.answer,
         completed: true,
       }),
     });
