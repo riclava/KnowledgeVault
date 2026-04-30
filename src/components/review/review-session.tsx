@@ -12,13 +12,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { KnowledgeItemRenderer } from "@/components/knowledge-item/renderers/knowledge-item-renderer";
 import { ReviewRemediationSheet } from "@/components/review/review-remediation-sheet";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
+import type { QuestionAnswer } from "@/types/question";
 import type {
   ReviewHint,
   ReviewGrade,
@@ -70,6 +71,9 @@ export function ReviewSession({
   const [hookDraftByKnowledgeItemId, setHookDraftByKnowledgeItemId] = useState<Record<string, string>>(
     {},
   );
+  const [answerByQuestionId, setAnswerByQuestionId] = useState<
+    Record<string, QuestionAnswer | undefined>
+  >({});
   const [savedHookKnowledgeItemIds, setSavedHookKnowledgeItemIds] = useState<string[]>([]);
   const [pendingRemediation, setPendingRemediation] = useState<{
     item: ReviewQueueItem;
@@ -124,8 +128,11 @@ export function ReviewSession({
     ? Math.round((completedCount / items.length) * 100)
     : 0;
   const currentHint = currentItem ? hintByKnowledgeItemId[currentItem.knowledgeItemId] : undefined;
+  const currentAnswer = currentItem
+    ? answerByQuestionId[currentItem.questionId]
+    : undefined;
   const activeRemediation =
-    pendingRemediation?.item.reviewItemId === currentItem?.reviewItemId
+    pendingRemediation?.item.questionId === currentItem?.questionId
       ? pendingRemediation
       : null;
 
@@ -173,7 +180,7 @@ export function ReviewSession({
                 <Badge variant={mode === "weak" ? "secondary" : "outline"}>
                   {mode === "weak" ? "弱项重练" : "今日复习"}
                 </Badge>
-                <Badge>{labelForReviewType(currentItem.type)}</Badge>
+                <Badge>{labelForQuestionType(currentItem.type)}</Badge>
                 <Badge variant="outline">{currentItem.knowledgeItem.domain}</Badge>
                 <Badge variant="outline">{currentItem.reviewReason.label}</Badge>
               </div>
@@ -218,6 +225,13 @@ export function ReviewSession({
             <p className="text-sm text-muted-foreground">{currentItem.reviewReason.detail}</p>
           </div>
 
+          <QuestionAnswerInput
+            item={currentItem}
+            value={currentAnswer}
+            disabled={isPending || Boolean(activeRemediation)}
+            onChange={(value) => updateQuestionAnswer(currentItem.questionId, value)}
+          />
+
           {cardState === "hint" && currentHint ? (
             <>
               <div className="rounded-lg border bg-muted/40 p-4">
@@ -259,17 +273,9 @@ export function ReviewSession({
                   查看详情
                 </Link>
               </div>
-              {currentItem.type === "recall" ? (
-                <KnowledgeItemRenderer
-                  block
-                  contentType={currentItem.knowledgeItem.contentType}
-                  payload={currentItem.knowledgeItem.renderPayload}
-                />
-              ) : (
-                <p className="text-sm leading-6 whitespace-pre-line">
-                  {currentItem.answer}
-                </p>
-              )}
+              <p className="text-sm leading-6 whitespace-pre-line">
+                {formatQuestionAnswer(currentItem.answer, currentItem.options)}
+              </p>
               {currentItem.explanation ? (
                 <p className="text-sm leading-6 text-muted-foreground">
                   {currentItem.explanation}
@@ -291,11 +297,11 @@ export function ReviewSession({
               </Button>
               <Button
                 type="button"
-                onClick={() => setCardState("answer")}
-                disabled={isPending}
+                onClick={() => submitAnswer(currentItem)}
+                disabled={isPending || !hasSubmittedAnswer(currentItem, currentAnswer)}
               >
                 <Clock3 data-icon="inline-start" />
-                显示答案
+                提交答案
               </Button>
               <Button
                 type="button"
@@ -358,23 +364,15 @@ export function ReviewSession({
             </div>
           ) : (
             <div className="grid gap-3 md:grid-cols-4">
-              {gradeButtons.map((grade) => (
-                <button
-                  key={grade.value}
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => submitGrade(currentItem, grade.value)}
-                  className={cn(
-                    "rounded-lg border p-4 text-left transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60",
-                    gradeToneClassName(grade.value),
-                  )}
-                >
-                  <span className="block font-medium">{grade.label}</span>
-                  <span className="mt-1 block text-sm text-muted-foreground">
-                    {grade.description}
-                  </span>
-                </button>
-              ))}
+              <Button
+                type="button"
+                onClick={() => submitAnswer(currentItem)}
+                disabled={isPending || !hasSubmittedAnswer(currentItem, currentAnswer)}
+                className="w-fit"
+              >
+                提交答案
+                <ArrowRight data-icon="inline-end" />
+              </Button>
             </div>
           )}
         </div>
@@ -514,13 +512,25 @@ export function ReviewSession({
     });
   }
 
-  function submitGrade(
-    item: ReviewQueueItem,
-    grade: "again" | "hard" | "good" | "easy",
-  ) {
+  function updateQuestionAnswer(questionId: string, value: QuestionAnswer) {
+    setAnswerByQuestionId((previous) => ({
+      ...previous,
+      [questionId]: value,
+    }));
+  }
+
+  function submitAnswer(item: ReviewQueueItem) {
     if (!session?.sessionId) {
       setError("当前复习 session 不可用");
       toast.error("当前复习 session 不可用");
+      return;
+    }
+
+    const submittedAnswer = answerByQuestionId[item.questionId];
+
+    if (!hasSubmittedAnswer(item, submittedAnswer)) {
+      setError("请先完成这道题。");
+      toast.error("请先完成这道题。");
       return;
     }
 
@@ -535,10 +545,9 @@ export function ReviewSession({
           },
           body: JSON.stringify({
             sessionId: activeSessionId,
-            reviewItemId: item.reviewItemId,
+            questionId: item.questionId,
             knowledgeItemId: item.knowledgeItemId,
-            result: grade,
-            memoryHookUsedId: hintByKnowledgeItemId[item.knowledgeItemId]?.memoryHookUsedId ?? undefined,
+            submittedAnswer,
             completed: currentIndex === items.length - 1,
           }),
         });
@@ -551,6 +560,8 @@ export function ReviewSession({
           throw new Error(payload.error ?? "复习提交失败");
         }
 
+        const grade = payload.data.result;
+        setCardState("answer");
         setSummary((previous) => ({
           ...previous,
           [grade]: previous[grade] + 1,
@@ -633,7 +644,7 @@ function ReviewMemoryHookCapture({
   onSave: () => void;
   saveLabel?: string;
 }) {
-  const fieldId = `review-memory-hook-${item.reviewItemId}-${context}`;
+  const fieldId = `review-memory-hook-${item.questionId}-${context}`;
   const title =
     context === "hint" ? "把这个提示改成你自己的话" : "写给下次的提醒";
   const description =
@@ -710,6 +721,149 @@ function memoryHookPlaceholderForContext(
   }
 
   return "例如：把刚才的提示改写成一句你自己会说的话。";
+}
+
+function QuestionAnswerInput({
+  item,
+  value,
+  disabled,
+  onChange,
+}: {
+  item: ReviewQueueItem;
+  value?: QuestionAnswer;
+  disabled: boolean;
+  onChange: (value: QuestionAnswer) => void;
+}) {
+  if (item.type === "single_choice") {
+    const selected = value && "optionId" in value ? value.optionId : "";
+
+    return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {(item.options ?? []).map((option) => (
+          <button
+            key={option.id}
+            type="button"
+            disabled={disabled}
+            aria-pressed={selected === option.id}
+            onClick={() => onChange({ optionId: option.id })}
+            className={cn(
+              "rounded-lg border p-4 text-left transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60",
+              selected === option.id && "border-primary bg-muted",
+            )}
+          >
+            {option.text}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (item.type === "multiple_choice") {
+    const selected: Set<string> =
+      value && "optionIds" in value
+        ? new Set(value.optionIds)
+        : new Set<string>();
+
+    return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {(item.options ?? []).map((option) => {
+          const isSelected = selected.has(option.id);
+
+          return (
+            <button
+              key={option.id}
+              type="button"
+              disabled={disabled}
+              aria-pressed={isSelected}
+              onClick={() => {
+                const next = new Set(selected);
+                if (next.has(option.id)) {
+                  next.delete(option.id);
+                } else {
+                  next.add(option.id);
+                }
+                onChange({ optionIds: Array.from(next) });
+              }}
+              className={cn(
+                "rounded-lg border p-4 text-left transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60",
+                isSelected && "border-primary bg-muted",
+              )}
+            >
+              {option.text}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  if (item.type === "true_false") {
+    const selected = value && "value" in value ? value.value : undefined;
+
+    return (
+      <div className="grid gap-3 sm:grid-cols-2">
+        {[
+          { value: true, label: "正确" },
+          { value: false, label: "错误" },
+        ].map((option) => (
+          <button
+            key={String(option.value)}
+            type="button"
+            disabled={disabled}
+            aria-pressed={selected === option.value}
+            onClick={() => onChange({ value: option.value })}
+            className={cn(
+              "rounded-lg border p-4 text-left transition-colors hover:bg-muted focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-60",
+              selected === option.value && "border-primary bg-muted",
+            )}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  if (item.type === "fill_blank") {
+    return (
+      <Input
+        value={value && "text" in value ? value.text : ""}
+        onChange={(event) => onChange({ text: event.target.value })}
+        disabled={disabled}
+        placeholder="填写你的答案"
+      />
+    );
+  }
+
+  return (
+    <Textarea
+      value={value && "text" in value ? value.text : ""}
+      onChange={(event) => onChange({ text: event.target.value })}
+      disabled={disabled}
+      placeholder="写下你的简答"
+      className="min-h-28"
+    />
+  );
+}
+
+function hasSubmittedAnswer(item: ReviewQueueItem, answer?: QuestionAnswer) {
+  if (!answer) {
+    return false;
+  }
+
+  if (item.type === "single_choice") {
+    return "optionId" in answer && answer.optionId.length > 0;
+  }
+
+  if (item.type === "multiple_choice") {
+    return "optionIds" in answer && answer.optionIds.length > 0;
+  }
+
+  if (item.type === "true_false") {
+    return "value" in answer;
+  }
+
+  return "text" in answer && answer.text.trim().length > 0;
 }
 
 function EmptyReviewState({
@@ -799,22 +953,6 @@ function CompletedReviewState({
   );
 }
 
-function gradeToneClassName(grade: ReviewGrade) {
-  if (grade === "again") {
-    return "border-destructive/25 bg-destructive/10";
-  }
-
-  if (grade === "hard") {
-    return "border-warning/25 bg-warning/10";
-  }
-
-  if (grade === "good") {
-    return "border-info/25 bg-info/10";
-  }
-
-  return "border-success/25 bg-success/10";
-}
-
 function buildKnowledgeItemHref({
   slug,
   mode,
@@ -844,16 +982,24 @@ function estimateRemainingMinutes(
   return Math.max(1, Math.ceil(estimatedMinutes * remainingRatio));
 }
 
-function labelForReviewType(type: ReviewQueueItem["type"]) {
-  if (type === "recall") {
-    return "主动回忆";
+function labelForQuestionType(type: ReviewQueueItem["type"]) {
+  if (type === "single_choice") {
+    return "单选";
   }
 
-  if (type === "recognition") {
-    return "判断识别";
+  if (type === "multiple_choice") {
+    return "多选";
   }
 
-  return "场景应用";
+  if (type === "true_false") {
+    return "判断";
+  }
+
+  if (type === "fill_blank") {
+    return "填空";
+  }
+
+  return "简答";
 }
 
 function completedItemCount(
@@ -866,4 +1012,25 @@ function completedItemCount(
   }
 
   return currentIndex;
+}
+
+function formatQuestionAnswer(
+  answer: ReviewQueueItem["answer"],
+  options: ReviewQueueItem["options"],
+) {
+  if ("optionId" in answer) {
+    return options?.find((option) => option.id === answer.optionId)?.text ?? answer.optionId;
+  }
+
+  if ("optionIds" in answer) {
+    return answer.optionIds
+      .map((optionId) => options?.find((option) => option.id === optionId)?.text ?? optionId)
+      .join("、");
+  }
+
+  if ("value" in answer) {
+    return answer.value ? "正确" : "错误";
+  }
+
+  return answer.text;
 }

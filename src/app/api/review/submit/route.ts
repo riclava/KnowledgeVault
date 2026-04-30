@@ -29,20 +29,16 @@ function validateSubmitPayload(payload: Partial<ReviewSubmitInput>) {
     return "sessionId is required";
   }
 
-  if (!payload.reviewItemId) {
-    return "reviewItemId is required";
+  if (!payload.questionId) {
+    return "questionId is required";
   }
 
   if (!payload.knowledgeItemId) {
     return "knowledgeItemId is required";
   }
 
-  if (!payload.result) {
-    return "result is required";
-  }
-
-  if (!["again", "hard", "good", "easy"].includes(payload.result)) {
-    return "result is invalid";
+  if (!payload.submittedAnswer) {
+    return "submittedAnswer is required";
   }
 
   return null;

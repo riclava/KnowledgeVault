@@ -1,8 +1,8 @@
 import type { DiagnosticAssessment } from "@/types/diagnostic";
 
-export type DiagnosticReviewItemResult = {
+export type DiagnosticQuestionResult = {
   id: string;
-  knowledgeItemId: string;
+  knowledgeItemIds: string[];
 };
 
 export function getDiagnosticAssessmentPriority(
@@ -20,56 +20,60 @@ export function getDiagnosticAssessmentPriority(
 }
 
 export function calculateDiagnosticWeakKnowledgeItemIds({
-  reviewItems,
+  questions,
   answers,
 }: {
-  reviewItems: DiagnosticReviewItemResult[];
+  questions: DiagnosticQuestionResult[];
   answers: Array<{
-    reviewItemId: string;
+    questionId: string;
     assessment: DiagnosticAssessment;
   }>;
 }) {
-  const answersByReviewItemId = new Map(
-    answers.map((answer) => [answer.reviewItemId, answer.assessment]),
+  const answersByQuestionId = new Map(
+    answers.map((answer) => [answer.questionId, answer.assessment]),
   );
 
   return Array.from(
     new Set(
-      reviewItems
-        .filter((item) => {
-          const assessment = answersByReviewItemId.get(item.id);
-          return assessment === "none" || assessment === "partial";
-        })
-        .map((item) => item.knowledgeItemId),
+      questions
+        .flatMap((question) => {
+          const assessment = answersByQuestionId.get(question.id);
+          return assessment === "none" || assessment === "partial"
+            ? question.knowledgeItemIds
+            : [];
+        }),
     ),
   );
 }
 
 export function calculateBestDiagnosticAssessmentsByKnowledgeItem({
-  reviewItems,
+  questions,
   answers,
 }: {
-  reviewItems: DiagnosticReviewItemResult[];
+  questions: DiagnosticQuestionResult[];
   answers: Array<{
-    reviewItemId: string;
+    questionId: string;
     assessment: DiagnosticAssessment;
   }>;
 }) {
-  const answersByReviewItemId = new Map(
-    answers.map((answer) => [answer.reviewItemId, answer.assessment]),
+  const answersByQuestionId = new Map(
+    answers.map((answer) => [answer.questionId, answer.assessment]),
   );
   const assessmentsByKnowledgeItemId = new Map<string, DiagnosticAssessment>();
 
-  for (const item of reviewItems) {
-    const assessment = answersByReviewItemId.get(item.id) ?? "none";
-    const previous = assessmentsByKnowledgeItemId.get(item.knowledgeItemId);
+  for (const question of questions) {
+    const assessment = answersByQuestionId.get(question.id) ?? "none";
 
-    if (
-      !previous ||
-      getDiagnosticAssessmentPriority(assessment) >
-        getDiagnosticAssessmentPriority(previous)
-    ) {
-      assessmentsByKnowledgeItemId.set(item.knowledgeItemId, assessment);
+    for (const knowledgeItemId of question.knowledgeItemIds) {
+      const previous = assessmentsByKnowledgeItemId.get(knowledgeItemId);
+
+      if (
+        !previous ||
+        getDiagnosticAssessmentPriority(assessment) >
+          getDiagnosticAssessmentPriority(previous)
+      ) {
+        assessmentsByKnowledgeItemId.set(knowledgeItemId, assessment);
+      }
     }
   }
 

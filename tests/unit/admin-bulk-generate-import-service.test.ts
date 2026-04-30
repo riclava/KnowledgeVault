@@ -542,7 +542,7 @@ function makeBatch(title: string): AdminImportBatch {
         variables: [],
         reviewItems: [
           {
-            type: "recall",
+            type: "fill_blank",
             prompt: `${title}是什么？`,
             answer: title,
             difficulty: 2,

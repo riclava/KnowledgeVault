@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { ArrowRight, CheckCircle2, Loader2, Target } from "lucide-react";
 
-import { KnowledgeItemRenderer } from "@/components/knowledge-item/renderers/knowledge-item-renderer";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -152,7 +151,7 @@ export function DiagnosticQuiz({ domain }: { domain: string }) {
           body: JSON.stringify({
             domain: diagnostic.domain,
             answers: diagnostic.questions.map((question) => ({
-              reviewItemId: question.id,
+              questionId: question.id,
               assessment: nextAnswers[question.id] ?? "none",
             })),
           }),
@@ -313,15 +312,9 @@ function DiagnosticAnswer({ question }: { question: DiagnosticQuestion }) {
         <CheckCircle2 data-icon="inline-start" />
         <h3 className="font-medium">参考答案</h3>
       </div>
-      {question.type === "recall" ? (
-        <KnowledgeItemRenderer
-          block
-          contentType={question.knowledgeItem.contentType}
-          payload={question.knowledgeItem.renderPayload}
-        />
-      ) : (
-        <p className="text-sm leading-6">{question.answer}</p>
-      )}
+      <p className="text-sm leading-6 whitespace-pre-line">
+        {formatQuestionAnswer(question.answer, question.options)}
+      </p>
       {question.explanation ? (
         <p className="text-sm leading-6 text-muted-foreground">
           {question.explanation}
@@ -329,6 +322,27 @@ function DiagnosticAnswer({ question }: { question: DiagnosticQuestion }) {
       ) : null}
     </div>
   );
+}
+
+function formatQuestionAnswer(
+  answer: DiagnosticQuestion["answer"],
+  options: DiagnosticQuestion["options"],
+) {
+  if ("optionId" in answer) {
+    return options?.find((option) => option.id === answer.optionId)?.text ?? answer.optionId;
+  }
+
+  if ("optionIds" in answer) {
+    return answer.optionIds
+      .map((optionId) => options?.find((option) => option.id === optionId)?.text ?? optionId)
+      .join("、");
+  }
+
+  if ("value" in answer) {
+    return answer.value ? "正确" : "错误";
+  }
+
+  return answer.text;
 }
 
 function DiagnosticResultView({ result }: { result: DiagnosticResult }) {

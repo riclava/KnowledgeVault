@@ -9,25 +9,33 @@ import {
 describe("knowledge item render payloads", () => {
   it("normalizes math formula payloads", () => {
     assert.deepEqual(
-      normalizeKnowledgeItemRenderPayload("math_formula", { latex: "x^2" }),
-      { latex: "x^2" },
+      normalizeKnowledgeItemRenderPayload("math_formula", {
+        latex: " E = mc^2 ",
+        explanation: " Energy mass equivalence ",
+        variables: [
+          { symbol: " E ", name: " Energy ", meaning: " Total energy " },
+          { symbol: "", name: "blank", meaning: "ignored" },
+        ],
+      }),
+      {
+        latex: "E = mc^2",
+        explanation: "Energy mass equivalence",
+        variables: [{ symbol: "E", name: "Energy", meaning: "Total energy" }],
+      },
     );
   });
 
   it("normalizes vocabulary payloads", () => {
     assert.deepEqual(
       normalizeKnowledgeItemRenderPayload("vocabulary", {
-        term: "aberration",
-        definition: "a departure from what is normal",
-        phonetic: " /ab-er-ay-shun/ ",
-        examples: ["A short spike was an aberration."],
+        term: " aberration ",
+        definition: " a departure from what is normal ",
+        examples: "A short spike was an aberration.\nA data aberration",
       }),
       {
         term: "aberration",
         definition: "a departure from what is normal",
-        phonetic: "/ab-er-ay-shun/",
-        partOfSpeech: "",
-        examples: ["A short spike was an aberration."],
+        examples: ["A short spike was an aberration.", "A data aberration"],
       },
     );
   });
@@ -45,70 +53,43 @@ describe("knowledge item render payloads", () => {
     assert.deepEqual(
       normalizeKnowledgeItemRenderPayload("concept_card", {
         definition: " A limit describes the value approached by a function. ",
-        intuition: " It is about getting close, not necessarily arriving. ",
         keyPoints: "approach\nneighborhood",
-        examples: ["lim x->0 sin(x)/x = 1"],
         misconceptions: ["The function must be defined at the point."],
       }),
       {
         definition: "A limit describes the value approached by a function.",
-        intuition: "It is about getting close, not necessarily arriving.",
         keyPoints: ["approach", "neighborhood"],
-        examples: ["lim x->0 sin(x)/x = 1"],
         misconceptions: ["The function must be defined at the point."],
       },
     );
   });
 
-  it("normalizes comparison table matrix payloads", () => {
+  it("normalizes comparison table payloads", () => {
     assert.deepEqual(
       normalizeKnowledgeItemRenderPayload("comparison_table", {
-        mode: "matrix",
-        subjects: ["Bayes", "Total probability"],
+        subjects: ["DFS", "BFS"],
         aspects: [
           {
-            label: "Use",
-            values: ["Reverse conditional", "Marginalize cases", "ignored"],
+            label: "Order",
+            values: ["Depth first", "Breadth first", "ignored"],
           },
           {
-            label: "Question",
-            values: ["P(A|B)"],
+            label: "Memory",
+            values: ["Stack"],
           },
         ],
       }),
       {
-        mode: "matrix",
-        subjects: ["Bayes", "Total probability"],
+        subjects: ["DFS", "BFS"],
         aspects: [
           {
-            label: "Use",
-            values: ["Reverse conditional", "Marginalize cases"],
+            label: "Order",
+            values: ["Depth first", "Breadth first"],
           },
           {
-            label: "Question",
-            values: ["P(A|B)", ""],
+            label: "Memory",
+            values: ["Stack", ""],
           },
-        ],
-      },
-    );
-  });
-
-  it("normalizes comparison table generic table payloads", () => {
-    assert.deepEqual(
-      normalizeKnowledgeItemRenderPayload("comparison_table", {
-        mode: "table",
-        columns: ["Step", "Action"],
-        rows: [
-          ["1", "Read", "ignored"],
-          ["2"],
-        ],
-      }),
-      {
-        mode: "table",
-        columns: ["Step", "Action"],
-        rows: [
-          ["1", "Read"],
-          ["2", ""],
         ],
       },
     );
@@ -117,87 +98,30 @@ describe("knowledge item render payloads", () => {
   it("normalizes procedure payloads", () => {
     assert.deepEqual(
       normalizeKnowledgeItemRenderPayload("procedure", {
-        mode: "flowchart",
-        title: " Solve linear equation ",
-        overview: " Isolate the unknown. ",
         steps: [
           {
-            id: "isolate",
-            title: "Isolate",
-            description: "Move constants away.",
-            tips: "Keep balance",
-            pitfalls: ["Forgetting signs"],
+            title: " Read ",
+            detail: " Identify inputs. ",
+          },
+          {
+            title: "Plan",
           },
         ],
-        nodes: [
-          { id: "start", label: "Start", kind: "start" },
-          { id: "isolate", label: "Isolate x", kind: "step" },
-        ],
-        edges: [{ from: "start", to: "isolate", label: "" }],
-        mermaid: "flowchart TD\n  start([Start]) --> isolate[Isolate x]",
+        pitfalls: "Skip constraints\nAssume sorted input",
       }),
       {
-        mode: "flowchart",
-        title: "Solve linear equation",
-        overview: "Isolate the unknown.",
         steps: [
           {
-            id: "isolate",
-            title: "Isolate",
-            description: "Move constants away.",
-            tips: ["Keep balance"],
-            pitfalls: ["Forgetting signs"],
+            title: "Read",
+            detail: "Identify inputs.",
+          },
+          {
+            title: "Plan",
+            detail: "",
           },
         ],
-        nodes: [
-          { id: "start", label: "Start", kind: "start" },
-          { id: "isolate", label: "Isolate x", kind: "step" },
-        ],
-        edges: [{ from: "start", to: "isolate", label: null }],
-        mermaid: [
-          "flowchart TD",
-          '  node_start(["Start"])',
-          '  node_isolate["Isolate x"]',
-          "  node_start --> node_isolate",
-        ].join("\n"),
+        pitfalls: ["Skip constraints", "Assume sorted input"],
       },
-    );
-  });
-
-  it("builds safe procedure mermaid from nodes and edges", () => {
-    assert.deepEqual(
-      normalizeKnowledgeItemRenderPayload("procedure", {
-        mode: "flowchart",
-        title: "Distance vector update",
-        overview: "",
-        steps: [
-          {
-            id: "step2",
-            title: "Add entry",
-            description: "Add a new route.",
-            tips: [],
-            pitfalls: [],
-          },
-        ],
-        nodes: [
-          { id: "start", label: "开始", kind: "start" },
-          { id: "decision1", label: "新距离 < 原距离？", kind: "decision" },
-          { id: "end", label: '结束 "done"', kind: "end" },
-        ],
-        edges: [
-          { from: "start", to: "decision1", label: null },
-          { from: "decision1", to: "end", label: "否" },
-        ],
-        mermaid: "graph TD\n  start --> decision1\n  decision1 --> end[结束]",
-      }).mermaid,
-      [
-        "flowchart TD",
-        '  node_start(["开始"])',
-        '  node_decision1{"新距离 < 原距离？"}',
-        '  node_end(["结束 \\"done\\""])',
-        "  node_start --> node_decision1",
-        '  node_decision1 -->|"否"| node_end',
-      ].join("\n"),
     );
   });
 
@@ -217,7 +141,6 @@ describe("knowledge item render payloads", () => {
     assert.throws(
       () =>
         normalizeKnowledgeItemRenderPayload("comparison_table", {
-          mode: "matrix",
           subjects: ["Only one"],
           aspects: [{ label: "Use", values: ["Too narrow"] }],
         }),
@@ -228,33 +151,18 @@ describe("knowledge item render payloads", () => {
         normalizeKnowledgeItemRenderPayload("comparison_table", {
           mode: "table",
           columns: ["Step"],
-          rows: [],
+          rows: [["Read"]],
         }),
-      /at least one row/i,
+      /subjects/i,
     );
     assert.throws(
       () =>
         normalizeKnowledgeItemRenderPayload("procedure", {
           mode: "flowchart",
-          title: "Broken flow",
-          overview: "",
-          steps: [
-            {
-              id: "step",
-              title: "Step",
-              description: "Do it.",
-              tips: [],
-              pitfalls: [],
-            },
-          ],
-          nodes: [
-            { id: "start", label: "Start", kind: "start" },
-            { id: "step", label: "Step", kind: "step" },
-          ],
-          edges: [{ from: "start", to: "missing", label: null }],
-          mermaid: "flowchart TD\n  start --> missing",
+          nodes: [],
+          edges: [],
         }),
-      /unknown procedure node/i,
+      /steps/i,
     );
     assert.equal(parseKnowledgeItemType("formula"), null);
     assert.equal(parseKnowledgeItemType("concept_card"), "concept_card");

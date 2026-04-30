@@ -2,24 +2,44 @@ import { prisma } from "@/lib/db/prisma";
 import { buildKnowledgeItemVisibilityWhere } from "@/server/repositories/knowledge-item-visibility";
 import type { DiagnosticAssessment } from "@/types/diagnostic";
 
-const diagnosticQuestionInclude = {
-  knowledgeItem: {
-    include: {
-      _count: {
-        select: {
-          reviewItems: {
-            where: {
-              isActive: true,
+function buildDiagnosticQuestionInclude({
+  domain,
+  userId,
+}: {
+  domain: string;
+  userId?: string;
+}) {
+  return {
+    knowledgeItems: {
+      where: {
+        knowledgeItem: {
+          ...buildKnowledgeItemVisibilityWhere(userId),
+          domain,
+        },
+      },
+      include: {
+        knowledgeItem: {
+          include: {
+            _count: {
+              select: {
+                questionBindings: {
+                  where: {
+                    question: {
+                      isActive: true,
+                    },
+                  },
+                },
+                memoryHooks: true,
+              },
             },
           },
-          memoryHooks: true,
         },
       },
     },
-  },
-} as const;
+  } as const;
+}
 
-export async function listDiagnosticReviewItems({
+export async function listDiagnosticQuestions({
   domain,
   userId,
   take,
@@ -28,15 +48,19 @@ export async function listDiagnosticReviewItems({
   userId?: string;
   take: number;
 }) {
-  return prisma.reviewItem.findMany({
+  return prisma.question.findMany({
     where: {
       isActive: true,
-      knowledgeItem: {
-        ...buildKnowledgeItemVisibilityWhere(userId),
-        domain,
+      knowledgeItems: {
+        some: {
+          knowledgeItem: {
+            ...buildKnowledgeItemVisibilityWhere(userId),
+            domain,
+          },
+        },
       },
     },
-    include: diagnosticQuestionInclude,
+    include: buildDiagnosticQuestionInclude({ domain, userId }),
     orderBy: [
       {
         difficulty: "asc",
@@ -49,48 +73,50 @@ export async function listDiagnosticReviewItems({
   });
 }
 
-export async function listReviewItemsByIds({
+export async function listQuestionsByIds({
   domain,
-  reviewItemIds,
+  questionIds,
   userId,
 }: {
   domain: string;
-  reviewItemIds: string[];
+  questionIds: string[];
   userId?: string;
 }) {
-  return prisma.reviewItem.findMany({
+  return prisma.question.findMany({
     where: {
       id: {
-        in: reviewItemIds,
+        in: questionIds,
       },
       isActive: true,
-      knowledgeItem: {
-        ...buildKnowledgeItemVisibilityWhere(userId),
-        domain,
+      knowledgeItems: {
+        some: {
+          knowledgeItem: {
+            ...buildKnowledgeItemVisibilityWhere(userId),
+            domain,
+          },
+        },
       },
     },
-    include: {
-      knowledgeItem: true,
-    },
+    include: buildDiagnosticQuestionInclude({ domain, userId }),
   });
 }
 
 export async function createDiagnosticAttempt({
   userId,
   domain,
-  reviewItemIds,
+  questionIds,
   weakKnowledgeItemIds,
 }: {
   userId: string;
   domain: string;
-  reviewItemIds: string[];
+  questionIds: string[];
   weakKnowledgeItemIds: string[];
 }) {
   return prisma.diagnosticAttempt.create({
     data: {
       userId,
       domain,
-      reviewItemIds,
+      questionIds,
       weakKnowledgeItemIds,
     },
   });

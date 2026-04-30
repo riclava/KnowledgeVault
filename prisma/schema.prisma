@@ -23,19 +23,6 @@ enum KnowledgeItemType {
   procedure
 }
 
-enum ReviewItemType {
-  recall
-  recognition
-  application
-}
-
-enum ReviewResult {
-  easy
-  good
-  hard
-  again
-}
-
 enum StudySessionStatus {
   active
   completed
@@ -90,6 +77,25 @@ enum AdminBulkGenerateImportRowStatus {
   canceled
 }
 
+enum QuestionType {
+  single_choice
+  multiple_choice
+  true_false
+  fill_blank
+  short_answer
+}
+
+enum QuestionGradingMode {
+  rule
+  ai
+}
+
+enum QuestionAttemptResult {
+  correct
+  partial
+  incorrect
+}
+
 model User {
   id                 String   @id @default(cuid())
   email              String?  @unique
@@ -100,7 +106,6 @@ model User {
   updatedAt          DateTime @updatedAt
 
   knowledgeItemStates UserKnowledgeItemState[]
-  reviewLogs          ReviewLog[]
   memoryHooks         KnowledgeItemMemoryHook[]
   diagnosticAttempts  DiagnosticAttempt[]
   studySessions       StudySession[]
@@ -108,6 +113,8 @@ model User {
   knowledgeDedupeRuns KnowledgeDedupeRun[]
   bulkGenerateImportRuns AdminBulkGenerateImportRun[]
   createdKnowledgeItems KnowledgeItem[] @relation("KnowledgeItemCreator")
+  createdQuestions    Question[] @relation("QuestionCreator")
+  questionAttempts    QuestionAttempt[]
   authIdentity        AuthUser?
 
   @@map("users")
@@ -192,13 +199,6 @@ model KnowledgeItem {
   subdomain        String?
   summary          String
   body             String
-  intuition        String?
-  deepDive         String?
-  useConditions    String[]
-  nonUseConditions String[]
-  antiPatterns     String[]
-  typicalProblems  String[]
-  examples         String[]
   difficulty       Int
   tags             String[]
   extension        Json?
@@ -208,12 +208,10 @@ model KnowledgeItem {
   updatedAt        DateTime          @updatedAt
 
   createdByUser     User?                   @relation("KnowledgeItemCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
-  variables         KnowledgeItemVariable[]
-  reviewItems       ReviewItem[]
   outgoingRelations KnowledgeItemRelation[]   @relation("KnowledgeItemRelationFrom")
   incomingRelations KnowledgeItemRelation[]   @relation("KnowledgeItemRelationTo")
+  questionBindings  QuestionKnowledgeItem[]
   userStates        UserKnowledgeItemState[]
-  reviewLogs        ReviewLog[]
   memoryHooks       KnowledgeItemMemoryHook[]
 
   @@index([domain, subdomain])
@@ -269,23 +267,6 @@ model KnowledgeDedupeCandidate {
   @@map("knowledge_dedupe_candidates")
 }
 
-model KnowledgeItemVariable {
-  id              String   @id @default(cuid())
-  knowledgeItemId String
-  symbol          String
-  name            String
-  description     String
-  unit            String?
-  sortOrder       Int      @default(0)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
-
-  @@index([knowledgeItemId])
-  @@map("knowledge_item_variables")
-}
-
 model KnowledgeItemRelation {
   id                  String                    @id @default(cuid())
   fromKnowledgeItemId String
@@ -301,25 +282,6 @@ model KnowledgeItemRelation {
   @@unique([fromKnowledgeItemId, toKnowledgeItemId, relationType])
   @@index([toKnowledgeItemId])
   @@map("knowledge_item_relations")
-}
-
-model ReviewItem {
-  id              String         @id @default(cuid())
-  knowledgeItemId String
-  type            ReviewItemType
-  prompt          String
-  answer          String
-  explanation     String?
-  difficulty      Int
-  isActive        Boolean        @default(true)
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
-  reviewLogs    ReviewLog[]
-
-  @@index([knowledgeItemId, type])
-  @@map("review_items")
 }
 
 model UserKnowledgeItemState {
@@ -346,34 +308,11 @@ model UserKnowledgeItemState {
   @@map("user_knowledge_item_states")
 }
 
-model ReviewLog {
-  id               String       @id @default(cuid())
-  userId           String
-  knowledgeItemId  String
-  reviewItemId     String
-  studySessionId   String?
-  result           ReviewResult
-  responseTimeMs   Int?
-  confidence       Int?
-  memoryHookUsedId String?
-  reviewedAt       DateTime     @default(now())
-
-  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  knowledgeItem  KnowledgeItem            @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
-  reviewItem     ReviewItem               @relation(fields: [reviewItemId], references: [id], onDelete: Cascade)
-  studySession   StudySession?            @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
-  memoryHookUsed KnowledgeItemMemoryHook? @relation(fields: [memoryHookUsedId], references: [id], onDelete: SetNull)
-
-  @@index([userId, reviewedAt])
-  @@index([knowledgeItemId])
-  @@map("review_logs")
-}
-
 model DiagnosticAttempt {
   id                   String   @id @default(cuid())
   userId               String
   domain               String
-  reviewItemIds        String[]
+  questionIds          String[]
   weakKnowledgeItemIds String[]
   completedAt          DateTime @default(now())
   createdAt            DateTime @default(now())
@@ -395,7 +334,6 @@ model KnowledgeItemMemoryHook {
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
-  reviewLogs    ReviewLog[]
 
   @@unique([userId, knowledgeItemId])
   @@index([knowledgeItemId])
@@ -413,10 +351,72 @@ model StudySession {
   updatedAt   DateTime           @updatedAt
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewLogs    ReviewLog[]
+  questionAttempts QuestionAttempt[]
 
   @@index([userId, startedAt])
   @@map("study_sessions")
+}
+
+model Question {
+  id              String                  @id @default(cuid())
+  type            QuestionType
+  prompt          String
+  options         Json?
+  answer          Json
+  answerAliases   String[]
+  explanation     String?
+  difficulty      Int
+  tags            String[]
+  gradingMode     QuestionGradingMode
+  isActive        Boolean                 @default(true)
+  visibility      KnowledgeItemVisibility @default(public)
+  createdByUserId String?
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  createdByUser  User?                   @relation("QuestionCreator", fields: [createdByUserId], references: [id], onDelete: Cascade)
+  knowledgeItems QuestionKnowledgeItem[]
+  attempts       QuestionAttempt[]
+
+  @@index([type])
+  @@index([difficulty])
+  @@index([visibility, createdByUserId])
+  @@map("questions")
+}
+
+model QuestionKnowledgeItem {
+  id              String   @id @default(cuid())
+  questionId      String
+  knowledgeItemId String
+  createdAt       DateTime @default(now())
+
+  question      Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  knowledgeItem KnowledgeItem @relation(fields: [knowledgeItemId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, knowledgeItemId])
+  @@index([knowledgeItemId])
+  @@map("question_knowledge_items")
+}
+
+model QuestionAttempt {
+  id              String                @id @default(cuid())
+  userId          String
+  questionId      String
+  studySessionId  String?
+  submittedAnswer Json
+  result          QuestionAttemptResult
+  score           Float
+  feedback        String?
+  responseTimeMs  Int?
+  reviewedAt      DateTime              @default(now())
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question     Question      @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  studySession StudySession? @relation(fields: [studySessionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, reviewedAt])
+  @@index([questionId])
+  @@map("question_attempts")
 }
 
 model AdminImportRun {

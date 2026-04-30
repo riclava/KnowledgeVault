@@ -7,7 +7,8 @@ import {
   KnowledgeItemRelationType,
   Prisma,
   PrismaClient,
-  ReviewItemType,
+  QuestionGradingMode,
+  QuestionType,
 } from "../src/generated/prisma/client";
 
 const prisma = new PrismaClient({
@@ -41,7 +42,7 @@ type SeedKnowledgeItem = {
     unit?: string | null;
   }>;
   reviewItems: Array<{
-    type: ReviewItemType;
+    type: QuestionType;
     prompt: string;
     answer: string;
     explanation: string;
@@ -108,14 +109,14 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     ],
     reviewItems: [
       {
-        type: ReviewItemType.recall,
+        type: QuestionType.fill_blank,
         prompt: "写出贝叶斯定理的核心表达式。",
         answer: "P(A|B)=P(B|A)P(A)/P(B)",
         explanation: "注意竖线两侧的方向：它是从 B 反推 A。",
         difficulty: 2,
       },
       {
-        type: ReviewItemType.recognition,
+        type: QuestionType.single_choice,
         prompt:
           "题目给出“患病时检测阳性的概率”，却要求“检测阳性时患病的概率”，应优先想到什么公式？",
         answer: "贝叶斯定理。",
@@ -123,7 +124,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
         difficulty: 2,
       },
       {
-        type: ReviewItemType.application,
+        type: QuestionType.short_answer,
         prompt:
           "A 线生产 60% 零件，次品率 1%；B 线生产 40% 零件，次品率 2%。抽到一个次品，求它来自 A 线的概率。",
         answer:
@@ -184,14 +185,14 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     ],
     reviewItems: [
       {
-        type: ReviewItemType.recall,
+        type: QuestionType.fill_blank,
         prompt: "写出离散划分下的全概率公式。",
         answer: "P(B)=Σ P(B|A_i)P(A_i)",
         explanation: "每条路径先乘条件概率和路径权重，再求和。",
         difficulty: 2,
       },
       {
-        type: ReviewItemType.recognition,
+        type: QuestionType.single_choice,
         prompt:
           "题目要求“随机抽到一个次品的总概率”，且给出各生产线占比和次品率，应优先想到什么公式？",
         answer: "全概率公式。",
@@ -199,7 +200,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
         difficulty: 2,
       },
       {
-        type: ReviewItemType.application,
+        type: QuestionType.short_answer,
         prompt: "A 线占 60%，次品率 1%；B 线占 40%，次品率 2%。求总体次品率。",
         answer: "0.6*0.01+0.4*0.02=0.014，即 1.4%。",
         explanation: "按两条来源路径加权求和。",
@@ -253,21 +254,21 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     ],
     reviewItems: [
       {
-        type: ReviewItemType.recall,
+        type: QuestionType.fill_blank,
         prompt: "写出两个随机变量线性组合的期望公式。",
         answer: "E(aX+bY)=aE(X)+bE(Y)",
         explanation: "不需要 X 与 Y 独立。",
         difficulty: 1,
       },
       {
-        type: ReviewItemType.recognition,
+        type: QuestionType.single_choice,
         prompt: "计算总收益的平均值，收益可拆成多个部分相加，应优先想到什么性质？",
         answer: "期望的线性性质。",
         explanation: "平均值对加法和数乘保持线性。",
         difficulty: 1,
       },
       {
-        type: ReviewItemType.application,
+        type: QuestionType.short_answer,
         prompt: "若 E(X)=3，E(Y)=5，求 E(2X-4Y+7)。",
         answer: "2*3-4*5+7=-7。",
         explanation: "常数 7 的期望仍是 7。",
@@ -327,14 +328,14 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     ],
     reviewItems: [
       {
-        type: ReviewItemType.recall,
+        type: QuestionType.fill_blank,
         prompt: "写出 Var(aX+b) 的公式。",
         answer: "Var(aX+b)=a²Var(X)",
         explanation: "b 不影响方差，a 要平方。",
         difficulty: 2,
       },
       {
-        type: ReviewItemType.recognition,
+        type: QuestionType.single_choice,
         prompt:
           "题目问单位换算后方差如何变化，例如 X 从米变成厘米，应想到哪个公式？",
         answer: "方差的平移与缩放公式。",
@@ -342,7 +343,7 @@ const knowledgeItems: SeedKnowledgeItem[] = [
         difficulty: 2,
       },
       {
-        type: ReviewItemType.application,
+        type: QuestionType.short_answer,
         prompt: "若 Var(X)=4，求 Var(3X-2)。",
         answer: "Var(3X-2)=9*4=36。",
         explanation: "平移 -2 不影响方差。",
@@ -377,21 +378,21 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     variables: [],
     reviewItems: [
       {
-        type: ReviewItemType.recall,
+        type: QuestionType.fill_blank,
         prompt: "回忆 aberration 的核心释义。",
         answer: "异常情况；偏离常态的事物。",
         explanation: "重点是 departure from what is normal。",
         difficulty: 2,
       },
       {
-        type: ReviewItemType.recognition,
+        type: QuestionType.single_choice,
         prompt: "看到 a sudden spike was not a trend，应想到哪个表示异常点的词？",
         answer: "aberration",
         explanation: "它强调该现象偏离常态，不能代表趋势。",
         difficulty: 2,
       },
       {
-        type: ReviewItemType.application,
+        type: QuestionType.short_answer,
         prompt: "用 aberration 表达“这次下降只是异常，不是长期趋势”。",
         answer: "The drop was an aberration, not a long-term trend.",
         explanation: "not a trend 能强化它的异常含义。",
@@ -422,21 +423,21 @@ const knowledgeItems: SeedKnowledgeItem[] = [
     variables: [],
     reviewItems: [
       {
-        type: ReviewItemType.recall,
+        type: QuestionType.fill_blank,
         prompt: "每日复习检查清单的三步是什么？",
         answer: "到期复习、处理 Again/Hard、补一句下次提示。",
         explanation: "顺序是先完成队列，再修复薄弱点。",
         difficulty: 1,
       },
       {
-        type: ReviewItemType.recognition,
+        type: QuestionType.single_choice,
         prompt: "如果今天出现 Again，复习结束前至少要补什么？",
         answer: "为最卡的一条补一句下次提示。",
         explanation: "提示能降低下次重新启动记忆的成本。",
         difficulty: 1,
       },
       {
-        type: ReviewItemType.application,
+        type: QuestionType.short_answer,
         prompt: "今天复习后有 2 条 Hard，你下一步怎么做？",
         answer: "打开补弱列表，优先处理 Hard/Again，并为最弱项写提示。",
         explanation: "不要只看完成数量，要修复暴露出的薄弱点。",
@@ -479,13 +480,13 @@ const relations: Array<{
 ];
 
 async function main() {
-  await prisma.reviewLog.deleteMany();
+  await prisma.questionAttempt.deleteMany();
   await prisma.studySession.deleteMany();
   await prisma.diagnosticAttempt.deleteMany();
   await prisma.userKnowledgeItemState.deleteMany();
   await prisma.knowledgeItemMemoryHook.deleteMany();
-  await prisma.reviewItem.deleteMany();
-  await prisma.knowledgeItemVariable.deleteMany();
+  await prisma.questionKnowledgeItem.deleteMany();
+  await prisma.question.deleteMany();
   await prisma.knowledgeItemRelation.deleteMany();
   await prisma.knowledgeItem.deleteMany();
 
@@ -502,28 +503,36 @@ async function main() {
         subdomain: knowledgeItem.subdomain,
         summary: knowledgeItem.summary,
         body: knowledgeItem.body,
-        intuition: knowledgeItem.intuition,
-        deepDive: knowledgeItem.deepDive,
-        useConditions: knowledgeItem.useConditions,
-        nonUseConditions: knowledgeItem.nonUseConditions,
-        antiPatterns: knowledgeItem.antiPatterns,
-        typicalProblems: knowledgeItem.typicalProblems,
-        examples: knowledgeItem.examples,
         difficulty: knowledgeItem.difficulty,
         tags: knowledgeItem.tags,
-        variables: {
-          create: knowledgeItem.variables.map((variable, index) => ({
-            ...variable,
-            sortOrder: index,
-          })),
-        },
-        reviewItems: {
-          create: knowledgeItem.reviewItems,
-        },
       },
     });
 
     created.set(knowledgeItem.slug, item.id);
+
+    for (const reviewItem of knowledgeItem.reviewItems) {
+      await prisma.question.create({
+        data: {
+          type: reviewItem.type,
+          prompt: reviewItem.prompt,
+          options: questionOptionsForSeedReviewItem(reviewItem),
+          answer: questionAnswerForSeedReviewItem(reviewItem) as Prisma.InputJsonValue,
+          answerAliases: [reviewItem.answer],
+          explanation: reviewItem.explanation,
+          difficulty: reviewItem.difficulty,
+          tags: knowledgeItem.tags,
+          gradingMode:
+            reviewItem.type === QuestionType.short_answer
+              ? QuestionGradingMode.ai
+              : QuestionGradingMode.rule,
+          knowledgeItems: {
+            create: {
+              knowledgeItemId: item.id,
+            },
+          },
+        },
+      });
+    }
   }
 
   for (const relation of relations) {
@@ -554,7 +563,39 @@ function normalizeSeedRenderPayload(knowledgeItem: SeedKnowledgeItem) {
     return { text: knowledgeItem.renderPayload };
   }
 
-  return { latex: knowledgeItem.renderPayload };
+  if (knowledgeItem.contentType === KnowledgeItemType.math_formula) {
+    return {
+      latex: knowledgeItem.renderPayload,
+      explanation: knowledgeItem.summary,
+      variables: knowledgeItem.variables.map((variable) => ({
+        symbol: variable.symbol,
+        name: variable.name,
+        meaning: variable.description,
+      })),
+    };
+  }
+
+  return { text: knowledgeItem.renderPayload };
+}
+
+function questionOptionsForSeedReviewItem(reviewItem: SeedKnowledgeItem["reviewItems"][number]) {
+  if (reviewItem.type !== QuestionType.single_choice) {
+    return undefined;
+  }
+
+  return [
+    { id: "a", text: reviewItem.answer },
+    { id: "b", text: "以上都不适合" },
+    { id: "c", text: "需要先补充题目条件" },
+  ] satisfies Prisma.InputJsonValue;
+}
+
+function questionAnswerForSeedReviewItem(reviewItem: SeedKnowledgeItem["reviewItems"][number]) {
+  if (reviewItem.type === QuestionType.single_choice) {
+    return { optionId: "a" };
+  }
+
+  return { text: reviewItem.answer };
 }
 
 main()

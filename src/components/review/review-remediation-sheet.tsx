@@ -32,14 +32,14 @@ const remediationMeta: Record<
   again: {
     label: "Again 补弱",
     title: "先补这一题",
-    description: "查看误用和提示。",
-    focusSection: "anti-patterns",
+    description: "查看绑定题目和提示。",
+    focusSection: "questions",
   },
   hard: {
     label: "Hard 补弱",
     title: "再看一遍关键点",
-    description: "优先看适用边界。",
-    focusSection: "use",
+    description: "优先看知识正文。",
+    focusSection: "body",
   },
 };
 

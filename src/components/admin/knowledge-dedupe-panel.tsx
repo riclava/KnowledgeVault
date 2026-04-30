@@ -52,11 +52,9 @@ type DedupeItemSummary = {
   difficulty: number;
   updatedAt: string | Date;
   _count: {
-    reviewItems: number;
-    variables: number;
+    questionBindings: number;
     outgoingRelations: number;
     userStates: number;
-    reviewLogs: number;
     memoryHooks: number;
   };
 };
@@ -431,11 +429,9 @@ function CandidateCard({
               <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                 <span>{item.contentType}</span>
                 <span>难度 {item.difficulty}</span>
-                <span>复习题 {item._count.reviewItems}</span>
-                <span>变量 {item._count.variables}</span>
+                <span>题目 {item._count.questionBindings}</span>
                 <span>关系 {item._count.outgoingRelations}</span>
                 <span>状态 {item._count.userStates}</span>
-                <span>日志 {item._count.reviewLogs}</span>
                 <span>记忆钩子 {item._count.memoryHooks}</span>
               </div>
             </div>

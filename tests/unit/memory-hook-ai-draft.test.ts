@@ -37,9 +37,6 @@ describe("memory hook AI drafts", () => {
         title: "贝叶斯公式",
         summary: "贝叶斯公式用于从结果反推原因概率。",
         body: "P(A|B)=P(B|A)P(A)/P(B)。",
-        intuition: "已知结果，更新原因的可能性。",
-        useConditions: ["已知结果", "需要反推原因概率"],
-        antiPatterns: ["把 P(A|B) 和 P(B|A) 混为一谈"],
       },
     });
 
@@ -53,9 +50,6 @@ describe("memory hook AI drafts", () => {
         title: "线性方程",
         summary: "未知数最高次数为一。",
         body: "ax+b=0。",
-        intuition: null,
-        useConditions: [],
-        antiPatterns: [],
       },
     });
 

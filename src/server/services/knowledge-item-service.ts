@@ -17,6 +17,7 @@ import type {
   KnowledgeItemType,
 } from "@/types/knowledge-item";
 import type { MemoryHookRecord } from "@/types/memory-hook";
+import type { QuestionAnswer, QuestionOption } from "@/types/question";
 
 type KnowledgeItemWithDetail = NonNullable<Awaited<ReturnType<typeof getKnowledgeItemByIdOrSlug>>>;
 type RelationWithKnowledgeItem = NonNullable<
@@ -177,9 +178,6 @@ export async function generateAiMemoryHookDraft({
     title: string;
     summary: string;
     body: string;
-    intuition: string | null;
-    useConditions: string[];
-    antiPatterns: string[];
   };
   env?: AiEnv;
   fetcher?: typeof fetch;
@@ -202,9 +200,6 @@ export async function generateAiMemoryHookDraft({
             `知识项：${knowledgeItem.title}`,
             `摘要：${knowledgeItem.summary}`,
             `正文：${knowledgeItem.body}`,
-            `直觉：${knowledgeItem.intuition ?? ""}`,
-            `适用条件：${knowledgeItem.useConditions.join("；")}`,
-            `常见误区：${knowledgeItem.antiPatterns.join("；")}`,
             "请生成一句不超过 40 个中文字符、下次复习时能直接使用的个人提示。",
           ].join("\n"),
         },
@@ -229,10 +224,6 @@ function toKnowledgeItemSummary(
     summary: string;
     difficulty: number;
     tags: string[];
-    variables: Array<{
-      symbol: string;
-      name: string;
-    }>;
     memoryHooks: Array<{
       id: string;
     }>;
@@ -245,7 +236,7 @@ function toKnowledgeItemSummary(
       correctReviews: number;
     }>;
     _count: {
-      reviewItems: number;
+      questionBindings: number;
       memoryHooks: number;
     };
   },
@@ -290,11 +281,7 @@ function toKnowledgeItemSummary(
     summary: knowledgeItem.summary,
     difficulty: knowledgeItem.difficulty,
     tags: knowledgeItem.tags,
-    variablePreview: knowledgeItem.variables.map((variable) => ({
-      symbol: variable.symbol,
-      name: variable.name,
-    })),
-    reviewItemCount: knowledgeItem._count.reviewItems,
+    reviewItemCount: knowledgeItem._count.questionBindings,
     memoryHookCount: knowledgeItem.memoryHooks.length,
     trainingStatus,
     trainingStatusLabel: getTrainingStatusLabel(trainingStatus),
@@ -311,28 +298,15 @@ function toKnowledgeItemDetail(knowledgeItem: KnowledgeItemWithDetail, now: Date
   return {
     ...toKnowledgeItemSummary(knowledgeItem, now),
     body: knowledgeItem.body,
-    intuition: knowledgeItem.intuition,
-    deepDive: knowledgeItem.deepDive,
-    useConditions: knowledgeItem.useConditions,
-    nonUseConditions: knowledgeItem.nonUseConditions,
-    antiPatterns: knowledgeItem.antiPatterns,
-    typicalProblems: knowledgeItem.typicalProblems,
-    examples: knowledgeItem.examples,
-    variables: knowledgeItem.variables.map((variable) => ({
-      id: variable.id,
-      symbol: variable.symbol,
-      name: variable.name,
-      description: variable.description,
-      unit: variable.unit,
-      sortOrder: variable.sortOrder,
-    })),
-    reviewItems: knowledgeItem.reviewItems.map((item) => ({
-      id: item.id,
-      type: item.type,
-      prompt: item.prompt,
-      answer: item.answer,
-      explanation: item.explanation,
-      difficulty: item.difficulty,
+    questions: knowledgeItem.questionBindings.map((binding) => ({
+      id: binding.question.id,
+      type: binding.question.type,
+      prompt: binding.question.prompt,
+      options: binding.question.options as QuestionOption[] | null,
+      answer: binding.question.answer as QuestionAnswer,
+      answerAliases: binding.question.answerAliases,
+      explanation: binding.question.explanation,
+      difficulty: binding.question.difficulty,
     })),
     memoryHooks: knowledgeItem.memoryHooks.map((hook) => toMemoryHookRecord(hook)),
   };

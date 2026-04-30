@@ -55,10 +55,10 @@ function validateSubmission(payload: unknown): string | null {
 
   const validAnswers = submission.answers.every(
     (answer) =>
-      typeof answer.reviewItemId === "string" &&
-      answer.reviewItemId.length > 0 &&
+      typeof answer.questionId === "string" &&
+      answer.questionId.length > 0 &&
       assessmentValues.has(answer.assessment),
   );
 
-  return validAnswers ? null : "answers contain invalid reviewItemId or assessment";
+  return validAnswers ? null : "answers contain invalid questionId or assessment";
 }

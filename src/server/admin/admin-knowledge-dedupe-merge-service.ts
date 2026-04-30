@@ -148,12 +148,7 @@ export async function mergeKnowledgeDedupeCandidateForAdmin({
       ),
     });
 
-    await mergeKnowledgeItemVariables({
-      tx,
-      canonicalKnowledgeItemId: canonical.id,
-      duplicateKnowledgeItemIds: mergeInput.mergedKnowledgeItemIds,
-    });
-    await mergeKnowledgeItemReviewItems({
+    await mergeKnowledgeItemQuestions({
       tx,
       canonicalKnowledgeItemId: canonical.id,
       duplicateKnowledgeItemIds: mergeInput.mergedKnowledgeItemIds,
@@ -162,10 +157,6 @@ export async function mergeKnowledgeDedupeCandidateForAdmin({
       tx,
       canonicalKnowledgeItemId: canonical.id,
       duplicateKnowledgeItemIds: mergeInput.mergedKnowledgeItemIds,
-    });
-    await tx.reviewLog.updateMany({
-      where: { knowledgeItemId: { in: mergeInput.mergedKnowledgeItemIds } },
-      data: { knowledgeItemId: canonical.id },
     });
     await mergeKnowledgeItemUserStates({
       tx,
@@ -211,19 +202,9 @@ async function mergeKnowledgeItemContent({
   canonical: {
     id: string;
     tags: string[];
-    examples: string[];
-    useConditions: string[];
-    nonUseConditions: string[];
-    antiPatterns: string[];
-    typicalProblems: string[];
   };
   duplicates: Array<{
     tags: string[];
-    examples: string[];
-    useConditions: string[];
-    nonUseConditions: string[];
-    antiPatterns: string[];
-    typicalProblems: string[];
   }>;
 }) {
   await tx.knowledgeItem.update({
@@ -233,31 +214,11 @@ async function mergeKnowledgeItemContent({
         canonical.tags,
         duplicates.flatMap((item) => item.tags),
       ),
-      examples: mergeKnowledgeDedupeArrays(
-        canonical.examples,
-        duplicates.flatMap((item) => item.examples),
-      ),
-      useConditions: mergeKnowledgeDedupeArrays(
-        canonical.useConditions,
-        duplicates.flatMap((item) => item.useConditions),
-      ),
-      nonUseConditions: mergeKnowledgeDedupeArrays(
-        canonical.nonUseConditions,
-        duplicates.flatMap((item) => item.nonUseConditions),
-      ),
-      antiPatterns: mergeKnowledgeDedupeArrays(
-        canonical.antiPatterns,
-        duplicates.flatMap((item) => item.antiPatterns),
-      ),
-      typicalProblems: mergeKnowledgeDedupeArrays(
-        canonical.typicalProblems,
-        duplicates.flatMap((item) => item.typicalProblems),
-      ),
     },
   });
 }
 
-async function mergeKnowledgeItemVariables({
+async function mergeKnowledgeItemQuestions({
   tx,
   canonicalKnowledgeItemId,
   duplicateKnowledgeItemIds,
@@ -266,73 +227,32 @@ async function mergeKnowledgeItemVariables({
   canonicalKnowledgeItemId: string;
   duplicateKnowledgeItemIds: string[];
 }) {
-  const canonicalVariables = await tx.knowledgeItemVariable.findMany({
+  const canonicalQuestionBindings = await tx.questionKnowledgeItem.findMany({
     where: { knowledgeItemId: canonicalKnowledgeItemId },
-    select: { symbol: true },
-  });
-  const canonicalSymbols = new Set(canonicalVariables.map((variable) => variable.symbol));
-  const duplicateVariables = await tx.knowledgeItemVariable.findMany({
-    where: { knowledgeItemId: { in: duplicateKnowledgeItemIds } },
-    select: { id: true, symbol: true },
-    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
-  });
-
-  for (const variable of duplicateVariables) {
-    if (canonicalSymbols.has(variable.symbol)) {
-      await tx.knowledgeItemVariable.delete({ where: { id: variable.id } });
-      continue;
-    }
-
-    canonicalSymbols.add(variable.symbol);
-    await tx.knowledgeItemVariable.update({
-      where: { id: variable.id },
-      data: { knowledgeItemId: canonicalKnowledgeItemId },
-    });
-  }
-}
-
-async function mergeKnowledgeItemReviewItems({
-  tx,
-  canonicalKnowledgeItemId,
-  duplicateKnowledgeItemIds,
-}: {
-  tx: TransactionClient;
-  canonicalKnowledgeItemId: string;
-  duplicateKnowledgeItemIds: string[];
-}) {
-  const canonicalReviewItems = await tx.reviewItem.findMany({
-    where: { knowledgeItemId: canonicalKnowledgeItemId },
-    select: { prompt: true },
+    include: { question: { select: { prompt: true } } },
   });
   const canonicalPrompts = new Set(
-    canonicalReviewItems.map((reviewItem) => reviewItem.prompt.trim()),
+    canonicalQuestionBindings.map((binding) => binding.question.prompt.trim()),
   );
-  const duplicateReviewItems = await tx.reviewItem.findMany({
+  const duplicateQuestionBindings = await tx.questionKnowledgeItem.findMany({
     where: { knowledgeItemId: { in: duplicateKnowledgeItemIds } },
-    select: {
-      id: true,
-      prompt: true,
-      isActive: true,
-      _count: { select: { reviewLogs: true } },
-    },
+    include: { question: { select: { id: true, prompt: true, isActive: true } } },
   });
 
-  for (const reviewItem of duplicateReviewItems) {
-    const prompt = reviewItem.prompt.trim();
-    const shouldMove =
-      reviewItem._count.reviewLogs > 0 ||
-      (reviewItem.isActive && !canonicalPrompts.has(prompt));
+  for (const binding of duplicateQuestionBindings) {
+    const prompt = binding.question.prompt.trim();
+    const shouldMove = binding.question.isActive && !canonicalPrompts.has(prompt);
 
     if (shouldMove) {
       canonicalPrompts.add(prompt);
-      await tx.reviewItem.update({
-        where: { id: reviewItem.id },
+      await tx.questionKnowledgeItem.update({
+        where: { id: binding.id },
         data: { knowledgeItemId: canonicalKnowledgeItemId },
       });
       continue;
     }
 
-    await tx.reviewItem.delete({ where: { id: reviewItem.id } });
+    await tx.question.delete({ where: { id: binding.question.id } });
   }
 }
 
@@ -462,10 +382,6 @@ async function mergeKnowledgeItemMemoryHooks({
       continue;
     }
 
-    await tx.reviewLog.updateMany({
-      where: { memoryHookUsedId: duplicateHook.id },
-      data: { memoryHookUsedId: canonicalHook.id },
-    });
     await tx.knowledgeItemMemoryHook.update({
       where: { id: canonicalHook.id },
       data: {

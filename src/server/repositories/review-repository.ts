@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db/prisma";
+import type { Prisma } from "@/generated/prisma/client";
 import { buildKnowledgeItemVisibilityWhere } from "@/server/repositories/knowledge-item-visibility";
 
 export async function getUserKnowledgeItemState(userId: string, knowledgeItemId: string) {
@@ -37,11 +38,16 @@ export async function listDueKnowledgeItemStates({
     include: {
       knowledgeItem: {
         include: {
-          reviewItems: {
+          questionBindings: {
             where: {
-              isActive: true,
+              question: {
+                isActive: true,
+              },
             },
-            orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
+            include: {
+              question: true,
+            },
+            orderBy: { createdAt: "asc" },
           },
           memoryHooks: {
             where: {
@@ -95,11 +101,16 @@ export async function listWeakKnowledgeItemStatesForReview({
     include: {
       knowledgeItem: {
         include: {
-          reviewItems: {
+          questionBindings: {
             where: {
-              isActive: true,
+              question: {
+                isActive: true,
+              },
             },
-            orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
+            include: {
+              question: true,
+            },
+            orderBy: { createdAt: "asc" },
           },
           memoryHooks: {
             where: {
@@ -134,9 +145,11 @@ export async function ensureUnstartedKnowledgeItemStatesForReview({
     where: {
       ...buildKnowledgeItemVisibilityWhere(userId),
       domain,
-      reviewItems: {
+      questionBindings: {
         some: {
-          isActive: true,
+          question: {
+            isActive: true,
+          },
         },
       },
       userStates: {
@@ -216,59 +229,73 @@ export async function getStudySessionById({
       userId,
     },
     include: {
-      reviewLogs: true,
+      questionAttempts: true,
     },
   });
 }
 
-export async function getActiveReviewItemForKnowledgeItem({
-  reviewItemId,
+export async function getActiveQuestionForKnowledgeItem({
+  questionId,
   knowledgeItemId,
   userId,
 }: {
-  reviewItemId: string;
+  questionId: string;
   knowledgeItemId: string;
   userId?: string;
 }) {
-  return prisma.reviewItem.findFirst({
+  return prisma.question.findFirst({
     where: {
-      id: reviewItemId,
-      knowledgeItemId,
       isActive: true,
-      knowledgeItem: buildKnowledgeItemVisibilityWhere(userId),
+      id: questionId,
+      knowledgeItems: {
+        some: {
+          knowledgeItemId,
+          knowledgeItem: buildKnowledgeItemVisibilityWhere(userId),
+        },
+      },
     },
-    select: {
-      id: true,
+    include: {
+      knowledgeItems: {
+        where: {
+          knowledgeItemId,
+        },
+        include: {
+          knowledgeItem: true,
+        },
+      },
     },
   });
 }
 
-export async function createReviewLog({
+export async function createQuestionAttempt({
   userId,
-  knowledgeItemId,
-  reviewItemId,
+  questionId,
   studySessionId,
   result,
+  score,
+  feedback,
+  submittedAnswer,
   responseTimeMs,
-  memoryHookUsedId,
 }: {
   userId: string;
-  knowledgeItemId: string;
-  reviewItemId: string;
+  questionId: string;
   studySessionId: string;
-  result: "again" | "hard" | "good" | "easy";
+  result: "correct" | "partial" | "incorrect";
+  score: number;
+  feedback?: string;
+  submittedAnswer: Prisma.InputJsonValue;
   responseTimeMs?: number;
-  memoryHookUsedId?: string;
 }) {
-  return prisma.reviewLog.create({
+  return prisma.questionAttempt.create({
     data: {
       userId,
-      knowledgeItemId,
-      reviewItemId,
+      questionId,
       studySessionId,
       result,
+      score,
+      feedback,
+      submittedAnswer,
       responseTimeMs,
-      memoryHookUsedId,
     },
   });
 }
@@ -361,11 +388,16 @@ export async function getReviewHintSource({
             orderBy: { updatedAt: "desc" },
             take: 1,
           },
-          reviewItems: {
+          questionBindings: {
             where: {
-              isActive: true,
+              question: {
+                isActive: true,
+              },
             },
-            orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
+            include: {
+              question: true,
+            },
+            orderBy: { createdAt: "asc" },
             take: 1,
           },
         },

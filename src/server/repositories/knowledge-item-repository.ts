@@ -4,15 +4,6 @@ import { buildKnowledgeItemVisibilityWhere } from "@/server/repositories/knowled
 
 function buildKnowledgeItemSummaryInclude(userId?: string) {
   return {
-    variables: {
-      orderBy: {
-        sortOrder: "asc" as const,
-      },
-      select: {
-        symbol: true,
-        name: true,
-      },
-    },
     userStates: {
       where: {
         userId: userId ?? "__anonymous_knowledgeItem_catalog__",
@@ -38,9 +29,11 @@ function buildKnowledgeItemSummaryInclude(userId?: string) {
     },
     _count: {
       select: {
-        reviewItems: {
+        questionBindings: {
           where: {
-            isActive: true,
+            question: {
+              isActive: true,
+            },
           },
         },
         memoryHooks: true,
@@ -50,16 +43,16 @@ function buildKnowledgeItemSummaryInclude(userId?: string) {
 }
 
 const knowledgeItemDetailInclude = {
-  variables: {
-    orderBy: {
-      sortOrder: "asc" as const,
-    },
-  },
-  reviewItems: {
+  questionBindings: {
     where: {
-      isActive: true,
+      question: {
+        isActive: true,
+      },
     },
-    orderBy: [{ difficulty: "asc" }, { createdAt: "asc" }],
+    include: {
+      question: true,
+    },
+    orderBy: { createdAt: "asc" as const },
   },
   memoryHooks: {
     where: {
@@ -71,9 +64,11 @@ const knowledgeItemDetailInclude = {
   },
   _count: {
     select: {
-      reviewItems: {
+      questionBindings: {
         where: {
-          isActive: true,
+          question: {
+            isActive: true,
+          },
         },
       },
       memoryHooks: true,
@@ -141,32 +136,6 @@ export async function listKnowledgeItems({
             mode: "insensitive" as const,
           },
         },
-        {
-          variables: {
-            some: {
-              OR: [
-                {
-                  symbol: {
-                    contains: normalizedQuery,
-                    mode: "insensitive" as const,
-                  },
-                },
-                {
-                  name: {
-                    contains: normalizedQuery,
-                    mode: "insensitive" as const,
-                  },
-                },
-                {
-                  description: {
-                    contains: normalizedQuery,
-                    mode: "insensitive" as const,
-                  },
-                },
-              ],
-            },
-          },
-        },
         ...(queryTokens.length > 0 ? [{ tags: { hasSome: queryTokens } }] : []),
       ],
     });
@@ -227,9 +196,6 @@ export async function getKnowledgeItemMemoryHookDraftSource(
       title: true,
       summary: true,
       body: true,
-      intuition: true,
-      useConditions: true,
-      antiPatterns: true,
     },
   });
 }

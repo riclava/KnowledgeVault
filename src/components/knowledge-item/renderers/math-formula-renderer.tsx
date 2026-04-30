@@ -38,6 +38,39 @@ export const mathFormulaRenderer: KnowledgeItemRendererPlugin<"math_formula"> = 
     return renderLatex({ payload });
   },
   renderBlock(payload) {
-    return renderLatex({ payload, block: true });
+    return (
+      <div className="grid gap-4">
+        {renderLatex({ payload, block: true })}
+        {payload.explanation ? (
+          <p className="text-sm leading-7 text-muted-foreground">
+            {payload.explanation}
+          </p>
+        ) : null}
+        {payload.variables.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg border bg-background">
+            <table className="w-full min-w-[28rem] border-collapse text-left text-sm">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="border-b px-3 py-2 font-medium">符号</th>
+                  <th className="border-b px-3 py-2 font-medium">名称</th>
+                  <th className="border-b px-3 py-2 font-medium">含义</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payload.variables.map((variable) => (
+                  <tr key={variable.symbol} className="border-b last:border-b-0">
+                    <td className="px-3 py-2 font-medium">{variable.symbol}</td>
+                    <td className="px-3 py-2">{variable.name}</td>
+                    <td className="px-3 py-2 leading-6 text-muted-foreground">
+                      {variable.meaning}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </div>
+    );
   },
 };

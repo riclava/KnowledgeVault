@@ -40,9 +40,43 @@ describe("admin schema shape", () => {
     assert.match(baseline, /admin_import_runs_adminUserId_createdAt_idx/);
   });
 
-  it("tracks active review items in schema and baseline", () => {
-    assert.match(schema, /model ReviewItem\s*{[^}]*isActive\s+Boolean\s+@default\(true\)/s);
-    assert.match(baseline, /"isActive" BOOLEAN NOT NULL DEFAULT true/);
+  it("simplifies knowledge items and removes embedded review models", () => {
+    assert.doesNotMatch(schema, /intuition\s+String\?/);
+    assert.doesNotMatch(schema, /deepDive\s+String\?/);
+    assert.doesNotMatch(schema, /useConditions\s+String\[\]/);
+    assert.doesNotMatch(schema, /nonUseConditions\s+String\[\]/);
+    assert.doesNotMatch(schema, /antiPatterns\s+String\[\]/);
+    assert.doesNotMatch(schema, /typicalProblems\s+String\[\]/);
+    assert.doesNotMatch(schema, /model KnowledgeItemVariable\s*{/);
+    assert.doesNotMatch(schema, /model ReviewItem\s*{/);
+    assert.doesNotMatch(schema, /model ReviewLog\s*{/);
+    assert.match(schema, /questionBindings\s+QuestionKnowledgeItem\[\]/);
+    assert.doesNotMatch(baseline, /"intuition"/);
+    assert.doesNotMatch(baseline, /CREATE TABLE "knowledge_item_variables"/);
+    assert.doesNotMatch(baseline, /CREATE TABLE "review_items"/);
+    assert.doesNotMatch(baseline, /CREATE TABLE "review_logs"/);
+  });
+
+  it("adds independent questions and knowledge bindings", () => {
+    assert.match(
+      schema,
+      /enum QuestionType\s*{\s*single_choice\s*multiple_choice\s*true_false\s*fill_blank\s*short_answer\s*}/s,
+    );
+    assert.match(schema, /enum QuestionGradingMode\s*{\s*rule\s*ai\s*}/s);
+    assert.match(
+      schema,
+      /enum QuestionAttemptResult\s*{\s*correct\s*partial\s*incorrect\s*}/s,
+    );
+    assert.match(schema, /model Question\s*{/);
+    assert.match(schema, /model QuestionKnowledgeItem\s*{/);
+    assert.match(schema, /model QuestionAttempt\s*{/);
+    assert.match(
+      baseline,
+      /CREATE TYPE "QuestionType" AS ENUM \('single_choice', 'multiple_choice', 'true_false', 'fill_blank', 'short_answer'\)/,
+    );
+    assert.match(baseline, /CREATE TABLE "questions"/);
+    assert.match(baseline, /CREATE TABLE "question_knowledge_items"/);
+    assert.match(baseline, /CREATE TABLE "question_attempts"/);
   });
 
   it("adds public knowledge dedupe run and candidate tracking", () => {

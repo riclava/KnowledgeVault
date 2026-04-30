@@ -35,8 +35,7 @@ type AdminKnowledgeItemRow = {
   } | null;
   difficulty: number;
   _count: {
-    reviewItems: number;
-    variables: number;
+    questionBindings: number;
     outgoingRelations: number;
   };
 };
@@ -383,7 +382,7 @@ export function AdminKnowledgeItemBulkDomainEditor({
                     {item.difficulty}
                   </td>
                   <td className="px-3 py-2 text-xs text-muted-foreground">
-                    {item._count.reviewItems} 题 · {item._count.variables} 变量 ·{" "}
+                    {item._count.questionBindings} 题 ·{" "}
                     {item._count.outgoingRelations} 关系
                   </td>
                   <td className="px-3 py-2">

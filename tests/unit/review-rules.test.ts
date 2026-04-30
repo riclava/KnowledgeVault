@@ -5,6 +5,7 @@ import {
   calculateNextReviewState,
   chooseReviewItemType,
   getReviewMultiplier,
+  mapQuestionAttemptToReviewGrade,
   REVIEW_INTERVAL_MS,
 } from "../../src/server/services/review-rules";
 
@@ -60,20 +61,41 @@ describe("review queue item selection", () => {
   it("uses preferred type when available", () => {
     assert.equal(
       chooseReviewItemType({
-        availableTypes: ["recall", "recognition"],
-        preferredType: "recognition",
+        availableTypes: ["single_choice", "fill_blank"],
+        preferredType: "fill_blank",
       }),
-      "recognition",
+      "fill_blank",
     );
   });
 
   it("falls back to the first available type", () => {
     assert.equal(
       chooseReviewItemType({
-        availableTypes: ["recall", "recognition"],
-        preferredType: "application",
+        availableTypes: ["single_choice", "fill_blank"],
+        preferredType: "short_answer",
       }),
-      "recall",
+      "single_choice",
+    );
+  });
+});
+
+describe("question result mapping", () => {
+  it("maps question attempt results onto review grades", () => {
+    assert.equal(
+      mapQuestionAttemptToReviewGrade({ result: "correct", score: 1 }),
+      "easy",
+    );
+    assert.equal(
+      mapQuestionAttemptToReviewGrade({ result: "correct", score: 0.8 }),
+      "good",
+    );
+    assert.equal(
+      mapQuestionAttemptToReviewGrade({ result: "partial", score: 0.6 }),
+      "hard",
+    );
+    assert.equal(
+      mapQuestionAttemptToReviewGrade({ result: "incorrect", score: 0 }),
+      "again",
     );
   });
 });

@@ -1,7 +1,7 @@
 import type {
   KnowledgeItemRelationType,
   KnowledgeItemType,
-  ReviewItemType,
+  QuestionType,
 } from "@/generated/prisma/client";
 
 export type AdminImportedVariable = {
@@ -13,7 +13,7 @@ export type AdminImportedVariable = {
 };
 
 export type AdminImportedReviewItem = {
-  type: ReviewItemType;
+  type: QuestionType;
   prompt: string;
   answer: string;
   explanation?: string;

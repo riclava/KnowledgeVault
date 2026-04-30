@@ -1,4 +1,5 @@
 import type { MemoryHookRecord } from "@/types/memory-hook";
+import type { QuestionAnswer, QuestionOption, QuestionType } from "@/types/question";
 
 export type KnowledgeItemType =
   | "math_formula"
@@ -10,13 +11,17 @@ export type KnowledgeItemType =
 
 export type MathFormulaRenderPayload = {
   latex: string;
+  explanation: string;
+  variables: Array<{
+    symbol: string;
+    name: string;
+    meaning: string;
+  }>;
 };
 
 export type VocabularyRenderPayload = {
   term: string;
   definition: string;
-  phonetic: string;
-  partOfSpeech: string;
   examples: string[];
 };
 
@@ -26,49 +31,24 @@ export type PlainTextRenderPayload = {
 
 export type ConceptCardRenderPayload = {
   definition: string;
-  intuition: string;
   keyPoints: string[];
-  examples: string[];
   misconceptions: string[];
 };
 
-export type ComparisonTableRenderPayload =
-  | {
-      mode: "matrix";
-      subjects: string[];
-      aspects: Array<{
-        label: string;
-        values: string[];
-      }>;
-    }
-  | {
-      mode: "table";
-      columns: string[];
-      rows: string[][];
-    };
+export type ComparisonTableRenderPayload = {
+  subjects: string[];
+  aspects: Array<{
+    label: string;
+    values: string[];
+  }>;
+};
 
 export type ProcedureRenderPayload = {
-  mode: "flowchart";
-  title: string;
-  overview: string;
   steps: Array<{
-    id: string;
     title: string;
-    description: string;
-    tips: string[];
-    pitfalls: string[];
+    detail: string;
   }>;
-  nodes: Array<{
-    id: string;
-    label: string;
-    kind: "start" | "step" | "decision" | "end";
-  }>;
-  edges: Array<{
-    from: string;
-    to: string;
-    label: string | null;
-  }>;
-  mermaid: string;
+  pitfalls: string[];
 };
 
 export type KnowledgeItemRenderPayloadByType = {
@@ -107,10 +87,6 @@ export type KnowledgeItemSummary = {
   summary: string;
   difficulty: number;
   tags: string[];
-  variablePreview: Array<{
-    symbol: string;
-    name: string;
-  }>;
   reviewItemCount: number;
   memoryHookCount: number;
   trainingStatus: KnowledgeItemTrainingStatus;
@@ -125,26 +101,13 @@ export type KnowledgeItemSummary = {
 
 export type KnowledgeItemDetail = KnowledgeItemSummary & {
   body: string;
-  intuition: string | null;
-  deepDive: string | null;
-  useConditions: string[];
-  nonUseConditions: string[];
-  antiPatterns: string[];
-  typicalProblems: string[];
-  examples: string[];
-  variables: Array<{
+  questions: Array<{
     id: string;
-    symbol: string;
-    name: string;
-    description: string;
-    unit: string | null;
-    sortOrder: number;
-  }>;
-  reviewItems: Array<{
-    id: string;
-    type: "recall" | "recognition" | "application";
+    type: QuestionType;
     prompt: string;
-    answer: string;
+    options: QuestionOption[] | null;
+    answer: QuestionAnswer;
+    answerAliases: string[];
     explanation: string | null;
     difficulty: number;
   }>;

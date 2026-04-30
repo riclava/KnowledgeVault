@@ -32,7 +32,7 @@ const validBatch: AdminImportBatch = {
       variables: [],
       reviewItems: [
         {
-          type: "recall",
+          type: "fill_blank",
           prompt: "什么是一次方程？",
           answer: "未知数最高次数为一的方程。",
           explanation: "次数由未知数最高幂决定。",
@@ -155,7 +155,7 @@ describe("admin import validation", () => {
     assert.equal(result.ok ? result.batch.items.length : 0, 3);
   });
 
-  it("rejects malformed procedure edge references", () => {
+  it("accepts simplified procedure payloads without flowchart edges", () => {
     const result = validateAdminImportBatch(
       {
         ...validBatch,
@@ -164,24 +164,13 @@ describe("admin import validation", () => {
             ...validBatch.items[0],
             contentType: "procedure",
             renderPayload: {
-              mode: "flowchart",
-              title: "Broken flow",
-              overview: "",
               steps: [
                 {
-                  id: "step",
                   title: "Step",
-                  description: "Do it.",
-                  tips: [],
-                  pitfalls: [],
+                  detail: "Do it.",
                 },
               ],
-              nodes: [
-                { id: "start", label: "Start", kind: "start" },
-                { id: "step", label: "Step", kind: "step" },
-              ],
-              edges: [{ from: "start", to: "missing", label: null }],
-              mermaid: "flowchart TD\n  start --> missing",
+              pitfalls: ["Skip nothing."],
             },
           },
         ],
@@ -189,11 +178,7 @@ describe("admin import validation", () => {
       new Set(),
     );
 
-    assert.equal(result.ok, false);
-    assert.deepEqual(
-      result.ok ? [] : result.errors.map((error) => error.code),
-      ["invalid_render_payload"],
-    );
+    assert.equal(result.ok, true);
   });
 
   it("rejects variables with blank symbol or name", () => {

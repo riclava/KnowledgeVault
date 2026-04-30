@@ -7,14 +7,6 @@ export const vocabularyRenderer: KnowledgeItemRendererPlugin<"vocabulary"> = {
     return (
       <span className="inline-flex flex-wrap items-baseline gap-2">
         <strong>{payload.term}</strong>
-        {payload.phonetic ? (
-          <span className="text-muted-foreground">{payload.phonetic}</span>
-        ) : null}
-        {payload.partOfSpeech ? (
-          <span className="text-xs uppercase text-muted-foreground">
-            {payload.partOfSpeech}
-          </span>
-        ) : null}
       </span>
     );
   },
@@ -23,14 +15,6 @@ export const vocabularyRenderer: KnowledgeItemRendererPlugin<"vocabulary"> = {
       <div className="grid gap-3">
         <div className="flex flex-wrap items-baseline gap-3">
           <strong className="text-2xl">{payload.term}</strong>
-          {payload.phonetic ? (
-            <span className="text-sm text-muted-foreground">{payload.phonetic}</span>
-          ) : null}
-          {payload.partOfSpeech ? (
-            <span className="rounded bg-muted px-2 py-1 text-xs uppercase text-muted-foreground">
-              {payload.partOfSpeech}
-            </span>
-          ) : null}
         </div>
         <p className="text-sm leading-6 text-muted-foreground">{payload.definition}</p>
         {payload.examples.length > 0 ? (

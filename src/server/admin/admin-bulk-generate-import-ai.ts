@@ -70,7 +70,7 @@ export async function generateMockAdminBulkGenerateImportItemBatch(
         variables: [],
         reviewItems: [
           {
-            type: "recall",
+            type: "fill_blank",
             prompt: `${sourceText}是什么？`,
             answer: `${sourceText}是需要掌握的核心知识点。`,
             explanation: "批量生成导入会围绕标题补全定义、例子和复习题。",

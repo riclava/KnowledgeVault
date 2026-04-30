@@ -2,28 +2,27 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-describe("review item active filtering", () => {
-  it("filters learner review queues to active review items", () => {
+describe("question active filtering", () => {
+  it("filters learner review queues to active bound questions", () => {
     const repository = readFileSync(
       "src/server/repositories/review-repository.ts",
       "utf8",
     );
 
-    assert.match(repository, /reviewItems:\s*{\s*where:\s*{\s*isActive:\s*true/s);
+    assert.match(repository, /questionBindings:\s*{\s*where:\s*{\s*question:\s*{\s*isActive:\s*true/s);
   });
 
-  it("filters diagnostic review item selection to active review items", () => {
+  it("filters diagnostic question selection to active bound questions", () => {
     const repository = readFileSync(
       "src/server/repositories/diagnostic-repository.ts",
       "utf8",
     );
 
-    assert.match(repository, /where:\s*{\s*isActive:\s*true,[^}]*knowledgeItem:/s);
-    assert.match(repository, /id:\s*{\s*in:\s*reviewItemIds/s);
-    assert.match(repository, /isActive:\s*true,[^}]*knowledgeItem:/s);
+    assert.match(repository, /question:\s*{\s*isActive:\s*true/s);
+    assert.match(repository, /id:\s*{\s*in:\s*questionIds/s);
   });
 
-  it("filters public knowledge item details to active review items", () => {
+  it("filters public knowledge item details to active bound questions", () => {
     const repository = readFileSync(
       "src/server/repositories/knowledge-item-repository.ts",
       "utf8",
@@ -31,11 +30,11 @@ describe("review item active filtering", () => {
 
     assert.match(
       repository,
-      /knowledgeItemDetailInclude[\s\S]*reviewItems:\s*{\s*where:\s*{\s*isActive:\s*true/s,
+      /knowledgeItemDetailInclude[\s\S]*questionBindings:\s*{\s*where:\s*{\s*question:\s*{\s*isActive:\s*true/s,
     );
   });
 
-  it("counts only active review items in public summaries", () => {
+  it("counts only active bound questions in public summaries", () => {
     const repository = readFileSync(
       "src/server/repositories/knowledge-item-repository.ts",
       "utf8",
@@ -48,11 +47,11 @@ describe("review item active filtering", () => {
 
     assert.match(
       summaryInclude,
-      /_count:\s*{\s*select:\s*{[\s\S]*reviewItems:\s*{\s*where:\s*{\s*isActive:\s*true/s,
+      /_count:\s*{\s*select:\s*{[\s\S]*questionBindings:\s*{\s*where:\s*{\s*question:\s*{\s*isActive:\s*true/s,
     );
   });
 
-  it("counts only active review items in public details", () => {
+  it("counts only active bound questions in public details", () => {
     const repository = readFileSync(
       "src/server/repositories/knowledge-item-repository.ts",
       "utf8",
@@ -65,28 +64,28 @@ describe("review item active filtering", () => {
 
     assert.match(
       detailInclude,
-      /_count:\s*{\s*select:\s*{[\s\S]*reviewItems:\s*{\s*where:\s*{\s*isActive:\s*true/s,
+      /_count:\s*{\s*select:\s*{[\s\S]*questionBindings:\s*{\s*where:\s*{\s*question:\s*{\s*isActive:\s*true/s,
     );
   });
 
-  it("counts only active review items in diagnostic summaries", () => {
+  it("counts only active bound questions in diagnostic summaries", () => {
     const repository = readFileSync(
       "src/server/repositories/diagnostic-repository.ts",
       "utf8",
     );
     const diagnosticInclude = between(
       repository,
-      "const diagnosticQuestionInclude",
-      "export async function listDiagnosticReviewItems",
+      "function buildDiagnosticQuestionInclude",
+      "export async function listDiagnosticQuestions",
     );
 
     assert.match(
       diagnosticInclude,
-      /_count:\s*{\s*select:\s*{[\s\S]*reviewItems:\s*{\s*where:\s*{\s*isActive:\s*true/s,
+      /_count:\s*{\s*select:\s*{[\s\S]*questionBindings:\s*{\s*where:\s*{\s*question:\s*{\s*isActive:\s*true/s,
     );
   });
 
-  it("guards review submissions against archived or mismatched review items", () => {
+  it("guards review submissions against archived or mismatched questions", () => {
     const service = readFileSync("src/server/services/review-service.ts", "utf8");
     const repository = readFileSync(
       "src/server/repositories/review-repository.ts",
@@ -98,15 +97,15 @@ describe("review item active filtering", () => {
       "export async function deferReview",
     );
 
-    assert.match(repository, /getActiveReviewItemForKnowledgeItem/);
-    assert.match(repository, /id:\s*reviewItemId/);
+    assert.match(repository, /getActiveQuestionForKnowledgeItem/);
+    assert.match(repository, /id:\s*questionId/);
     assert.match(repository, /knowledgeItemId/);
     assert.match(repository, /isActive:\s*true/);
-    assert.match(submitReview, /getActiveReviewItemForKnowledgeItem/);
-    assert.match(submitReview, /Review item is not active for this knowledge item/);
+    assert.match(submitReview, /getActiveQuestionForKnowledgeItem/);
+    assert.match(submitReview, /Question is not active for this knowledge item/);
     assert.match(
       submitReview,
-      /getActiveReviewItemForKnowledgeItem[\s\S]*createReviewLog/,
+      /getActiveQuestionForKnowledgeItem[\s\S]*createQuestionAttempt/,
     );
   });
 });

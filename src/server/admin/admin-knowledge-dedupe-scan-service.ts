@@ -118,13 +118,13 @@ export async function getKnowledgeDedupeRunDetailForAdmin(id: string) {
           updatedAt: true,
           _count: {
             select: {
-              reviewItems: {
-                where: { isActive: true },
+              questionBindings: {
+                where: {
+                  question: { isActive: true },
+                },
               },
-              variables: true,
               outgoingRelations: true,
               userStates: true,
-              reviewLogs: true,
               memoryHooks: true,
             },
           },
@@ -164,9 +164,6 @@ async function listPublicKnowledgeItemsForDedupe(
       body: true,
       contentType: true,
       tags: true,
-      useConditions: true,
-      typicalProblems: true,
-      examples: true,
     },
     orderBy: [{ updatedAt: "desc" }, { title: "asc" }],
   });

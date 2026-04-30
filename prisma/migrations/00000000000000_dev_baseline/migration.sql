@@ -8,12 +8,6 @@ CREATE TYPE "KnowledgeItemRelationType" AS ENUM ('prerequisite', 'related', 'con
 CREATE TYPE "KnowledgeItemType" AS ENUM ('math_formula', 'vocabulary', 'plain_text', 'concept_card', 'comparison_table', 'procedure');
 
 -- CreateEnum
-CREATE TYPE "ReviewItemType" AS ENUM ('recall', 'recognition', 'application');
-
--- CreateEnum
-CREATE TYPE "ReviewResult" AS ENUM ('easy', 'good', 'hard', 'again');
-
--- CreateEnum
 CREATE TYPE "StudySessionStatus" AS ENUM ('active', 'completed', 'abandoned');
 
 -- CreateEnum
@@ -36,6 +30,15 @@ CREATE TYPE "AdminBulkGenerateImportRunStatus" AS ENUM ('pending', 'running', 'c
 
 -- CreateEnum
 CREATE TYPE "AdminBulkGenerateImportRowStatus" AS ENUM ('pending', 'processing', 'imported', 'duplicate_skipped', 'ai_failed', 'validation_failed', 'save_failed', 'canceled');
+
+-- CreateEnum
+CREATE TYPE "QuestionType" AS ENUM ('single_choice', 'multiple_choice', 'true_false', 'fill_blank', 'short_answer');
+
+-- CreateEnum
+CREATE TYPE "QuestionGradingMode" AS ENUM ('rule', 'ai');
+
+-- CreateEnum
+CREATE TYPE "QuestionAttemptResult" AS ENUM ('correct', 'partial', 'incorrect');
 
 -- CreateTable
 CREATE TABLE "users" (
@@ -120,13 +123,6 @@ CREATE TABLE "knowledge_items" (
     "subdomain" TEXT,
     "summary" TEXT NOT NULL,
     "body" TEXT NOT NULL,
-    "intuition" TEXT,
-    "deepDive" TEXT,
-    "useConditions" TEXT[],
-    "nonUseConditions" TEXT[],
-    "antiPatterns" TEXT[],
-    "typicalProblems" TEXT[],
-    "examples" TEXT[],
     "difficulty" INTEGER NOT NULL,
     "tags" TEXT[],
     "extension" JSONB,
@@ -180,21 +176,6 @@ CREATE TABLE "knowledge_dedupe_candidates" (
 );
 
 -- CreateTable
-CREATE TABLE "knowledge_item_variables" (
-    "id" TEXT NOT NULL,
-    "knowledgeItemId" TEXT NOT NULL,
-    "symbol" TEXT NOT NULL,
-    "name" TEXT NOT NULL,
-    "description" TEXT NOT NULL,
-    "unit" TEXT,
-    "sortOrder" INTEGER NOT NULL DEFAULT 0,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "knowledge_item_variables_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "knowledge_item_relations" (
     "id" TEXT NOT NULL,
     "fromKnowledgeItemId" TEXT NOT NULL,
@@ -205,22 +186,6 @@ CREATE TABLE "knowledge_item_relations" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "knowledge_item_relations_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
-CREATE TABLE "review_items" (
-    "id" TEXT NOT NULL,
-    "knowledgeItemId" TEXT NOT NULL,
-    "type" "ReviewItemType" NOT NULL,
-    "prompt" TEXT NOT NULL,
-    "answer" TEXT NOT NULL,
-    "explanation" TEXT,
-    "difficulty" INTEGER NOT NULL,
-    "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" TIMESTAMP(3) NOT NULL,
-
-    CONSTRAINT "review_items_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -244,27 +209,11 @@ CREATE TABLE "user_knowledge_item_states" (
 );
 
 -- CreateTable
-CREATE TABLE "review_logs" (
-    "id" TEXT NOT NULL,
-    "userId" TEXT NOT NULL,
-    "knowledgeItemId" TEXT NOT NULL,
-    "reviewItemId" TEXT NOT NULL,
-    "studySessionId" TEXT,
-    "result" "ReviewResult" NOT NULL,
-    "responseTimeMs" INTEGER,
-    "confidence" INTEGER,
-    "memoryHookUsedId" TEXT,
-    "reviewedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "review_logs_pkey" PRIMARY KEY ("id")
-);
-
--- CreateTable
 CREATE TABLE "diagnostic_attempts" (
     "id" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "domain" TEXT NOT NULL,
-    "reviewItemIds" TEXT[],
+    "questionIds" TEXT[],
     "weakKnowledgeItemIds" TEXT[],
     "completedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -297,6 +246,53 @@ CREATE TABLE "study_sessions" (
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "study_sessions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "questions" (
+    "id" TEXT NOT NULL,
+    "type" "QuestionType" NOT NULL,
+    "prompt" TEXT NOT NULL,
+    "options" JSONB,
+    "answer" JSONB NOT NULL,
+    "answerAliases" TEXT[],
+    "explanation" TEXT,
+    "difficulty" INTEGER NOT NULL,
+    "tags" TEXT[],
+    "gradingMode" "QuestionGradingMode" NOT NULL,
+    "isActive" BOOLEAN NOT NULL DEFAULT true,
+    "visibility" "KnowledgeItemVisibility" NOT NULL DEFAULT 'public',
+    "createdByUserId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "questions_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "question_knowledge_items" (
+    "id" TEXT NOT NULL,
+    "questionId" TEXT NOT NULL,
+    "knowledgeItemId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "question_knowledge_items_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "question_attempts" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "questionId" TEXT NOT NULL,
+    "studySessionId" TEXT,
+    "submittedAnswer" JSONB NOT NULL,
+    "result" "QuestionAttemptResult" NOT NULL,
+    "score" DOUBLE PRECISION NOT NULL,
+    "feedback" TEXT,
+    "responseTimeMs" INTEGER,
+    "reviewedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "question_attempts_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -415,28 +411,16 @@ CREATE INDEX "knowledge_dedupe_runs_adminUserId_createdAt_idx" ON "knowledge_ded
 CREATE INDEX "knowledge_dedupe_candidates_runId_status_idx" ON "knowledge_dedupe_candidates"("runId", "status");
 
 -- CreateIndex
-CREATE INDEX "knowledge_item_variables_knowledgeItemId_idx" ON "knowledge_item_variables"("knowledgeItemId");
-
--- CreateIndex
 CREATE INDEX "knowledge_item_relations_toKnowledgeItemId_idx" ON "knowledge_item_relations"("toKnowledgeItemId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "knowledge_item_relations_fromKnowledgeItemId_toKnowledgeIte_key" ON "knowledge_item_relations"("fromKnowledgeItemId", "toKnowledgeItemId", "relationType");
 
 -- CreateIndex
-CREATE INDEX "review_items_knowledgeItemId_type_idx" ON "review_items"("knowledgeItemId", "type");
-
--- CreateIndex
 CREATE INDEX "user_knowledge_item_states_knowledgeItemId_idx" ON "user_knowledge_item_states"("knowledgeItemId");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "user_knowledge_item_states_userId_knowledgeItemId_key" ON "user_knowledge_item_states"("userId", "knowledgeItemId");
-
--- CreateIndex
-CREATE INDEX "review_logs_userId_reviewedAt_idx" ON "review_logs"("userId", "reviewedAt");
-
--- CreateIndex
-CREATE INDEX "review_logs_knowledgeItemId_idx" ON "review_logs"("knowledgeItemId");
 
 -- CreateIndex
 CREATE INDEX "diagnostic_attempts_userId_completedAt_idx" ON "diagnostic_attempts"("userId", "completedAt");
@@ -449,6 +433,27 @@ CREATE UNIQUE INDEX "knowledge_item_memory_hooks_userId_knowledgeItemId_key" ON 
 
 -- CreateIndex
 CREATE INDEX "study_sessions_userId_startedAt_idx" ON "study_sessions"("userId", "startedAt");
+
+-- CreateIndex
+CREATE INDEX "questions_type_idx" ON "questions"("type");
+
+-- CreateIndex
+CREATE INDEX "questions_difficulty_idx" ON "questions"("difficulty");
+
+-- CreateIndex
+CREATE INDEX "questions_visibility_createdByUserId_idx" ON "questions"("visibility", "createdByUserId");
+
+-- CreateIndex
+CREATE INDEX "question_knowledge_items_knowledgeItemId_idx" ON "question_knowledge_items"("knowledgeItemId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "question_knowledge_items_questionId_knowledgeItemId_key" ON "question_knowledge_items"("questionId", "knowledgeItemId");
+
+-- CreateIndex
+CREATE INDEX "question_attempts_userId_reviewedAt_idx" ON "question_attempts"("userId", "reviewedAt");
+
+-- CreateIndex
+CREATE INDEX "question_attempts_questionId_idx" ON "question_attempts"("questionId");
 
 -- CreateIndex
 CREATE INDEX "admin_import_runs_adminUserId_createdAt_idx" ON "admin_import_runs"("adminUserId", "createdAt");
@@ -478,9 +483,6 @@ ALTER TABLE "auth_sessions" ADD CONSTRAINT "auth_sessions_userId_fkey" FOREIGN K
 ALTER TABLE "auth_accounts" ADD CONSTRAINT "auth_accounts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "auth_users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "knowledge_item_variables" ADD CONSTRAINT "knowledge_item_variables_knowledgeItemId_fkey" FOREIGN KEY ("knowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "knowledge_items" ADD CONSTRAINT "knowledge_items_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
@@ -496,28 +498,10 @@ ALTER TABLE "knowledge_item_relations" ADD CONSTRAINT "knowledge_item_relations_
 ALTER TABLE "knowledge_item_relations" ADD CONSTRAINT "knowledge_item_relations_toKnowledgeItemId_fkey" FOREIGN KEY ("toKnowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "review_items" ADD CONSTRAINT "review_items_knowledgeItemId_fkey" FOREIGN KEY ("knowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
 ALTER TABLE "user_knowledge_item_states" ADD CONSTRAINT "user_knowledge_item_states_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "user_knowledge_item_states" ADD CONSTRAINT "user_knowledge_item_states_knowledgeItemId_fkey" FOREIGN KEY ("knowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "review_logs" ADD CONSTRAINT "review_logs_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "review_logs" ADD CONSTRAINT "review_logs_knowledgeItemId_fkey" FOREIGN KEY ("knowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "review_logs" ADD CONSTRAINT "review_logs_reviewItemId_fkey" FOREIGN KEY ("reviewItemId") REFERENCES "review_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "review_logs" ADD CONSTRAINT "review_logs_studySessionId_fkey" FOREIGN KEY ("studySessionId") REFERENCES "study_sessions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
-
--- AddForeignKey
-ALTER TABLE "review_logs" ADD CONSTRAINT "review_logs_memoryHookUsedId_fkey" FOREIGN KEY ("memoryHookUsedId") REFERENCES "knowledge_item_memory_hooks"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "diagnostic_attempts" ADD CONSTRAINT "diagnostic_attempts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -530,6 +514,24 @@ ALTER TABLE "knowledge_item_memory_hooks" ADD CONSTRAINT "knowledge_item_memory_
 
 -- AddForeignKey
 ALTER TABLE "study_sessions" ADD CONSTRAINT "study_sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "questions" ADD CONSTRAINT "questions_createdByUserId_fkey" FOREIGN KEY ("createdByUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "question_knowledge_items" ADD CONSTRAINT "question_knowledge_items_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "questions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "question_knowledge_items" ADD CONSTRAINT "question_knowledge_items_knowledgeItemId_fkey" FOREIGN KEY ("knowledgeItemId") REFERENCES "knowledge_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "question_attempts" ADD CONSTRAINT "question_attempts_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "question_attempts" ADD CONSTRAINT "question_attempts_questionId_fkey" FOREIGN KEY ("questionId") REFERENCES "questions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "question_attempts" ADD CONSTRAINT "question_attempts_studySessionId_fkey" FOREIGN KEY ("studySessionId") REFERENCES "study_sessions"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "admin_import_runs" ADD CONSTRAINT "admin_import_runs_adminUserId_fkey" FOREIGN KEY ("adminUserId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

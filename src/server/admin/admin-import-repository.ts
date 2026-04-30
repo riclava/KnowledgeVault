@@ -33,9 +33,6 @@ export type AdminImportDedupeExistingItem = {
   subdomain: string | null;
   summary: string;
   body: string;
-  useConditions: string[];
-  typicalProblems: string[];
-  examples: string[];
   tags: string[];
 };
 
@@ -141,9 +138,6 @@ export async function listPublicKnowledgeItemsForImportDedupe(domains: string[])
       subdomain: true,
       summary: true,
       body: true,
-      useConditions: true,
-      typicalProblems: true,
-      examples: true,
       tags: true,
     },
   });
@@ -280,60 +274,55 @@ export async function saveAdminImportBatch({
       slugToId.set(savedItem.slug, savedItem.id);
       slugToId.set(item.slug, savedItem.id);
 
-      await tx.knowledgeItemVariable.deleteMany({
+      const existingQuestionBindings = await tx.questionKnowledgeItem.findMany({
+        where: { knowledgeItemId: savedItem.id },
+        select: { questionId: true },
+      });
+      const existingQuestionIds = existingQuestionBindings.map(
+        (binding) => binding.questionId,
+      );
+
+      await tx.questionKnowledgeItem.deleteMany({
         where: { knowledgeItemId: savedItem.id },
       });
 
-      if (item.variables.length > 0) {
-        await tx.knowledgeItemVariable.createMany({
-          data: item.variables.map((variable, index) => ({
-            knowledgeItemId: savedItem.id,
-            symbol: variable.symbol,
-            name: variable.name,
-            description: variable.description,
-            unit: variable.unit ?? null,
-            sortOrder: variable.sortOrder ?? index,
-          })),
-        });
-      }
-
-      const existingReviewItems = await tx.reviewItem.findMany({
-        where: { knowledgeItemId: savedItem.id },
-        select: {
-          id: true,
-          _count: {
-            select: { reviewLogs: true },
-          },
-        },
-      });
-      const reviewItemReplacementPlan =
-        partitionReviewItemIdsForReplacement(existingReviewItems);
-
-      if (reviewItemReplacementPlan.deleteIds.length > 0) {
-        await tx.reviewItem.deleteMany({
-          where: { id: { in: reviewItemReplacementPlan.deleteIds } },
-        });
-      }
-
-      if (reviewItemReplacementPlan.archiveIds.length > 0) {
-        await tx.reviewItem.updateMany({
-          where: { id: { in: reviewItemReplacementPlan.archiveIds } },
-          data: { isActive: false },
+      if (existingQuestionIds.length > 0) {
+        await tx.question.deleteMany({
+          where: { id: { in: existingQuestionIds } },
         });
       }
 
       if (item.reviewItems.length > 0) {
-        await tx.reviewItem.createMany({
-          data: item.reviewItems.map((reviewItem) => ({
-            knowledgeItemId: savedItem.id,
+        for (const reviewItem of item.reviewItems) {
+          await tx.question.create({
+            data: {
             type: reviewItem.type,
             prompt: reviewItem.prompt,
-            answer: reviewItem.answer,
+              options:
+                reviewItem.type === "single_choice"
+                  ? [
+                      { id: "a", text: reviewItem.answer },
+                      { id: "b", text: "以上都不适合" },
+                    ]
+                  : undefined,
+              answer:
+                reviewItem.type === "single_choice"
+                  ? { optionId: "a" }
+                  : { text: reviewItem.answer },
+              answerAliases: [reviewItem.answer],
             explanation: reviewItem.explanation ?? null,
             difficulty: reviewItem.difficulty,
-            isActive: true,
-          })),
-        });
+              tags: item.tags,
+              gradingMode:
+                reviewItem.type === "short_answer" ? "ai" : "rule",
+              knowledgeItems: {
+                create: {
+                  knowledgeItemId: savedItem.id,
+                },
+              },
+            },
+          });
+        }
       }
 
       if (saveScope.scope === "learner") {
@@ -428,13 +417,6 @@ function toKnowledgeItemData(
     subdomain: item.subdomain ?? null,
     summary: item.summary,
     body: item.body,
-    intuition: item.intuition ?? null,
-    deepDive: item.deepDive ?? null,
-    useConditions: item.useConditions,
-    nonUseConditions: item.nonUseConditions,
-    antiPatterns: item.antiPatterns,
-    typicalProblems: item.typicalProblems,
-    examples: item.examples,
     difficulty: item.difficulty,
     tags: item.tags,
     extension: Prisma.JsonNull,

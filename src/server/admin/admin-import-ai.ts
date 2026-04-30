@@ -169,7 +169,7 @@ export function createAdminImportJsonSchema(): AdminImportJsonSchemaFormat {
           properties: {
             type: {
               type: "string",
-              enum: ["recall", "recognition", "application"],
+              enum: ["fill_blank", "single_choice", "short_answer"],
             },
             prompt: stringSchema,
             answer: stringSchema,
@@ -417,21 +417,21 @@ export async function generateMockAdminImportBatch(
         ],
         reviewItems: [
           {
-            type: "recall",
+            type: "fill_blank",
             prompt: "什么是线性方程？",
             answer: "未知数最高次数为一的方程。",
             explanation: "次数由未知数出现的最高幂决定。",
             difficulty: 1,
           },
           {
-            type: "recognition",
+            type: "single_choice",
             prompt: "2x + 3 = 7 是线性方程吗？",
             answer: "是。",
             explanation: "未知数 x 的最高次数为一。",
             difficulty: 1,
           },
           {
-            type: "application",
+            type: "short_answer",
             prompt: "求解 2x + 3 = 7。",
             answer: "x = 2。",
             explanation: "两边减 3 得 2x = 4，再两边除以 2。",
@@ -466,7 +466,7 @@ export async function generateMockAdminImportBatch(
         variables: [],
         reviewItems: [
           {
-            type: "recall",
+            type: "fill_blank",
             prompt: "线性方程的关键判定条件是什么？",
             answer: "未知数最高次数为一。",
             explanation: "线性指一次关系。",
@@ -508,7 +508,7 @@ export async function generateMockAdminImportBatch(
         variables: [],
         reviewItems: [
           {
-            type: "recognition",
+            type: "single_choice",
             prompt: "x^2 + 2x + 1 = 0 是线性方程吗？",
             answer: "不是，它是二次方程。",
             explanation: "未知数最高次数为二。",
@@ -570,7 +570,7 @@ export async function generateMockAdminImportBatch(
         variables: [],
         reviewItems: [
           {
-            type: "application",
+            type: "short_answer",
             prompt: "求解 2x + 3 = 7 的第一步通常是什么？",
             answer: "两边先减 3，得到 2x = 4。",
             explanation: "先用逆运算移走常数项。",
